@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cp build/bin/debug/atl $HOME/usr/bin/atl
+#cp build/bin/release/atl $HOME/usr/bin/atl
