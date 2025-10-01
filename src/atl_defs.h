@@ -3,6 +3,7 @@
 #define ATL_DEFS_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef int8_t atl_i8;
@@ -17,6 +18,9 @@ typedef uint64_t atl_u64;
 
 typedef float atl_f32;
 typedef double atl_f64;
+
+typedef void *atl_ptr;
+typedef void (*atl_func_ptr)(void);
 
 // BUFFER SIZES
 #define ATL_BUF_SIZE_64 0x40

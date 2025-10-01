@@ -48,3 +48,44 @@ bool ATL_mv(const char *src, const char *dst)
 }
 
 //----------------------------------------------------------------------------------------------------
+
+static time_t atl_get_mtime(const char *path)
+{
+    if (path)
+    {
+        atl_stat_t st;
+        return atl_stat(path, &st) == 0 ? st.st_mtime : 0;
+    }
+    return 0;
+}
+
+bool ATL_is_modified(const char *path1, const char *path2)
+{
+    time_t t1 = atl_get_mtime(path1);
+    time_t t2 = atl_get_mtime(path2);
+    return (t1 != t2) ? true : false;
+}
+
+bool ATL_is_src_newer(const char *src, const char *target)
+{
+    time_t src_t = atl_get_mtime(src);
+    time_t target_t = atl_get_mtime(target);
+    return (src_t > target_t) ? true : false;
+}
+
+bool ATL_isdir(const char *dir)
+{
+    atl_stat_t st;
+    return (atl_stat(dir, &st) == 0 && S_ISDIR(st.st_mode));
+}
+
+bool ATL_isfile(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (f)
+    {
+        fclose(f);
+        return true;
+    }
+    return false;
+}

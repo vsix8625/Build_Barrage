@@ -1,0 +1,110 @@
+#include "atl_arena.h"
+#include "atl_io.h"
+
+#include <assert.h>
+#include <stdlib.h>
+
+static inline size_t atl_arena_free_space(const ATL_Arena *a)
+{
+    return a ? (a->capacity - a->offset) : 0;
+}
+
+void ATL_arena_init(ATL_Arena *a, size_t capacity)
+{
+    a->magic_start = ATL_ARENA_MAGIC_START;
+    a->magic_end = ATL_ARENA_MAGIC_END;
+
+    a->buffer = (char *) ATL_ALLOC(capacity);
+    a->capacity = capacity;
+    a->offset = 0;
+
+    ATL_dbglog("%s: initialized | Address: %p", __func__, a);
+    if (capacity < 1024)
+    {
+        ATL_dbglog("Total Size: %zub", capacity);
+    }
+    else if (capacity < 1024 * 1024)
+    {
+        ATL_dbglog("Total Size: %.2fKB", (float) capacity / 1024.0f);
+    }
+    else
+    {
+        ATL_dbglog("Total Size: %.2fMB", (float) capacity / (1024.0f * 1024.0f));
+    }
+}
+
+atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
+{
+    ATL_dbglog("%s: request for %zu bytes from arena: %p", __func__, size, a);
+#if defined(ATL_DEBUG)
+    assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
+#endif
+
+    size_t free_space = atl_arena_free_space(a);
+    if (size > free_space)
+    {
+        ATL_errlog("Arena out of memory: %p", a);
+        ATL_errlog("Requested: %zu", size);
+        ATL_errlog("Available: %zu", free_space);
+        return NULL;
+    }
+
+    atl_ptr ptr = a->buffer + a->offset;
+    a->offset += size;
+    return ptr;
+}
+
+void ATL_arena_reset(ATL_Arena *a)
+{
+    ATL_dbglog("%s: address %p", __func__, a);
+#if defined(ATL_DEBUG)
+    assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
+#endif
+
+    a->offset = 0;
+}
+
+void ATL_destroy_arena(ATL_Arena *a)
+{
+    ATL_dbglog("%s: address %p", __func__, a);
+#if defined(ATL_DEBUG)
+    assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
+#endif
+
+    if (a && a->buffer)
+    {
+        free(a->buffer);
+        a->buffer = NULL;
+        a->capacity = 0;
+        a->offset = 0;
+    }
+    ATL_dbglog("Arena destroyed: %p", a);
+}
+
+static void print_human_size(const char *label, size_t bytes)
+{
+    if (bytes < 1024)
+        ATL_log("%s: %zub", label, bytes);
+    else if (bytes < 1024 * 1024)
+        ATL_log("%s: %.2fKB", label, (double) bytes / 1024.0);
+    else if (bytes < 1024ull * 1024ull * 1024ull)
+        ATL_log("%s: %.2fMB", label, (double) bytes / (1024.0 * 1024.0));
+    else
+        ATL_log("%s: %.2fGB", label, (double) bytes / (1024.0 * 1024.0 * 1024.0));
+}
+
+void ATL_arena_stats(const ATL_Arena *a)
+{
+#if defined(ATL_DEBUG)
+    assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
+#endif
+
+    size_t used = a->offset;
+    size_t free_space = a->capacity - a->offset;
+    double percent = (a->capacity > 0) ? (100.0 * used / (double) a->capacity) : 0.0;
+
+    ATL_log("Arena Stats [%p]: Usage: %.2f%%", a, percent);
+    print_human_size("  Used", used);
+    print_human_size("  Free", free_space);
+    print_human_size("  Capacity", a->capacity);
+}

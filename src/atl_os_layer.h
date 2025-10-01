@@ -11,7 +11,7 @@
 #define ATL_OS_NAME "Linux"
 #define ATL_GET_HOME() getenv("HOME")
 
-#define alt_stat stat
+#define atl_stat stat
 typedef struct stat atl_stat_t;
 
 #define atl_mkdir(dir) mkdir((dir), 0755)
