@@ -16,6 +16,7 @@ typedef struct ATL_Arena
     char *buffer;
     size_t capacity;
     size_t offset;
+    size_t peak;
 
     atl_u32 magic_end;
 } ATL_Arena;

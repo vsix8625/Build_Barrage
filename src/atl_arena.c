@@ -17,6 +17,7 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity)
     a->buffer = (char *) ATL_ALLOC(capacity);
     a->capacity = capacity;
     a->offset = 0;
+    a->peak = 0;
 
     ATL_dbglog("%s: initialized | Address: %p", __func__, a);
     if (capacity < 1024)
@@ -51,6 +52,10 @@ atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
 
     atl_ptr ptr = a->buffer + a->offset;
     a->offset += size;
+    if (a->offset > a->peak)
+    {
+        a->peak = a->offset;
+    }
     return ptr;
 }
 
@@ -81,7 +86,7 @@ void ATL_destroy_arena(ATL_Arena *a)
     ATL_dbglog("Arena destroyed: %p", a);
 }
 
-static void print_human_size(const char *label, size_t bytes)
+static void atl_print_human_size(const char *label, size_t bytes)
 {
     if (bytes < 1024)
         ATL_log("%s: %zub", label, bytes);
@@ -104,7 +109,8 @@ void ATL_arena_stats(const ATL_Arena *a)
     double percent = (a->capacity > 0) ? (100.0 * used / (double) a->capacity) : 0.0;
 
     ATL_log("Arena Stats [%p]: Usage: %.2f%%", a, percent);
-    print_human_size("  Used", used);
-    print_human_size("  Free", free_space);
-    print_human_size("  Capacity", a->capacity);
+    atl_print_human_size("\tUsed", used);
+    atl_print_human_size("\tPeak", a->peak);
+    atl_print_human_size("\tFree", free_space);
+    atl_print_human_size("\tCapacity", a->capacity);
 }
