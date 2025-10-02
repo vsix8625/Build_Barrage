@@ -10,6 +10,7 @@
 #define ATL_OS_LINUX
 #define ATL_OS_NAME "Linux"
 #define ATL_GET_HOME() getenv("HOME")
+#define ATL_GET_CONFIG_HOME() getenv("HOME")
 
 #define atl_stat stat
 typedef struct stat atl_stat_t;
@@ -32,6 +33,7 @@ typedef struct stat atl_stat_t;
 #define ATL_OS_WIN32
 #define ALT_OS_NAME "Win32"
 #define ATL_GET_HOME() getenv("USERPROFILE")
+#define ATL_GET_CONFIG_HOME() getenv("APPDATA")
 
 #define atl_stat _stat
 typedef struct _stat atl_stat_t

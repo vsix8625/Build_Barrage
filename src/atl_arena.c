@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 static inline size_t atl_arena_free_space(const ATL_Arena *a)
 {
@@ -57,6 +58,23 @@ atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
         a->peak = a->offset;
     }
     return ptr;
+}
+
+char *ATL_arena_strdup(ATL_Arena *a, const char *s)
+{
+    ATL_dbglog("%s: address %p", __func__, a);
+#if defined(ATL_DEBUG)
+    assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
+#endif
+
+    size_t len = strlen(s) + 1;
+    char *dest = ATL_arena_alloc(a, len);
+    if (!dest)
+    {
+        return NULL;
+    }
+    memcpy(dest, s, len);
+    return dest;
 }
 
 void ATL_arena_reset(ATL_Arena *a)

@@ -3,7 +3,7 @@
 
 atl_i32 ATL_command_help(atl_i32 argc, char **argv)
 {
-    ATL_log("Hello for help command");
+    ATL_log("Hello from help command");
     ATL_VOID(argc);
     ATL_VOID(argv);
     return 0;

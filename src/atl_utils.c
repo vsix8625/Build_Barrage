@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 700
 
-#include "atl_utils.h"
+#include "atl_io.h"
 
 #include <ftw.h>
 #include <stdio.h>
@@ -88,4 +88,32 @@ bool ATL_isfile(const char *path)
         return true;
     }
     return false;
+}
+
+atl_i32 ATL_setperm(const char *path, const char *perm)
+{
+    if (ATL_strmatch(perm, "read-only"))
+    {
+        int failed = 0;
+
+#if defined(ATL_OS_WIN32)
+        failed = SetFileAttributesA(path, FILE_ATTRIBUTE_READONLY) == 0;
+#elif defined(ATL_OS_LINUX)
+        failed = chmod(path, 0444) != 0;
+#endif
+
+        if (failed)
+        {
+            ATL_errlog("Failed to set %s to read-only", path);
+            return 1;
+        }
+        else
+        {
+            ATL_log("%s successfully set to read-only", path);
+        }
+    }
+
+    // TODO: other permission modes
+
+    return 0;
 }

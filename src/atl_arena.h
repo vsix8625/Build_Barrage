@@ -23,6 +23,7 @@ typedef struct ATL_Arena
 
 void ATL_arena_init(ATL_Arena *a, size_t capacity);
 atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size);
+char *ATL_arena_strdup(ATL_Arena *a, const char *s);
 void ATL_arena_reset(ATL_Arena *a);
 void ATL_destroy_arena(ATL_Arena *a);
 void ATL_arena_stats(const ATL_Arena *a);

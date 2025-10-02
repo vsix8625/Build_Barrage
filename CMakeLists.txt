@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 get_filename_component(ROOT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
-project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.1.1)
+project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.2.1)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -19,7 +19,7 @@ set(APP_NAME atl)
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
-    external/*.c
+    src/atl_commands/*.c
 )
 
 add_executable(${APP_NAME} ${SRC_FILES})
@@ -27,7 +27,7 @@ add_executable(${APP_NAME} ${SRC_FILES})
 target_include_directories(${APP_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/inc
-    ${CMAKE_SOURCE_DIR}/external
+	${CMAKE_SOURCE_DIR}/src/atl_commands
 )
 
 set(DEBUG_FLAGS -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
@@ -73,3 +73,21 @@ message(STATUS "Executable Path File: ${EXECUTABLE_PATH_FILE}")
 message(STATUS "-----------------------------------------------")
 file(WRITE "${CMAKE_SOURCE_DIR}/.pounce/data/target_type" "executable")
 
+# ------------------------------------------------------------------------------------
+# For build script stuff
+# Write full path to build/bin_fullpath.atl (directory only)
+set(ATL_BIN_PATH_FILE "${CMAKE_BINARY_DIR}/path_to_bin_dir.atl")
+set(ATL_LOCK_FILE "${CMAKE_BINARY_DIR}/atl_install.lock")
+
+add_custom_command(TARGET ${APP_NAME} POST_BUILD
+    # Ensure the target dir exists
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${APP_NAME}>"
+    # Write the directory containing the binary, not the binary itself
+    COMMAND ${CMAKE_COMMAND} -E echo "$<TARGET_FILE_DIR:${APP_NAME}>" > "${ATL_BIN_PATH_FILE}"
+    # Write lock file with version info
+    COMMAND ${CMAKE_COMMAND} -E echo "version=${PROJECT_VERSION}" > "${ATL_LOCK_FILE}"
+    COMMENT "Wrote ATL bin directory to ${ATL_BIN_PATH_FILE}, lock file ${ATL_LOCK_FILE}"
+)
+
+message(STATUS "Executable Path File (directory): ${ATL_BIN_PATH_FILE}")
+message(STATUS "Install Lock File:                ${ATL_LOCK_FILE}")
