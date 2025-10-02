@@ -2,6 +2,7 @@
 
 #include "atl_io.h"
 
+#include <ctype.h>
 #include <ftw.h>
 #include <stdio.h>
 #include <string.h>
@@ -45,6 +46,19 @@ atl_i32 ATL_rmrf(const char *path)
 bool ATL_mv(const char *src, const char *dst)
 {
     return rename(src, dst) == 0 ? true : false;
+}
+
+bool ATL_is_blank(const char *s)
+{
+    while (*s != '\0')
+    {
+        if (!isspace((atl_u8) *s))
+        {
+            return false;
+        }
+        s++;
+    }
+    return true;
 }
 
 //----------------------------------------------------------------------------------------------------

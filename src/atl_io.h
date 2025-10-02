@@ -12,4 +12,6 @@ void ATL_dbglog(const char *format, ...) ATL_LOG_VA_CHECK(1);
 atl_i32 ATL_file_write(const char *filename, const char *format, ...) ATL_LOG_VA_CHECK(2);
 atl_i32 ATL_file_append(const char *filename, const char *format, ...) ATL_LOG_VA_CHECK(2);
 
+atl_i32 ATL_file_copy(const char *src, const char *dst);
+
 #endif  // ATL_IO_H_

@@ -232,3 +232,39 @@ atl_i32 ATL_file_append(const char *filename, const char *format, ...)
 }
 
 //----------------------------------------------------------------------------------------------------
+
+atl_i32 ATL_file_copy(const char *src, const char *dst)
+{
+    FILE *in = fopen(src, "r");
+    if (!in)
+    {
+        ATL_errlog("Failed to open file for read");
+        return 1;
+    }
+
+    FILE *out = fopen(dst, "w");
+    if (!out)
+    {
+        ATL_errlog("Failed to open file to write");
+        fclose(in);
+        return 1;
+    }
+
+    char buf[ATL_BUF_SIZE_4096];
+    size_t n;
+
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+    {
+        if (fwrite(buf, 1, n, out) != n)
+        {
+            ATL_errlog("Failed to write to buf");
+            fclose(in);
+            fclose(out);
+            return 1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
+}

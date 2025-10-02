@@ -18,6 +18,7 @@ bool ATL_strmatch(const char *s1, const char *s2);
 void ATL_safecpy(char *dst, const char *src, size_t dst_size);
 atl_i32 ATL_rmrf(const char *path);
 bool ATL_mv(const char *src, const char *dst);
+bool ATL_is_blank(const char *s);
 
 bool ATL_is_modified(const char *path1, const char *path2);
 bool ATL_is_src_newer(const char *src, const char *target);
