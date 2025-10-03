@@ -88,7 +88,7 @@ void atl_config_parse_line(const char *line, ATL_ConfigTable *t)
     }
     *colon = '\0';
 
-    char *equal = strchr(buffer, '=');
+    char *equal = strchr(colon + 1, '=');
     if (!equal)
     {
         return;
@@ -126,7 +126,7 @@ void atl_config_parse_line(const char *line, ATL_ConfigTable *t)
     }
 
     ATL_ConfigEntry entry = {0};
-    entry.key = ATL_arena_strdup(&g_atl_config_arena, value);
+    entry.key = ATL_arena_strdup(&g_atl_config_arena, key);
     entry.type = val_type;
 
     switch (val_type)
@@ -171,7 +171,7 @@ void ATL_config_table_add(ATL_ConfigTable *t, const ATL_ConfigEntry *src)
     ATL_ConfigEntry *entry = &t->entries[t->count++];
 
     entry->type = src->type;
-    entry->key = ATL_arena_strdup(&g_atl_config_arena, src->value.str_val);
+    entry->key = ATL_arena_strdup(&g_atl_config_arena, src->key);
 
     switch (src->type)
     {
@@ -209,6 +209,7 @@ ATL_ConfigEntry *ATL_config_table_get(ATL_ConfigTable *t, const char *key)
             return &t->entries[i];
         }
     }
+
     ATL_errlog("Key not found: %s", key);
     return NULL;
 }
@@ -249,7 +250,7 @@ ATL_ConfigTable *ATL_config_parse_file(const char *filename)
             continue;
         }
 
-        // Parse line
+        atl_config_parse_line(ptr, t);
     }
     fclose(f);
     return t;
@@ -259,23 +260,31 @@ ATL_ConfigTable *ATL_config_parse_file(const char *filename)
 
 void atl_trim(char *s)
 {
+    char *start = s;
     char *end;
-    while (isspace((atl_u8) *s))
+
+    while (isspace((atl_u8) *start))
     {
-        s++;
+        start++;
     }
 
-    if (*s == 0)
+    if (*start == 0)
     {
+        *s = 0;
         return;
     }
 
-    end = s + strlen(s) - 1;
-    while (end > s && isspace((atl_u8) *end))
+    end = start + strlen(start) - 1;
+    while (end > start && isspace((atl_u8) *end))
     {
-        *end-- = '\0';
+        end--;
     }
-    memmove(s, s, strlen(s) + 1);
+    *(end + 1) = '\0';
+
+    if (start != s)
+    {
+        memmove(s, start, strlen(start) + 1);
+    }
 }
 
 void atl_destroy_table(ATL_ConfigTable *t)

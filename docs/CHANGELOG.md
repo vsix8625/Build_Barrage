@@ -9,9 +9,28 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Project-level `atl.build` based in lua script for project builds
 - More CLI commands (`atl new`, `atl clean`, etc) with more options.
 - Config merging with environment variables.
+- A user install `atl config --install-user` that will add the binary to `$HOME/.local/bin`
+- A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
 - Custom build system
 - Cmake-ninja template projects support
 - `atl new` more options such as `--file <file_name>`
+- Win32 support  
+
+---
+
+## [0.3.2] – 2025-10-03
+### Added
+- Add `atl_glob_config_keys.h` to organize the global config keys.  
+- Add `ATL_is_installed(const char *app)` that checks $PATH directories for the app.
+    - returns true if a match is found.  
+### Changed
+- Changed how `atl config --install` writes to .bashrc file.  
+    - Now writes with BEGIN and END markers so it will be easier to cleanup correctly.  
+    - And has guards to avoid duplicates.   
+- Command `atl config --uninstall` now also removes `$HOME/.config/atlas_build_manager` directory.  
+### Fixed 
+- Various typos and bugs in `atl_glob_config_parser.c` 
+    - Now correctly parses keys.  
 
 ---
 

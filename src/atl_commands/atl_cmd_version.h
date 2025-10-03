@@ -5,12 +5,10 @@
 
 #define ATL_VERSION_MAJOR 0
 #define ATL_VERSION_MINOR 3
-#define ATL_VERSION_PATCH 1
+#define ATL_VERSION_PATCH 2
 
-#define ATL_VERSION_DATE "2025-10-02"
+#define ATL_VERSION_DATE "2025-10-03"
 
 atl_i32 ATL_command_version(atl_i32 argc, char **argv);
-
-// declarations here
 
 #endif  // ATL_CMD_VERSION_H_

@@ -37,7 +37,7 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity)
 
 atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
 {
-    ATL_dbglog("%s: request for %zu bytes from arena: %p", __func__, size, a);
+    ATL_dbglog("%s() request for %zu bytes from arena: %p", __func__, size, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif

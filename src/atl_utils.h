@@ -25,4 +25,6 @@ bool ATL_is_src_newer(const char *src, const char *target);
 bool ATL_isdir(const char *dir);
 bool ATL_isfile(const char *path);
 
+bool ATL_is_installed(const char *app);
+
 #endif  // ATL_UTILS_H_

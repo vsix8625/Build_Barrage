@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <ftw.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 bool ATL_strmatch(const char *s1, const char *s2)
@@ -130,4 +131,35 @@ atl_i32 ATL_setperm(const char *path, const char *perm)
     // TODO: other permission modes
 
     return 0;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+bool ATL_is_installed(const char *app)
+{
+    const char *env_path = getenv("PATH");
+    if (!env_path)
+    {
+        ATL_errlog("%s() failed to get $PATH env", __func__);
+        return false;
+    }
+
+    char *path = strdup(env_path);
+    char *saveptr = NULL;
+    char *dir = strtok_r(path, (const char[]) {ATL_PATH_DELIMITER, ATL_NULL_TERM_CHAR}, &saveptr);
+
+    while (dir)
+    {
+        char fullpath[ATL_BUF_SIZE_1024];
+        // TODO: win32 version?
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, app);
+        if (atl_access(fullpath, X_OK) == 0)
+        {
+            free(path);
+            return true;
+        }
+        dir = strtok_r(NULL, (const char[]) {ATL_PATH_DELIMITER, ATL_NULL_TERM_CHAR}, &saveptr);
+    }
+    free(path);
+    return false;
 }
