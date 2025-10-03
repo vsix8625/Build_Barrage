@@ -140,6 +140,14 @@ atl_i32 main(atl_i32 argc, char **argv)
     static const char *ver_aliases[] = {"--version", "-v", NULL};
     atl_register_command("version", ATL_command_version, "Print version information", ver_aliases);
 
+    // init
+    static const char *init_aliases[] = {"-I", NULL};
+    atl_register_command("init", ATL_command_init, "Initialize atl in current working directory", init_aliases);
+
+    // deinit
+    static const char *deinit_aliases[] = {"-D", NULL};
+    atl_register_command("deinit", ATL_command_deinit, "Uninitialize atl in current working directory", deinit_aliases);
+
     // new
     static const char *new_aliases[] = {"-n", NULL};
     atl_register_command("new", ATL_command_new, "Print version information", new_aliases);

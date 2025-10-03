@@ -3,6 +3,7 @@
 #include "atl_io.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <ftw.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,7 +42,38 @@ static atl_i32 remove_cb(const char *fpath, const struct stat *sb, atl_i32 typef
 
 atl_i32 ATL_rmrf(const char *path)
 {
-    return nftw(path, remove_cb, 64, FTW_DEPTH | FTW_PHYS);
+    // forbid bad raw strings immediately
+    const char *forbidden_raw[] = {"/", ".", "..", "~", NULL};
+    for (const char **p = forbidden_raw; *p; ++p)
+    {
+        if (strcmp(path, *p) == 0)
+        {
+            errno = EINVAL;
+            ATL_errlog("Refusing to rmrf forbidden raw path: %s", path);
+            return -1;
+        }
+    }
+
+    // resolve to absolute path
+    char resolved[ATL_PATH_MAX];
+    if (!realpath(path, resolved))
+    {
+        return -1;  // invalid path
+    }
+
+    // forbid certain resolved absolute dirs
+    const char *forbidden_abs[] = {"/", ATL_GET_HOME(), "/home", "/etc", "/usr", NULL};
+    for (const char **p = forbidden_abs; *p; ++p)
+    {
+        if (strcmp(resolved, *p) == 0)
+        {
+            errno = EINVAL;
+            ATL_errlog("Refusing to rmrf forbidden abs path: %s", resolved);
+            return -1;
+        }
+    }
+
+    return nftw(resolved, remove_cb, 64, FTW_DEPTH | FTW_PHYS);
 }
 
 bool ATL_mv(const char *src, const char *dst)
@@ -124,7 +156,7 @@ atl_i32 ATL_setperm(const char *path, const char *perm)
         }
         else
         {
-            ATL_log("%s successfully set to read-only", path);
+            ATL_dbglog("%s successfully set to read-only", path);
         }
     }
 

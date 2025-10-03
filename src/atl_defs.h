@@ -32,8 +32,14 @@ typedef void (*atl_func_ptr)(void);
 #define ATL_BUF_SIZE_4096 0x1000
 #define ATL_BUF_SIZE_8192 0x2000
 
+#define ATL_PATH_MAX 0x1000
+
 #define ATL_VOID(a) (void) (a)
 
 #define ATL_LOG_VA_CHECK(fmtargnumber) __attribute__((format(__printf__, fmtargnumber, fmtargnumber + 1)))
+
+// atl
+#define ATL_MARKER_DIR ".atl"
+#define ATL_MARKER_DATA_DIR "data"
 
 #endif  // ATL_DEFS_H_

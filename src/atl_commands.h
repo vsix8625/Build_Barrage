@@ -20,6 +20,7 @@ typedef struct ATL_Command
 // include all commands
 #include "atl_cmd_build.h"
 #include "atl_cmd_help.h"
+#include "atl_cmd_init.h"
 #include "atl_cmd_new.h"
 #include "atl_cmd_version.h"
 

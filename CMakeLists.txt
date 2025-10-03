@@ -20,6 +20,7 @@ set(APP_NAME atl)
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
     src/atl_commands/*.c
+    src/atl_build_system/*.c
 )
 
 add_executable(${APP_NAME} ${SRC_FILES})
@@ -28,6 +29,7 @@ target_include_directories(${APP_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/inc
 	${CMAKE_SOURCE_DIR}/src/atl_commands
+	${CMAKE_SOURCE_DIR}/src/atl_build_system
 )
 
 set(DEBUG_FLAGS -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
