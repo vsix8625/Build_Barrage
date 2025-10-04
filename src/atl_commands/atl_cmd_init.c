@@ -1,18 +1,20 @@
 #include "atl_cmd_init.h"
+#include "atl_debug.h"
 #include "atl_io.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 atl_i32 ATL_command_init(atl_i32 argc, char **argv)
 {
-    if (ATL_is_initialized())
+    const char *cwd = ATL_getcwd();
+    if (ATL_isdir(ATL_MARKER_DIR))
     {
-        ATL_errlog("It seems atl is already initialized in %s", ATL_getcwd());
+        ATL_log("It seems atl is already initialized in %s", cwd);
         return 1;
     }
 
     char buffer[ATL_BUF_SIZE_1024];
-    const char *cwd = ATL_getcwd();
     const char *last_slash = strrchr(cwd, ATL_PATH_SEPARATOR_CHAR);
     if (last_slash)
     {
@@ -21,6 +23,28 @@ atl_i32 ATL_command_init(atl_i32 argc, char **argv)
     else
     {
         ATL_safecpy(buffer, cwd, sizeof(buffer));
+    }
+
+    const char *not_allowed_list[] = {ATL_GET_HOME(), "/", "/var", "/ect", "/usr", "/root", ".config"};
+    size_t na_list_count = sizeof(not_allowed_list) / sizeof(not_allowed_list[0]);
+    for (size_t i = 0; i < na_list_count; ++i)
+    {
+        if (ATL_strmatch(cwd, not_allowed_list[i]))
+        {
+            ATL_errlog("Cannot initialized to this directory: %s", cwd);
+            return 1;
+        }
+    }
+
+    if (!ATL_isdir("src") && !ATL_isfile("CMakeLists") && !ATL_isfile("atl.build") && !ATL_isfile("Makefile"))
+    {
+        ATL_warnlog("No project structure detected: %s", cwd);
+    }
+
+    // NOTE: it seems it never detects an empty dir
+    if (ATL_isdir_empty(cwd))
+    {
+        ATL_warnlog("Initializing atl in an empty directory: %s", cwd);
     }
 
     if (!ATL_isdir(ATL_MARKER_DIR))

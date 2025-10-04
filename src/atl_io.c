@@ -145,42 +145,6 @@ void ATL_errlog(const char *format, ...)
     atomic_flag_clear(&atl_io_log_lock);
 }
 
-void ATL_dbglog(const char *format, ...)
-{
-#if defined(ATL_DEBUG)
-    while (atomic_flag_test_and_set(&atl_io_log_lock))
-    {
-        nanosleep(&atl_ts, NULL);
-    }
-    atl_i32 is_tty = isatty(fileno(stdout));
-    if (is_tty)
-    {
-        printf("\033[36;1m[atl_debug]: ");
-    }
-    else
-    {
-        printf("[atl_debug]: ");
-    }
-
-    va_list args;
-    va_start(args, format);
-    vprintf(format, args);
-    va_end(args);
-
-    if (is_tty)
-    {
-        printf("\033[0m\n");
-    }
-    else
-    {
-        printf("\n");
-    }
-    atomic_flag_clear(&atl_io_log_lock);
-#else
-    ATL_VOID(format);
-#endif
-}
-
 // file io
 
 atl_i32 ATL_file_write(const char *filename, const char *format, ...)

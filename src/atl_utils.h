@@ -15,6 +15,7 @@ static inline const char *ATL_getcwd(void)
 }
 
 #define ATL_DEBUG_HELLO_FROM_FN() ATL_log("Hello from %s", __func__)
+#define ATL_GET_VAR_NAME(var) (#var)
 
 // Functions
 bool ATL_strmatch(const char *s1, const char *s2);
@@ -30,5 +31,6 @@ bool ATL_isfile(const char *path);
 atl_i32 ATL_setperm(const char *path, const char *perm);
 
 bool ATL_is_installed(const char *app);
+bool ATL_isdir_empty(const char *path);
 
 #endif  // ATL_UTILS_H_

@@ -1,5 +1,6 @@
 #include "atl_create_project.h"
 #include "atl_cmd_version.h"
+#include "atl_debug.h"
 #include "atl_io.h"
 #include <stdio.h>
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 get_filename_component(ROOT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
-project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.3.2)
+project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.4.1)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -32,7 +32,7 @@ target_include_directories(${APP_NAME} PRIVATE
 	${CMAKE_SOURCE_DIR}/src/atl_build_system
 )
 
-set(DEBUG_FLAGS -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
+set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
 set(RELEASE_FLAGS -Wall -Wextra -Werror -O2 -DNDEBUG)
 target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>

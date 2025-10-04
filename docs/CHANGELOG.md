@@ -12,8 +12,20 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
 - Custom build system
 - Cmake-ninja template projects support
+- Logging system
 - `atl new` more options such as `--file <file_name>`
 - Win32 support  
+
+---
+
+## [0.4.1] – 2025-10-04
+### Added
+### Changed
+- `atl_debug.c/.h` moved `atl_dbglock` there
+### Fixed 
+
+### Removed
+- `atl_dbg_file_append` had a bug with locks and hanged to infinty 
 
 ---
 

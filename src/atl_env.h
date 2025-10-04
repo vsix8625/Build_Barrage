@@ -1,4 +1,3 @@
-#pragma GCC system_header
 #ifndef ATL_ENV_H_
 #define ATL_ENV_H_
 

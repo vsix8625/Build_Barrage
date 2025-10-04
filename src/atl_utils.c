@@ -1,8 +1,10 @@
 #define _XOPEN_SOURCE 700
 
+#include "atl_debug.h"
 #include "atl_io.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <ftw.h>
 #include <stdio.h>
@@ -194,4 +196,28 @@ bool ATL_is_installed(const char *app)
     }
     free(path);
     return false;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+bool ATL_isdir_empty(const char *path)
+{
+    DIR *d = opendir(path);
+    if (!d)
+    {
+        ATL_errlog("Cannot open %s directory", path);
+        return false;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL)
+    {
+        if (ATL_strmatch(entry->d_name, ".") || ATL_strmatch(entry->d_name, ".."))
+        {
+            closedir(d);
+            return false;  // found something
+        }
+    }
+    closedir(d);
+    return true;  // empty only . and ..
 }

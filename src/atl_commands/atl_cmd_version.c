@@ -6,20 +6,19 @@
 
 atl_i32 ATL_command_version(atl_i32 argc, char **argv)
 {
-    ATL_log("Atlas Build Manager (atl): v%d.%d.%d", ATL_VERSION_MAJOR, ATL_VERSION_MINOR, ATL_VERSION_PATCH);
-    ATL_log("Date: %s", ATL_VERSION_DATE);
+    ATL_printf("Atlas Build Manager (atl): v%d.%d.%d\n", ATL_VERSION_MAJOR, ATL_VERSION_MINOR, ATL_VERSION_PATCH);
+    ATL_printf("Date: %s\n", ATL_VERSION_DATE);
 
     ATL_VOID(argc);
     ATL_VOID(argv);
     return 0;
 }
 
-atl_i32 atl_read_version_code(const char *init_lock_file)
+atl_i32 ATL_read_version_code(const char *init_lock_file)
 {
     FILE *f = fopen(init_lock_file, "r");
     if (!f)
     {
-        ATL_errlog("Failed to read %s", init_lock_file);
         return -1;
     }
 
@@ -39,35 +38,72 @@ atl_i32 atl_read_version_code(const char *init_lock_file)
     return code;
 }
 
-bool ATL_is_initialized(void)
+ATL_InitStatus ATL_check_initialized(void)
 {
     char lockfile[ATL_BUF_SIZE_512];
     snprintf(lockfile, sizeof(lockfile), "%s/init.lock", ATL_MARKER_DIR);
 
-    atl_i32 lock_version = atl_read_version_code(lockfile);
+    atl_i32 lock_version = ATL_read_version_code(lockfile);
     atl_i32 current_version = ATL_VERSION_ENCODE(ATL_VERSION_MAJOR, ATL_VERSION_MINOR, ATL_VERSION_PATCH);
 
     if (lock_version < 0)
     {
-        ATL_errlog("Seems like atl is not initialized in %s", ATL_getcwd());
-        return false;
+        return ATL_INIT_NOT_FOUND;
     }
-    else if (lock_version > current_version)
+
+    if (lock_version > current_version)
     {
-        ATL_errlog("This project was created with a newer version of atl. Please update!");
-        ATL_errlog("Lock version: %d", lock_version);
-        ATL_errlog("Current version: %d", current_version);
-        return false;
+        return ATL_INIT_LOCK_NEWER;
     }
-    else if (lock_version < current_version)
+
+    if (lock_version < current_version)
     {
-        ATL_warnlog("This project is initialized with an older atl version (lock: %d, current: %d)", lock_version,
-                    current_version);
-        return true;
+        return ATL_INIT_LOCK_OLDER;
     }
-    else
+
+    return ATL_INIT_OK;
+}
+
+bool ATL_is_initialized(void)
+{
+    ATL_InitStatus res = ATL_check_initialized();
+    atl_i32 current_version = ATL_VERSION_ENCODE(ATL_VERSION_MAJOR, ATL_VERSION_MINOR, ATL_VERSION_PATCH);
+
+    switch (res)
     {
-        ATL_log("Version match: %d, initialized", lock_version);
-        return true;
+        case ATL_INIT_NOT_FOUND:
+        {
+            ATL_errlog("Atl is not initialized in %s", ATL_getcwd());
+            ATL_log("Run 'atl init' to initialize this directory.");
+            return false;
+        }
+
+        case ATL_INIT_LOCK_NEWER:
+        {
+            ATL_errlog("This project was created with a newer version of Atl. Please update!");
+            ATL_errlog("Lock version: %d", ATL_read_version_code(".atl/init.lock"));
+            ATL_errlog("Current version: %d", current_version);
+            return false;
+        }
+
+        case ATL_INIT_LOCK_OLDER:
+        {
+            ATL_warnlog("Project initialized with an older Atl version (lock: %d, current: %d)",
+                        ATL_read_version_code(".atl/init.lock"), current_version);
+            return true;
+        }
+
+        case ATL_INIT_OK:
+        {
+            ATL_log("Atl version %d.%d.%d initialized in %s", ATL_VERSION_MAJOR, ATL_VERSION_MINOR, ATL_VERSION_PATCH,
+                    ATL_getcwd());
+            return true;
+        }
+
+        default:
+        {
+            ATL_errlog("Unknown initialization state!");
+            return false;
+        }
     }
 }

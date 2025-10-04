@@ -1,4 +1,5 @@
 #include "atl_arena.h"
+#include "atl_debug.h"
 #include "atl_io.h"
 
 #include <assert.h>
@@ -10,7 +11,7 @@ static inline size_t atl_arena_free_space(const ATL_Arena *a)
     return a ? (a->capacity - a->offset) : 0;
 }
 
-void ATL_arena_init(ATL_Arena *a, size_t capacity)
+void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name)
 {
     a->magic_start = ATL_ARENA_MAGIC_START;
     a->magic_end = ATL_ARENA_MAGIC_END;
@@ -19,8 +20,9 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity)
     a->capacity = capacity;
     a->offset = 0;
     a->peak = 0;
+    a->name = name ? name : "unnamed";
 
-    ATL_dbglog("%s: initialized | Address: %p", __func__, a);
+    ATL_dbglog("%s: initialized %s | Address: %p", __func__, a->name, a);
     if (capacity < 1024)
     {
         ATL_dbglog("Total Size: %zub", capacity);
@@ -37,7 +39,7 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity)
 
 atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
 {
-    ATL_dbglog("%s() request for %zu bytes from arena: %p", __func__, size, a);
+    ATL_dbglog("%s() request for %zu bytes from arena: %s-%p", __func__, size, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -57,12 +59,12 @@ atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
     {
         a->peak = a->offset;
     }
+    ATL_dbglog("Succesfully allocated: %zu bytes in %s:%p", size, a->name, a);
     return ptr;
 }
 
 char *ATL_arena_strdup(ATL_Arena *a, const char *s)
 {
-    ATL_dbglog("%s: address %p", __func__, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -79,7 +81,7 @@ char *ATL_arena_strdup(ATL_Arena *a, const char *s)
 
 void ATL_arena_reset(ATL_Arena *a)
 {
-    ATL_dbglog("%s: address %p", __func__, a);
+    ATL_dbglog("%s(): arena %s-%p", __func__, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -89,7 +91,7 @@ void ATL_arena_reset(ATL_Arena *a)
 
 void ATL_destroy_arena(ATL_Arena *a)
 {
-    ATL_dbglog("%s: address %p", __func__, a);
+    ATL_dbglog("%s(): arena %s-%p", __func__, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -101,7 +103,7 @@ void ATL_destroy_arena(ATL_Arena *a)
         a->capacity = 0;
         a->offset = 0;
     }
-    ATL_dbglog("Arena destroyed: %p", a);
+    ATL_dbglog("Arena %s destroyed: %p", a->name, a);
 }
 
 static void atl_print_human_size(const char *label, size_t bytes)
@@ -126,7 +128,7 @@ void ATL_arena_stats(const ATL_Arena *a)
     size_t free_space = a->capacity - a->offset;
     double percent = (a->capacity > 0) ? (100.0 * used / (double) a->capacity) : 0.0;
 
-    ATL_log("Arena Stats [%p]: Usage: %.2f%%", a, percent);
+    ATL_log("Arena Stats [%s-%p]: Usage: %.2f%%", a->name, a, percent);
     atl_print_human_size("\tUsed", used);
     atl_print_human_size("\tPeak", a->peak);
     atl_print_human_size("\tFree", free_space);

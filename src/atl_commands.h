@@ -15,13 +15,14 @@ typedef struct ATL_Command
 
     const char *help;
     const char **aliases;  // null terminated list
+    const char *detailed;
 } ATL_Command;
 
 // include all commands
 #include "atl_cmd_build.h"
-#include "atl_cmd_help.h"
 #include "atl_cmd_init.h"
 #include "atl_cmd_new.h"
+#include "atl_cmd_status.h"
 #include "atl_cmd_version.h"
 
 #if defined(ATL_OS_LINUX)
