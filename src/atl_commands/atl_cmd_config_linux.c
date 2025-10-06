@@ -222,20 +222,13 @@ atl_i32 atl_config_install(atl_i32 argc, char **argv)
         }
     }
 
-    char data_dir[ATL_BUF_SIZE_1024];
-    snprintf(data_dir, sizeof(data_dir), "%s/.local/share/atl", ATL_GET_HOME());
-    if (!ATL_isdir(data_dir))
+    char local_share_dir[ATL_BUF_SIZE_1024];
+    snprintf(local_share_dir, sizeof(local_share_dir), "%s/.local/share/atl", ATL_GET_HOME());
+    if (!ATL_isdir(local_share_dir))
     {
-        if (atl_mkdir(data_dir))
+        if (atl_mkdir(local_share_dir))
         {
-            ATL_errlog("%s: Failed to create %s directory", __func__, data_dir);
-            return 1;
-        }
-        char data_log_dir[ATL_BUF_SIZE_2048];
-        snprintf(data_log_dir, sizeof(data_log_dir), "%s/log", data_dir);
-        if (atl_mkdir(data_log_dir))
-        {
-            ATL_errlog("%s: Failed to create %s directory", __func__, data_log_dir);
+            ATL_errlog("%s: Failed to create %s directory", __func__, local_share_dir);
             return 1;
         }
     }
@@ -263,9 +256,9 @@ atl_i32 atl_config_install(atl_i32 argc, char **argv)
         ATL_file_append(config_file, "%s:str=\"%s\";\n", ATL_GLOB_CONFIG_KEY_ROOT_DIR, ATL_getcwd());
 
         // write data dir in .local
-        char glob_data_dir[ATL_BUF_SIZE_1024];
-        snprintf(glob_data_dir, sizeof(glob_data_dir), "%s/.local/share/atl", ATL_GET_HOME());
-        ATL_file_append(config_file, "%s:str=\"%s\";\n", ATL_GLOB_CONFIG_KEY_DATA_DIR, glob_data_dir);
+        char glob_local_share_dir[ATL_BUF_SIZE_1024];
+        snprintf(glob_local_share_dir, sizeof(glob_local_share_dir), "%s/.local/share/atl", ATL_GET_HOME());
+        ATL_file_append(config_file, "%s:str=\"%s\";\n", ATL_GLOB_CONFIG_KEY_DATA_DIR, glob_local_share_dir);
 
         // default compiler
         const char *compiler = ATL_is_installed("gcc") ? "gcc" : ATL_is_installed("clang") ? "cland" : "N/A";

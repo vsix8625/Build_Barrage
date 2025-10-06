@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 get_filename_component(ROOT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
-project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.4.1)
+project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.5.1)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -20,6 +20,7 @@ set(APP_NAME atl)
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
     src/atl_commands/*.c
+    src/atl_lua_rt/*.c
     src/atl_build_system/*.c
 )
 
@@ -30,6 +31,7 @@ target_include_directories(${APP_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/inc
 	${CMAKE_SOURCE_DIR}/src/atl_commands
 	${CMAKE_SOURCE_DIR}/src/atl_build_system
+	${CMAKE_SOURCE_DIR}/src/atl_lua_rt
 )
 
 set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
@@ -38,6 +40,13 @@ target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>
     $<$<CONFIG:Release>:${RELEASE_FLAGS}>
 )
+
+find_package(Lua REQUIRED)
+if(LUA_FOUND)
+    target_include_directories(${APP_NAME} PRIVATE ${LUA_INCLUDE_DIR})
+    target_link_libraries(${APP_NAME} PRIVATE ${LUA_LIBRARIES})
+endif()
+
 
 if(DEFINED CMAKE_FLAGS_EXTRA)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_FLAGS_EXTRA}")

@@ -6,7 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Project-level `atl.build` based in lua script for project builds
+- Many more lua fields to come 
 - More CLI commands (`atl run`, `atl clean`, etc) with more options.
 - A user install `atl config --install-user` that will add the binary to `$HOME/.local/bin`
 - A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
@@ -18,12 +18,30 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.5.1] – 2025-10-06
+### Added
+- Lua grounds `atl_lua_rt` directory  
+- Lua global field `atl`
+    - `os.info()` returns a lua object with various system information:
+        - `name` system name  
+        - `version` kernel version  
+        - `machine` machine information  
+        - `hostname` the host name
+        - `cores` number of cores  
+        - `big_endian` and `little_endian`: true or false
+### Changed
+- Command `atl build` will now check for `atl_build.lua` and initialize Lua states and fields.   
+### Fixed 
+
+### Removed
+
+---
+
 ## [0.4.1] – 2025-10-04
 ### Added
 ### Changed
-- `atl_debug.c/.h` moved `atl_dbglock` there
+- `atl_debug.c/.h` moved `atl_dbglock` function there 
 ### Fixed 
-
 ### Removed
 - `atl_dbg_file_append` had a bug with locks and hanged to infinty 
 

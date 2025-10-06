@@ -1,8 +1,11 @@
 #include "atl_env.h"
 #include "atl_io.h"
 #include "atl_utils.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/sysinfo.h>
+#include <sys/utsname.h>
 
 static inline const char *atl_global_config_dir(void)
 {
@@ -46,6 +49,32 @@ static inline const char *atl_global_editor_env(void)
 }
 
 //----------------------------------------------------------------------------------------------------
+// Linux
+#if defined(ATL_OS_LINUX)
+
+static inline char *atl_lx_kernel_version(void)
+{
+    static struct utsname uts;
+    if (uname(&uts) != 0)
+    {
+        return "atl_lx_unknown";
+    }
+    return uts.release;
+}
+
+static inline char *atl_lx_machine(void)
+{
+    static struct utsname uts;
+    if (uname(&uts) != 0)
+    {
+        return "atl_lx_unknown";
+    }
+    return uts.machine;
+}
+
+#endif
+
+//----------------------------------------------------------------------------------------------------
 
 const char *ATL_get_config(const char *type)
 {
@@ -60,6 +89,14 @@ const char *ATL_get_config(const char *type)
     if (ATL_strmatch(type, "editor"))
     {
         return atl_global_editor_env();
+    }
+    if (ATL_strmatch(type, "version"))
+    {
+        return atl_lx_kernel_version();
+    }
+    if (ATL_strmatch(type, "machine"))
+    {
+        return atl_lx_machine();
     }
     return "Unknown";
 }

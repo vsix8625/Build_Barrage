@@ -3,7 +3,11 @@
 #include "atl_glob_config_keys.h"
 #include "atl_glob_config_parser.h"
 #include "atl_io.h"
+#include "atl_lua_rt.h"
+
 #include <inttypes.h>
+#include <lauxlib.h>
+#include <lualib.h>
 #include <time.h>
 
 atl_i32 ATL_command_build(atl_i32 argc, char **argv)
@@ -26,6 +30,31 @@ atl_i32 ATL_command_build(atl_i32 argc, char **argv)
     char *test = (atl_root_dir_entry && atl_root_dir_entry->value.str_val) ? atl_root_dir_entry->value.str_val : "N/A";
     ATL_log("value=%s", test);
 
+    //----------------------------------------------------------------------------------------------------
+    // LUA
+
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+
+    // initialize lua modules
+    ATL_l_init_os(L);
+
+    if (ATL_isfile(ATL_BUILD_FILE_L))
+    {
+        // TODO: a lua hook with timeout
+        if (luaL_dofile(L, ATL_BUILD_FILE_L))
+        {
+            ATL_errlog("Lua error: %s", lua_tostring(L, -1));
+        }
+    }
+    else
+    {
+        ATL_warnlog("Could not locate %s file", ATL_BUILD_FILE_L);
+        // TODO: create a def one
+    }
+
+    //----------------------------------------------------------------------------------------------------
+
     // --------CLOCK---------------------------------------------
     clock_gettime(CLOCK_MONOTONIC, &end);
     atl_i64 sec = (atl_i64) (end.tv_sec - start.tv_sec);
@@ -37,6 +66,7 @@ atl_i32 ATL_command_build(atl_i32 argc, char **argv)
     }
     ATL_log("Build completed in:\033[34;1m %" PRId64 ".%04" PRId64 "s", sec, nsec);
 
+    lua_close(L);
     rc_table->destroy(rc_table);
     return 0;
 }
