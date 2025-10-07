@@ -6,5 +6,6 @@
 #define ATL_DEBUG_LOG_FILE
 
 void ATL_dbglog(const char *format, ...) ATL_LOG_VA_CHECK(1);
+void ATL_dumb_backtrace(void);
 
 #endif  // ATL_DEBUG_H_

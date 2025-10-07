@@ -6,7 +6,7 @@
 #include "atl_io.h"
 #include "atl_lua_rt.h"
 
-static atl_i32 atl_l_os_info(lua_State *L)
+atl_i32 ATL_l_os_info(lua_State *L)
 {
     lua_newtable(L);
 
@@ -19,8 +19,11 @@ static atl_i32 atl_l_os_info(lua_State *L)
     lua_pushstring(L, ATL_get_config("machine"));
     lua_setfield(L, -2, "machine");
 
-    lua_pushinteger(L, sysconf(_SC_NPROCESSORS_ONLN));
+    lua_pushinteger(L, ATL_OS_GET_CORES());
     lua_setfield(L, -2, "cores");
+
+    lua_pushinteger(L, ATL_OS_GET_CACHE_LINE_SIZE());
+    lua_setfield(L, -2, "cache_line_size");
 
     atl_i32 little_endian = (*(atl_u16 *) "\1\0" == 1);
     lua_pushboolean(L, little_endian);
@@ -36,23 +39,4 @@ static atl_i32 atl_l_os_info(lua_State *L)
     }
 
     return 1;
-}
-
-void ATL_l_init_os(lua_State *L)
-{
-    // move this to global function
-    lua_getglobal(L, ATL_LUA_GLOBAL);
-    if (lua_isnil(L, -1))
-    {
-        lua_newtable(L);
-        lua_setglobal(L, ATL_LUA_GLOBAL);
-        lua_getglobal(L, ATL_LUA_GLOBAL);
-    }
-
-    lua_newtable(L);
-    lua_pushcfunction(L, atl_l_os_info);
-    lua_setfield(L, -2, "info");
-
-    lua_setfield(L, -2, "os");
-    lua_pop(L, 1);  // pop atl table
 }

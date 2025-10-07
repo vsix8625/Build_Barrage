@@ -270,6 +270,10 @@ atl_i32 atl_config_install(atl_i32 argc, char **argv)
                                                            : "N/A";
         ATL_file_append(config_file, "%s:str=\"%s\";\n", ATL_GLOB_CONFIG_KEY_LINKER, linker);
 
+        // cflag
+        const char *glob_cflags = "";
+        ATL_file_append(config_file, "%s:str=\"%s\";\n", ATL_GLOB_CONFIG_KEY_CFLAGS, glob_cflags);
+
         //----------------------------------------------------------------------------------------------------
     }
 

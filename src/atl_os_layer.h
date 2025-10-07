@@ -5,12 +5,16 @@
 #include <sys/stat.h>
 
 #if defined(__linux)
+
 #include <unistd.h>
 
 #define ATL_OS_LINUX
 #define ATL_OS_NAME "Linux"
 #define ATL_GET_HOME() getenv("HOME")
 #define ATL_GET_CONFIG_HOME() getenv("HOME")
+
+#define ATL_OS_GET_CACHE_LINE_SIZE() sysconf(_SC_LEVEL1_DCACHE_LINESIZE)
+#define ATL_OS_GET_CORES() sysconf(_SC_NPROCESSORS_ONLN)
 
 #define atl_stat stat
 typedef struct stat atl_stat_t;

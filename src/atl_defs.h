@@ -23,6 +23,7 @@ typedef void *atl_ptr;
 typedef void (*atl_func_ptr)(void);
 
 // BUFFER SIZES
+#define ATL_BUF_SIZE_32 0x20
 #define ATL_BUF_SIZE_64 0x40
 #define ATL_BUF_SIZE_128 0x80
 #define ATL_BUF_SIZE_256 0x100

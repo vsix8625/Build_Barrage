@@ -59,7 +59,7 @@ atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
     {
         a->peak = a->offset;
     }
-    ATL_dbglog("Succesfully allocated: %zu bytes in %s:%p", size, a->name, a);
+    ATL_dbglog("Success");
     return ptr;
 }
 
@@ -91,7 +91,6 @@ void ATL_arena_reset(ATL_Arena *a)
 
 void ATL_destroy_arena(ATL_Arena *a)
 {
-    ATL_dbglog("%s(): arena %s-%p", __func__, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif

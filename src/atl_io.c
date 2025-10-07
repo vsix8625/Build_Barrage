@@ -1,4 +1,5 @@
 #include "atl_io.h"
+#include "atl_debug.h"
 
 #include <errno.h>
 #include <stdarg.h>

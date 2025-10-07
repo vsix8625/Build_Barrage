@@ -4,15 +4,41 @@
 #include "atl_glob_config_parser.h"
 #include "atl_io.h"
 
+#include <execinfo.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
 static atomic_flag atl_dbg_log_lock = ATOMIC_FLAG_INIT;
 
 struct timespec atl_dbg_ts = {.tv_sec = 0, .tv_nsec = 100 * 100};
+
+void ATL_dumb_backtrace(void)
+{
+#ifndef ATL_DEBUG
+    return;
+#endif
+    void *buf[ATL_BUF_SIZE_32];
+    atl_i32 nptrs = backtrace(buf, 32);
+
+    ATL_warnlog("---- Backtrace (%d frames) ----", nptrs);
+    char **symbols = backtrace_symbols(buf, nptrs);
+    if (!symbols)
+    {
+        ATL_warnlog("Failed to resolve symbols");
+        return;
+    }
+
+    for (atl_i32 i = 0; i < nptrs; i++)
+    {
+        ATL_warnlog(" [%02d] %s", i, symbols[i]);
+    }
+
+    free(symbols);
+}
 
 void ATL_dbglog(const char *format, ...)
 {
