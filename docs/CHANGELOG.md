@@ -6,15 +6,50 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Custom build system
+- Thread pool
+- Queue job system
 - Many more lua fields to come 
+- Dependency graph, can be obtain with `gcc -MM -MF` for now or in-house system.  
 - More CLI commands (`atl run`, `atl clean`, etc) with more options.
 - A user install `atl config --install-user` that will add the binary to `$HOME/.local/bin`
-- A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
-- Custom build system
-- Cmake-ninja template projects support
-- Logging system
 - `atl new` more options such as `--file <file_name>`
-- Win32 support  
+- Logging system
+- A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
+- Windows support  
+- Cmake-ninja template projects support
+- Valgrind and gdb support via `atl tool <tool_name>` 
+    - Example: `atl tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
+    - Example: `atl tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
+               `atl tool --gdb run <args>` maybe can be added.  
+
+---
+
+## [0.7.2] – 2025-10-09
+### Added
+- Multi-project support with a dedicated project container in C.
+- `ATL_Project` now stores `source_files` as a Lua table reference, allowing C to access Lua-provided file lists.  
+- Projects can be created with `atl.project.create { name=..., source_files=... }` and retrieved by name or ID.  
+- ID tracking and `root_dir`, `build_type`, `compile_flags` storage per project.  
+    - More to be included in future updates  
+### Changed
+### Fixed 
+### Removed
+- `ATL_Arena` allocations from `lists`.  
+    - Source list and all upcoming lists will be heap based with `malloc`, `realloc`.  
+
+---
+
+## [0.6.0] – 2025-10-07
+### Added
+- `atl_platform` directory.  
+- `atl_platform/linux` directory.  
+-`ATL_run_process()` for running system commands, using `fork()` and `execvp()` in Linux.  
+    - A `CreateProcess()` version for `Windows` can be added in future.  
+### Changed
+- Replaced `system(cmd)` calls with `ATL_run_process()`
+### Fixed 
+### Removed
 
 ---
 

@@ -3,6 +3,7 @@
 #include "atl_io.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,16 +12,43 @@ static inline size_t atl_arena_free_space(const ATL_Arena *a)
     return a ? (a->capacity - a->offset) : 0;
 }
 
-void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name)
+static inline size_t atl_align_up(size_t size, size_t alignment)
 {
+    return (size + alignment - 1) & ~(alignment - 1);
+}
+
+void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name, size_t align)
+{
+    if (!a)
+    {
+        return;
+    }
     a->magic_start = ATL_ARENA_MAGIC_START;
     a->magic_end = ATL_ARENA_MAGIC_END;
 
     a->buffer = (char *) ATL_ALLOC(capacity);
+    if (!a->buffer)
+    {
+        ATL_errlog("Failed to allocate for %s:%p", name, a->buffer);
+        ATL_dumb_backtrace();
+        return;
+    }
+
     a->capacity = capacity;
     a->offset = 0;
     a->peak = 0;
-    a->name = name ? name : "unnamed";
+    ATL_safecpy(a->name, name ? name : "unnamed", sizeof(a->name));
+
+    align = align ? align : 8;
+    if (align < 8)
+    {
+        align = 8;
+    }
+    if (align > 64)
+    {
+        align = 64;
+    }
+    a->alignment = align;
 
     ATL_dbglog("%s: initialized %s | Address: %p", __func__, a->name, a);
     if (capacity < 1024)
@@ -39,32 +67,41 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name)
 
 atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size)
 {
-    ATL_dbglog("%s() request for %zu bytes from arena: %s-%p", __func__, size, a->name, a);
+    if (!a || !a->buffer)
+    {
+        return NULL;
+    }
+//    ATL_dbglog("%s() request for %zu bytes from arena: %s-%p", __func__, size, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
 
+    size_t aligned_size = atl_align_up(size, a->alignment);
     size_t free_space = atl_arena_free_space(a);
-    if (size > free_space)
+    if (aligned_size > free_space)
     {
         ATL_errlog("Arena out of memory: %p", a);
-        ATL_errlog("Requested: %zu", size);
+        ATL_errlog("Requested: %zu", aligned_size);
         ATL_errlog("Available: %zu", free_space);
         return NULL;
     }
 
     atl_ptr ptr = a->buffer + a->offset;
-    a->offset += size;
+    a->offset += aligned_size;
     if (a->offset > a->peak)
     {
         a->peak = a->offset;
     }
-    ATL_dbglog("Success");
+    //   ATL_dbglog("Success");
     return ptr;
 }
 
 char *ATL_arena_strdup(ATL_Arena *a, const char *s)
 {
+    if (!a)
+    {
+        return NULL;
+    }
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -81,7 +118,7 @@ char *ATL_arena_strdup(ATL_Arena *a, const char *s)
 
 void ATL_arena_reset(ATL_Arena *a)
 {
-    ATL_dbglog("%s(): arena %s-%p", __func__, a->name, a);
+    //  ATL_dbglog("%s(): arena %s-%p", __func__, a->name, a);
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
@@ -91,17 +128,18 @@ void ATL_arena_reset(ATL_Arena *a)
 
 void ATL_destroy_arena(ATL_Arena *a)
 {
+    if (!a)
+    {
+        return;
+    }
 #if defined(ATL_DEBUG)
     assert(a->magic_start == ATL_ARENA_MAGIC_START && a->magic_end == ATL_ARENA_MAGIC_END);
 #endif
 
-    if (a && a->buffer)
-    {
-        free(a->buffer);
-        a->buffer = NULL;
-        a->capacity = 0;
-        a->offset = 0;
-    }
+    free(a->buffer);
+    a->buffer = NULL;
+    a->capacity = 0;
+    a->offset = 0;
     ATL_dbglog("Arena %s destroyed: %p", a->name, a);
 }
 

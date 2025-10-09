@@ -2,10 +2,11 @@
 #ifndef ATL_OS_LAYER_H_
 #define ATL_OS_LAYER_H_
 
+#include "atl_defs.h"
+
 #include <sys/stat.h>
 
 #if defined(__linux)
-
 #include <unistd.h>
 
 #define ATL_OS_LINUX
@@ -29,6 +30,8 @@ typedef struct stat atl_stat_t;
 #define atl_access access
 #define atl_getcwd getcwd
 #define ATL_SYSTEM_CMD_CLEAR "clear"
+
+atl_i32 ATL_run_process(const char *name, char **args, bool verbose);
 
 #elif defined(_WIN32) || defined(_WIN64)
 #include <direct.h>

@@ -23,7 +23,6 @@ void ATL_sources_get_deps(const ATL_SourceList *list)
     if (!ATL_isdir(ATL_MARKER_DIR))
     {
         ATL_errlog("Could not detect project root directory");
-        ATL_dumb_backtrace();
         return;
     }
 
@@ -47,13 +46,12 @@ void ATL_sources_get_deps(const ATL_SourceList *list)
         char depfile[ATL_BUF_SIZE_512];
         snprintf(depfile, sizeof(depfile), "build/deps/%s.d", fname);
 
-        char cmd[ATL_BUF_SIZE_1024];
-        snprintf(cmd, sizeof(cmd), "gcc -MM -MF %s %s", depfile, src);
+        char out_file[1024];
+        snprintf(out_file, sizeof(out_file), "build/%s.o", fname);
 
-        atl_i32 ret = system(cmd);
-        if (ret)
-        {
-            ATL_errlog("%s: failed for (%s)", __func__, src);
-        }
+        char *flags = "-Werror";
+
+        char *args[] = {"gcc", "-c", (char *) src, "-o", out_file, flags, "-MMD", "-MF", depfile, NULL};
+        ATL_run_process(args[0], args, 0);
     }
 }

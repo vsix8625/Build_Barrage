@@ -7,7 +7,7 @@
 
 void ATL_l_ctx_init(ATL_LuaCtx *ctx)
 {
-    ATL_arena_init(&ctx->arena, sizeof(ATL_LuaField) * ATL_LUA_MAX_FIELDS, "lua_fields_arena");
+    ATL_arena_init(&ctx->arena, sizeof(ATL_LuaField) * ATL_LUA_MAX_FIELDS, "lua_fields_arena", 8);
     ctx->fields = ATL_arena_alloc(&ctx->arena, sizeof(ATL_LuaField) * ATL_LUA_MAX_FIELDS);
     ctx->field_count = 0;
     ctx->L = luaL_newstate();

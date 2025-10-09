@@ -1,1 +1,2 @@
 [2025-10-06 15:02:03] vsix wrote: Lua structure
+[2025-10-08 07:39:26] vsix wrote: replace depgen with ATL_compile and make it a job for threads

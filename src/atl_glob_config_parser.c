@@ -18,7 +18,7 @@ static ATL_Arena g_atl_config_arena;
 
 ATL_ConfigTable *atl_config_table_init(void)
 {
-    ATL_arena_init(&g_atl_config_arena, ATL_CONFIG_ARENA_SIZE, "config_parser_arena");
+    ATL_arena_init(&g_atl_config_arena, ATL_CONFIG_ARENA_SIZE, "config_parser_arena", 8);
 
     ATL_ConfigTable *t = ATL_arena_alloc(&g_atl_config_arena, sizeof(ATL_ConfigTable));
     if (!t)

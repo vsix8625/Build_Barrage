@@ -33,7 +33,7 @@ typedef void (*atl_func_ptr)(void);
 #define ATL_BUF_SIZE_4096 0x1000
 #define ATL_BUF_SIZE_8192 0x2000
 
-#define ATL_PATH_MAX 0x1000
+#define ATL_PATH_MAX (0x1000)
 
 #define ATL_VOID(a) (void) (a)
 
@@ -42,5 +42,10 @@ typedef void (*atl_func_ptr)(void);
 // atl
 #define ATL_MARKER_DIR ".atl"
 #define ATL_MARKER_DATA_DIR "data"
+
+#define ATL_NFTW_SOFT_CAP (512)
+#define ATL_SCAN_MAX_DIRS (256)
+#define ATL_SOURCE_LIST_INITIAL_FILES (4096)
+#define ATL_AVG_PATH_LEN (256)
 
 #endif  // ATL_DEFS_H_

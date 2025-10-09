@@ -4,6 +4,7 @@
 #include <lua.h>
 
 #include "atl_arena.h"
+#include "atl_project.h"
 
 #define ATL_LUA_GLOBAL "atl"
 
@@ -39,5 +40,12 @@ atl_i32 ATL_l_os_info(lua_State *L);
 atl_i32 ATL_l_env_get(lua_State *L);
 atl_i32 ATL_l_env_set(lua_State *L);
 atl_i32 ATL_l_env_all(lua_State *L);
+
+// atl.list.source_files
+atl_i32 ATL_l_list_get_src(lua_State *L);
+
+atl_i32 ATL_l_project_create(lua_State *L);
+void ATL_l_project_register_list(lua_State *L, ATL_ProjectList *plist);
+atl_i32 ATL_l_project_get(lua_State *L);
 
 #endif  // ATL_LUA_RT_H_

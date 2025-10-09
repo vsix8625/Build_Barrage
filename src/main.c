@@ -132,7 +132,7 @@ atl_i32 main(atl_i32 argc, char **argv)
     }
 
     // init commands arena
-    ATL_arena_init(&g_atl_cmds_arena, sizeof(ATL_Command) * ATL_MAX_COMMANDS, "commands_arena");
+    ATL_arena_init(&g_atl_cmds_arena, sizeof(ATL_Command) * ATL_MAX_COMMANDS, "commands_arena", 8);
     g_atl_cmds_list = (ATL_Command *) ATL_arena_alloc(&g_atl_cmds_arena, sizeof(ATL_Command) * ATL_MAX_COMMANDS);
     g_atl_cmds_count = 0;
 

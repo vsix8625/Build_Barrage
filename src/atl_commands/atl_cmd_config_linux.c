@@ -392,13 +392,8 @@ atl_i32 atl_config_edit(atl_i32 argc, char **argv)
     char cmd_buf[ATL_BUF_SIZE_256];
     snprintf(cmd_buf, sizeof(cmd_buf), "%s %s", ATL_get_config("editor"), ATL_get_config("file"));
 
-    // TODO: change this with execvp and fork in future
-    atl_i32 system_err = system(cmd_buf);
-    if (system_err)
-    {
-        ATL_errlog("Failed to run %s system command", cmd_buf);
-        return 1;
-    }
+    char *args[] = {(char *) ATL_get_config("editor"), (char *) ATL_get_config("file"), NULL};
+    ATL_run_process(args[0], args, false);
     return 0;
 }
 

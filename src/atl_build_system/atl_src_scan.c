@@ -6,6 +6,7 @@
 
 #include <ftw.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static ATL_SourceList *g_scan_list = NULL;
@@ -41,12 +42,11 @@ void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath, const c
     }
 
     g_scan_list = list;
-
     ATL_dbglog("Scanning: %s", dirpath);
-    if (nftw(dirpath, nftw_scan_cb, 16, FTW_PHYS) == -1)
+
+    if (nftw(dirpath, nftw_scan_cb, ATL_NFTW_SOFT_CAP, FTW_PHYS) == -1)
     {
         ATL_errlog("nftw failed on %s", dirpath);
-        ATL_dumb_backtrace();
     }
 
     g_scan_list = NULL;
@@ -54,7 +54,22 @@ void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath, const c
     for (size_t i = 0; i < list->count; i++)
     {
         char buf[ATL_PATH_MAX];
-        snprintf(buf, sizeof(buf), "%s/%s", project_root, list->entries[i]);
-        list->entries[i] = ATL_arena_strdup(list->arena, buf);
+        if (project_root)
+        {
+            snprintf(buf, sizeof(buf), "%s/%s", project_root, list->entries[i]);
+        }
+        else
+        {
+            snprintf(buf, sizeof(buf), "%s", list->entries[i]);
+        }
+
+        char *copy = strdup(buf);
+        if (!copy)
+        {
+            ATL_errlog("%s(): failed to strdup path", __func__);
+            continue;
+        }
+        free(list->entries[i]);
+        list->entries[i] = copy;
     }
 }

@@ -17,12 +17,13 @@ typedef struct ATL_Arena
     size_t capacity;
     size_t offset;
     size_t peak;
+    size_t alignment;
+    char name[ATL_BUF_SIZE_256];
 
-    const char *name;
     atl_u32 magic_end;
 } ATL_Arena;
 
-void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name);
+void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name, size_t align);
 atl_ptr ATL_arena_alloc(ATL_Arena *a, size_t size);
 char *ATL_arena_strdup(ATL_Arena *a, const char *s);
 void ATL_arena_reset(ATL_Arena *a);

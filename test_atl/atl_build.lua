@@ -1,23 +1,30 @@
-local start = os.clock()
+local src_files = atl.list.source_files()
+for i, f in pairs(src_files) do
+	print(f)
+end
 
-local info = atl.os.info()
-local endian = info.little_endian and "little_endian" or "big_endian"
+--os.execute("bat " .. src_files[5])
+--os.execute("bat " .. src_files[6])
 
-print("Name: " .. info.name)
-print("Version: " .. info.version)
-print("Machine: " .. info.machine)
-print("Cores: " .. info.cores)
-print("Endian: " .. endian)
-print("Hostname: " .. info.hostname)
-print("Cores: " .. info.cores)
-print("Cache Line size: " .. info.cache_line_size)
+project_id = atl.project.create {
+	name = "test",
+	build_type = "release"
+}
 
-local env = atl.env.all()
-print("Home: " .. env.HOME)
-print("PATH: " .. env.PATH)
-print("Desktop: " .. env.XDG_CURRENT_DESKTOP)
+project_id = atl.project.create {
+	name = "test2",
+	source_files = src_files,
+}
 
-local ends = os.clock()
+local p = atl.project.get("test")
+print(p.build_type)
+print(p.id)
 
+local p2 = atl.project.get("test2")
+print(p2.build_type)
+print(p2.id)
+print(p2.root_dir)
+print(p2.source_files)
+print(p2.source_files[2])
 
-print("Time: " .. ends - start .. "seconds")
+print("LuaC is awsome bro")
