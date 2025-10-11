@@ -252,7 +252,6 @@ ATL_ConfigTable *ATL_config_parse_file(const char *filename)
 
         atl_config_parse_line(ptr, t);
     }
-    ATL_arena_stats(&g_atl_config_arena);
     fclose(f);
     return t;
 }

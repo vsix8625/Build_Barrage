@@ -23,6 +23,7 @@ typedef struct ATL_Command
 #include "atl_cmd_init.h"
 #include "atl_cmd_new.h"
 #include "atl_cmd_status.h"
+#include "atl_cmd_test.h"
 #include "atl_cmd_version.h"
 
 #if defined(ATL_OS_LINUX)

@@ -10,10 +10,10 @@ bool ATL_source_list_init(ATL_SourceList *list, size_t initial_file_cap)
     {
         return false;
     }
-    size_t list_size = initial_file_cap * sizeof(char *);
-    list->entries = malloc(list_size);
+    list->entries = calloc(initial_file_cap, sizeof(char *));
     if (!list->entries)
     {
+        size_t list_size = initial_file_cap * sizeof(char *);
         ATL_errlog("%s(): failed to allocate %zu bytes for source list entries", __func__, list_size);
         list->count = 0;
         list->capacity = 0;
@@ -70,7 +70,10 @@ bool ATL_destroy_source_list(ATL_SourceList *list)
     {
         for (size_t i = 0; i < list->count; ++i)
         {
-            free(list->entries[i]);
+            if (list->entries[i])
+            {
+                free(list->entries[i]);
+            }
         }
         free(list->entries);
         list->entries = NULL;

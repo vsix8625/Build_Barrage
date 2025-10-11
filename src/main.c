@@ -188,6 +188,10 @@ atl_i32 main(atl_i32 argc, char **argv)
     static const char *status_aliases[] = {"-S", NULL};
     atl_register_command("status", ATL_cmd_status, "View status information", status_aliases, NULL);
 
+    // test
+    static const char *test_aliases[] = {"-t", NULL};
+    atl_register_command("test", ATL_command_test, "Test helpers", test_aliases, NULL);
+
     //----------------------------------------------------------------------------------------------------
     // Dispatch
 

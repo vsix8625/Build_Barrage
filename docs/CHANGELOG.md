@@ -6,6 +6,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Full redesign of Lua and lists system to address memory issues... 
+    - Maybe ditching Lua completely.  
 - Custom build system
 - Thread pool
 - Queue job system
@@ -22,6 +24,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
     - Example: `atl tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `atl tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
                `atl tool --gdb run <args>` maybe can be added.  
+- C - Lua connection for source files list.  
 
 ---
 

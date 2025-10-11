@@ -1,15 +1,11 @@
-#define _XOPEN_SOURCE 700
-
 #include "atl_src_scan.h"
 #include "atl_debug.h"
 #include "atl_io.h"
 
-#include <ftw.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static ATL_SourceList *g_scan_list = NULL;
 
 static inline atl_i32 atl_is_source_file(const char *path)
 {
@@ -22,54 +18,114 @@ static inline atl_i32 atl_is_source_file(const char *path)
     return ATL_strmatch(ext, ".c") || ATL_strmatch(ext, ".cpp");
 }
 
-static atl_i32 nftw_scan_cb(const char *fpath, const struct stat *sb, atl_i32 type_flag, struct FTW *ftwbuf)
+static inline bool atl_skip_dir(const char *path)
 {
-    ATL_VOID(sb);
-    ATL_VOID(ftwbuf);
-    if (type_flag == FTW_F && atl_is_source_file(fpath))
+    static const char *skip_names[] = {"build", "bin",  "obj",        ".git",  "cache",   ".vs",
+                                       ".idea", "test", "CMakeFiles", "Debug", "Release", NULL};
+
+    const char *base = strrchr(path, '/');
+    base = base ? base + 1 : path;
+
+    for (const char **p = skip_names; *p; ++p)
     {
-        ATL_source_list_push(g_scan_list, fpath);
+        if (ATL_strmatch(base, *p))
+        {
+            return true;
+        }
     }
-    return 0;
+    return false;
 }
 
-void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath, const char *project_root)
+void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath)
 {
     if (!list || !dirpath)
     {
-        ATL_errlog("Failed: %d:%s", __LINE__, __FILE__);
+        ATL_errlog("%s(): Invalid args", __func__);
         return;
     }
 
-    g_scan_list = list;
-    ATL_dbglog("Scanning: %s", dirpath);
-
-    if (nftw(dirpath, nftw_scan_cb, ATL_NFTW_SOFT_CAP, FTW_PHYS) == -1)
+    char **stack = NULL;
+    size_t stack_size = 0;
+    size_t stack_cap = 64;
+    stack = malloc(stack_cap * sizeof(char *));
+    if (!stack)
     {
-        ATL_errlog("nftw failed on %s", dirpath);
+        ATL_errlog("%s(): Failed to allocate memory", __func__);
+        return;
     }
 
-    g_scan_list = NULL;
+    stack[stack_size++] = strdup(dirpath);
 
-    for (size_t i = 0; i < list->count; i++)
+    while (stack_size)
     {
-        char buf[ATL_PATH_MAX];
-        if (project_root)
+        char *path = stack[--stack_size];
+        DIR *dir = opendir(path);
+        if (!dir)
         {
-            snprintf(buf, sizeof(buf), "%s/%s", project_root, list->entries[i]);
-        }
-        else
-        {
-            snprintf(buf, sizeof(buf), "%s", list->entries[i]);
-        }
-
-        char *copy = strdup(buf);
-        if (!copy)
-        {
-            ATL_errlog("%s(): failed to strdup path", __func__);
+            free(path);
             continue;
         }
-        free(list->entries[i]);
-        list->entries[i] = copy;
+
+        struct dirent *dent;
+        while ((dent = readdir(dir)))
+        {
+            if (ATL_strmatch(dent->d_name, ".") || ATL_strmatch(dent->d_name, ".."))
+            {
+                continue;
+            }
+
+            char fullpath[ATL_PATH_MAX];
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", path, dent->d_name);
+
+            struct atl_stat st;
+            if (atl_stat(fullpath, &st) != 0)
+            {
+                continue;
+            }
+
+            if (S_ISDIR(st.st_mode))
+            {
+                if (atl_skip_dir(dent->d_name))
+                {
+                    continue;
+                }
+
+                if (stack_size >= stack_cap)
+                {
+                    stack_cap *= 2;
+                    char **new_stack = realloc(stack, stack_cap * sizeof(char *));
+                    if (!new_stack)
+                    {
+                        ATL_errlog("%s(): Failed to realloc", __func__);
+                        closedir(dir);
+                        free(path);
+                        free(stack);
+                        return;
+                    }
+                    stack = new_stack;
+                }
+
+                stack[stack_size++] = strdup(fullpath);
+            }
+            else if (S_ISREG(st.st_mode))
+            {
+                if (atl_is_source_file(fullpath))
+                {
+                    if (!ATL_source_list_push(list, fullpath))
+                    {
+                        ATL_errlog("%s(): failed to push to source list", __func__);
+                        closedir(dir);
+                        free(path);
+                        free(stack);
+                        return;
+                    }
+                }
+            }
+        }
+
+        closedir(dir);
+        free(path);
     }
+
+    free(stack);
 }
