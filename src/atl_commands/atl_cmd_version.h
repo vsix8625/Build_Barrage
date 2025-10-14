@@ -4,10 +4,10 @@
 #include "atl_defs.h"
 
 #define ATL_VERSION_MAJOR 0
-#define ATL_VERSION_MINOR 7
-#define ATL_VERSION_PATCH 2
+#define ATL_VERSION_MINOR 9
+#define ATL_VERSION_PATCH 1
 
-#define ATL_VERSION_DATE "2025-10-09"
+#define ATL_VERSION_DATE "2025-10-14"
 
 #define ATL_VERSION_ENCODE(maj, min, pat) (((maj) << 22) | (min) << 12 | (pat))
 

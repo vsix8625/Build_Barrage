@@ -3,6 +3,7 @@
 #include "atl_io.h"
 
 #include <assert.h>
+#include <immintrin.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +34,8 @@ void ATL_arena_init(ATL_Arena *a, size_t capacity, const char *name, size_t alig
         ATL_dumb_backtrace();
         return;
     }
+
+    memset(a->buffer, 0, capacity);
 
     a->capacity = capacity;
     a->offset = 0;

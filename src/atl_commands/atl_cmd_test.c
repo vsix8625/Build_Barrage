@@ -26,17 +26,22 @@ atl_i32 ATL_command_test(atl_i32 argc, char **argv)
     }
 
     bool verbose = false;
+    bool no_confirm = false;
     const char *dirpath = NULL;
-    if (argc > 3)
+
+    for (atl_i32 i = 3; i < argc; i++)
     {
-        if (ATL_strmatch(argv[3], "--verbose") || ATL_strmatch(argv[3], "-v"))
+        if (ATL_strmatch(argv[i], "--verbose") || ATL_strmatch(argv[i], "-v"))
         {
             verbose = true;
-            dirpath = (argc > 4) ? argv[4] : NULL;
+        }
+        else if (ATL_strmatch(argv[i], "--no-confirm") || ATL_strmatch(argv[i], "-nc"))
+        {
+            no_confirm = true;
         }
         else
         {
-            dirpath = argv[3];
+            dirpath = argv[i];
         }
     }
 
@@ -58,6 +63,27 @@ atl_i32 ATL_command_test(atl_i32 argc, char **argv)
         }
         snprintf(allocated_dirpath, len, "%s/src", cwd);
         dirpath = allocated_dirpath;
+    }
+
+    // prompt
+    if (!no_confirm)
+    {
+        ATL_printf("Create %ld files in \"%s\"? [y/N]: ", n, dirpath);
+        atl_i32 c = getchar();
+        if (c != 'y' && c != 'Y')
+        {
+            ATL_warnlog("Aborted");
+            if (allocated_dirpath)
+            {
+                free(allocated_dirpath);
+                return 0;
+            }
+        }
+
+        // consume remaining input
+        while ((c = getchar()) != '\n' && c != EOF)
+        {
+        }
     }
 
     if (!ATL_isdir(dirpath))

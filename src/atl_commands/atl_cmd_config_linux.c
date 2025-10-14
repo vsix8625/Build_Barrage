@@ -364,7 +364,7 @@ atl_i32 atl_config_view(atl_i32 argc, char **argv)
     char *buffer = malloc(size + 1);  // will use malloc here cause we free inside the function
     if (!buffer)
     {
-        ATL_errlog("%s: Failed to allocate memory for %s", __func__, buffer);
+        ATL_errlog("%s: Failed to allocate memory", __func__);
         fclose(rc_file);
         return 1;
     }

@@ -1,11 +1,17 @@
+#define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
+
 #include "atl_src_scan.h"
 #include "atl_debug.h"
 #include "atl_io.h"
+#include "atl_sha256.h"
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static inline atl_i32 atl_is_source_file(const char *path)
 {
@@ -38,32 +44,46 @@ static inline bool atl_skip_dir(const char *path)
 
 void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath)
 {
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    //----------------------------------------------------------------------------------------------------
+
     if (!list || !dirpath)
     {
-        ATL_errlog("%s(): Invalid args", __func__);
+        ATL_errlog("%s(): invalid args", __func__);
         return;
     }
 
-    char **stack = NULL;
-    size_t stack_size = 0;
-    size_t stack_cap = 64;
-    stack = malloc(stack_cap * sizeof(char *));
-    if (!stack)
+    char **queue = malloc(64 * sizeof(char *));
+    if (!queue)
     {
-        ATL_errlog("%s(): Failed to allocate memory", __func__);
+        ATL_errlog("%s(): failed to allocate memory for queue", __func__);
         return;
     }
 
-    stack[stack_size++] = strdup(dirpath);
+    size_t files_count = 0;
+    size_t dir_count = 0;
 
-    while (stack_size)
+    size_t que_size = 0;
+    size_t que_cap = ATL_SCAN_QUEUE_CAP;
+
+    queue[que_size++] = strdup(dirpath);
+
+    for (size_t i = 0; i < que_size; ++i)
     {
-        char *path = stack[--stack_size];
-        DIR *dir = opendir(path);
+        char *current = queue[i];
+        dir_count++;
+        DIR *dir = opendir(current);
         if (!dir)
         {
-            free(path);
+            free(current);
             continue;
+        }
+
+        atl_i32 fd = dirfd(dir);
+        if (fd >= 0)
+        {
+            readahead(fd, 0, ATL_SCAN_READAHEAD_SIZE);
         }
 
         struct dirent *dent;
@@ -75,48 +95,49 @@ void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath)
             }
 
             char fullpath[ATL_PATH_MAX];
-            snprintf(fullpath, sizeof(fullpath), "%s/%s", path, dent->d_name);
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", current, dent->d_name);
 
             struct atl_stat st;
-            if (atl_stat(fullpath, &st) != 0)
-            {
-                continue;
-            }
 
-            if (S_ISDIR(st.st_mode))
+            if (dent->d_type == DT_DIR)
             {
-                if (atl_skip_dir(dent->d_name))
+                if (!atl_skip_dir(dent->d_name) && que_size >= que_cap)
                 {
-                    continue;
-                }
-
-                if (stack_size >= stack_cap)
-                {
-                    stack_cap *= 2;
-                    char **new_stack = realloc(stack, stack_cap * sizeof(char *));
-                    if (!new_stack)
+                    que_cap *= 2;
+                    char **new_queue = realloc(queue, que_cap * sizeof(char *));
+                    if (!new_queue)
                     {
-                        ATL_errlog("%s(): Failed to realloc", __func__);
+                        ATL_errlog("%s(): failed to realloc", __func__);
                         closedir(dir);
-                        free(path);
-                        free(stack);
+                        free(current);
+                        for (size_t j = 0; j < que_size; ++j)
+                        {
+                            free(queue[j]);
+                        }
+                        free(queue);
                         return;
                     }
-                    stack = new_stack;
+                    queue = new_queue;
                 }
-
-                stack[stack_size++] = strdup(fullpath);
+                queue[que_size++] = strdup(fullpath);
             }
-            else if (S_ISREG(st.st_mode))
+            else
             {
-                if (atl_is_source_file(fullpath))
+                files_count++;
+
+                if ((dent->d_type == DT_REG && atl_is_source_file(fullpath)) ||
+                    (dent->d_type != DT_REG && atl_stat(fullpath, &st) == 0 && S_ISREG(st.st_mode) &&
+                     atl_is_source_file(fullpath)))
                 {
                     if (!ATL_source_list_push(list, fullpath))
                     {
-                        ATL_errlog("%s(): failed to push to source list", __func__);
+                        ATL_warnlog("%s(): failed to push to list", __func__);
+                        for (size_t j = 0; j < que_size; ++j)
+                        {
+                            free(queue[j]);
+                        }
+                        free(queue);
                         closedir(dir);
-                        free(path);
-                        free(stack);
                         return;
                     }
                 }
@@ -124,8 +145,22 @@ void ATL_source_list_scan_dir(ATL_SourceList *list, const char *dirpath)
         }
 
         closedir(dir);
-        free(path);
-    }
+        free(current);
 
-    free(stack);
+        //----------------------------------------------------------------------------------------------------
+        // CLOCK
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        atl_i64 sec = (atl_i64) (end.tv_sec - start.tv_sec);
+        atl_i64 nsec = (atl_i64) (end.tv_nsec - start.tv_nsec);
+        if (nsec < 0)
+        {
+            --sec;
+            nsec += 1000000000LL;
+        }
+        double elapsed = (double) sec + (double) nsec / 1e9;
+        ATL_printf("\rScanned: %zu files in %zu dirs (%.2f files per sec) in \033[34;1m%.6fsec", files_count, dir_count,
+                   (double) list->count / elapsed, elapsed);
+    }
+    printf("\n");
+    ATL_log("Found: %zu source files", list->count);
 }

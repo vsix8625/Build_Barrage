@@ -2,6 +2,7 @@
 #define ATL_SRC_LIST_H_
 
 #include "atl_defs.h"
+#include "atl_hashmap.h"
 
 typedef struct ATL_SourceList
 {
@@ -13,5 +14,6 @@ typedef struct ATL_SourceList
 bool ATL_source_list_init(ATL_SourceList *list, size_t initial_file_cap);
 bool ATL_source_list_push(ATL_SourceList *list, const char *path);
 bool ATL_destroy_source_list(ATL_SourceList *list);
+bool ATL_source_list_hash(ATL_SourceList *list, ATL_HashMap *map, const char *flags_str);
 
 #endif  // ATL_SRC_LIST_H_

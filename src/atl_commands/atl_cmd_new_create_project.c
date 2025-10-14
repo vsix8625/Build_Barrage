@@ -39,7 +39,12 @@ atl_i32 ATL_create_project(const char *project_name)
     snprintf(atl_marker_data_dir_buf, sizeof(atl_marker_data_dir_buf), "%s%s%s%s", ATL_PATH_SEPARATOR_STR,
              ATL_MARKER_DIR, ATL_PATH_SEPARATOR_STR, ATL_MARKER_DATA_DIR);
 
-    const char *dirs[] = {atl_marker_data_dir_buf, ATL_PATH_SEPARATOR_STR "src", ATL_PATH_SEPARATOR_STR "inc"};
+    char atl_marker_cache_dir_buf[ATL_BUF_SIZE_1024];
+    snprintf(atl_marker_cache_dir_buf, sizeof(atl_marker_cache_dir_buf), "%s%s%s%s", ATL_PATH_SEPARATOR_STR,
+             ATL_MARKER_DIR, ATL_PATH_SEPARATOR_STR, ATL_MARKER_CACHE_DIR);
+
+    const char *dirs[] = {atl_marker_data_dir_buf, atl_marker_cache_dir_buf, ATL_PATH_SEPARATOR_STR "src",
+                          ATL_PATH_SEPARATOR_STR "inc"};
     size_t count_dirs = sizeof(dirs) / sizeof(dirs[0]);
 
     for (size_t i = 0; i < count_dirs; ++i)

@@ -6,25 +6,34 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Full redesign of Lua and lists system to address memory issues... 
-    - Maybe ditching Lua completely.  
-- Custom build system
-- Thread pool
-- Queue job system
-- Many more lua fields to come 
-- Dependency graph, can be obtain with `gcc -MM -MF` for now or in-house system.  
-- More CLI commands (`atl run`, `atl clean`, etc) with more options.
-- A user install `atl config --install-user` that will add the binary to `$HOME/.local/bin`
-- `atl new` more options such as `--file <file_name>`
+- Custom build: hash + dependency graph + cache systems (foundation work ongoing)
+- Thread pool + queue job system
+- Custom DSL with a C-like syntax
 - Logging system
-- A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
+- More CLI commands (`atl run`, `atl clean`, etc) with more options.
 - Windows support  
 - Cmake-ninja template projects support
 - Valgrind and gdb support via `atl tool <tool_name>` 
     - Example: `atl tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `atl tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
                `atl tool --gdb run <args>` maybe can be added.  
-- C - Lua connection for source files list.  
+- A user install `atl config --install-user` that will add the binary to `$HOME/.local/bin`
+- A system install `atl config --install-system` that will add the binary to `/usr/local/bin`
+
+---
+
+## [0.8.0] – 2025-10-09
+### Added
+- Began design of **custom ATL DSL** (C-like syntax) to replace Lua for defining projects.
+- DSL will integrate natively with ATL’s core — no VM or script bridge required.
+### Changed
+### Fixed 
+### Removed
+- **Lua DSL integration**: all Lua dependencies and bindings removed.
+  - `atl_lua_rt` directory deprecated.
+  - Lua stack and state handling functions (`luaL_newstate`, etc.) eliminated.
+  - DSL scripts (`atl_build.lua`) no longer supported.
+
 
 ---
 

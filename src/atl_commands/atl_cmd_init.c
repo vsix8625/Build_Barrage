@@ -66,7 +66,8 @@ atl_i32 ATL_command_init(atl_i32 argc, char **argv)
         ATL_setperm(init_lock_path, "read-only");
 
         const char *atl_data_dir_path = ATL_MARKER_DIR ATL_PATH_SEPARATOR_STR ATL_MARKER_DATA_DIR;
-        const char *dirs[] = {atl_data_dir_path};
+        const char *atl_cache_dir_path = ATL_MARKER_DIR ATL_PATH_SEPARATOR_STR ATL_MARKER_CACHE_DIR;
+        const char *dirs[] = {atl_data_dir_path, atl_cache_dir_path};
         size_t count_dirs = sizeof(dirs) / sizeof(dirs[0]);
 
         for (size_t i = 0; i < count_dirs; ++i)

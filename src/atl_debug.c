@@ -12,7 +12,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#if defined(ATL_DEBUG)
 static atomic_flag atl_dbg_log_lock = ATOMIC_FLAG_INIT;
+#endif
 
 struct timespec atl_dbg_ts = {.tv_sec = 0, .tv_nsec = 100 * 100};
 

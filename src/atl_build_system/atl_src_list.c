@@ -1,6 +1,7 @@
 #include "atl_src_list.h"
 #include "atl_debug.h"
 #include "atl_io.h"
+#include "atl_sha256.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,6 +58,47 @@ bool ATL_source_list_push(ATL_SourceList *list, const char *path)
     }
 
     list->entries[list->count++] = copy;
+    return true;
+}
+
+bool ATL_source_list_hash(ATL_SourceList *list, ATL_HashMap *map, const char *flags_str)
+{
+    if (!list || !map)
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < list->count; i++)
+    {
+        const char *file = list->entries[i];
+        atl_u8 file_hash[ATL_SHA256_LEN];
+        atl_u8 include_hash[ATL_SHA256_LEN];
+        atl_u8 flags_hash[ATL_SHA256_LEN];
+        atl_u8 final_hash[ATL_SHA256_LEN];
+
+        if (!ATL_hash_file_sha256(file, file_hash))
+        {
+            continue;
+        }
+        if (!ATL_hash_includes_sha256(file, include_hash))
+        {
+            continue;
+        }
+        // flags should be in source list
+        if (!ATL_hash_flags_sha256(flags_str, flags_hash))
+        {
+            continue;
+        }
+        if (!ATL_hashes_merge_sha256(file_hash, include_hash, flags_hash, final_hash))
+        {
+            continue;
+        }
+
+        if (!ATL_hashmap_insert(map, file, final_hash))
+        {
+            return false;
+        }
+    }
     return true;
 }
 

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+
+# -------------------------------
+# Check if build directory
+# -------------------------------
+if [ ! -d "build" ]; then 
+	mkdir build
+fi
+
+cd build
+
+# -------------------------------
+# Build Atlas Build Manager (atl)
+# -------------------------------
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+ninja
+
+ATL_BIN_DIR=$(<path_to_bin_dir.atl)
+
+# -------------------------------
+# optional auto install 
+# -------------------------------
+if [ "${1:-}" = "--install" ]; then
+	# read bin directory 
+	if [ ! -d "${ATL_BIN_DIR}" ]; then
+		echo "[atl_build_script]: Error: bin directory not found. ${ATL_BIN_DIR}"
+		exit 1
+	fi
+
+	ATL_BIN_PATH="${ATL_BIN_DIR}/atl"
+	
+	if [ ! -x "${ATL_BIN_PATH}" ]; then
+	    echo "Error: atl binary not found at ${ATL_BIN_PATH}"
+        exit 1
+	fi
+
+	cd ..
+	echo "------\> Running atl auto-install"
+	"${ATL_BIN_PATH}" config --install
+fi

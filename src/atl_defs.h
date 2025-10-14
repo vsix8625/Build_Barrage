@@ -42,10 +42,20 @@ typedef void (*atl_func_ptr)(void);
 // atl
 #define ATL_MARKER_DIR ".atl"
 #define ATL_MARKER_DATA_DIR "data"
+#define ATL_MARKER_CACHE_DIR "cache"
 
 #define ATL_NFTW_SOFT_CAP (512)
 #define ATL_SCAN_MAX_DIRS (256)
-#define ATL_SOURCE_LIST_INITIAL_FILES (4096)
+#define ATL_SOURCE_LIST_INITIAL_FILES (0x4000)
 #define ATL_AVG_PATH_LEN (256)
+
+// cache
+#define ATL_L1_CHUNK (16 * 1024)
+#define ATL_L2_CHUNK (256 * 1024)
+
+#define ATL_CACHE_DIR ".atl/cache"
+#define ATL_CACHE_FILE ".atl/cache/build.cache"
+
+#define ATL_SHA256_LEN (32)
 
 #endif  // ATL_DEFS_H_
