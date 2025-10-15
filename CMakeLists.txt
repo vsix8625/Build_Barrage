@@ -15,16 +15,16 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-set(APP_NAME atl)
+set(APP_NAME barr)
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
 	src/crux/*.c
-    src/atl_commands/*.c
-    src/atl_lua_rt/*.c
-    src/atl_build_system/*.c
-    src/atl_platform/*.c
-    src/atl_platform/linux/*.c
+    src/barr_commands/*.c
+    src/barr_lua_rt/*.c
+    src/barr_build_system/*.c
+    src/barr_platform/*.c
+    src/barr_platform/linux/*.c
 )
 
 add_executable(${APP_NAME} ${SRC_FILES})
@@ -33,14 +33,13 @@ target_include_directories(${APP_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/inc
 	${CMAKE_SOURCE_DIR}/src/crux
-	${CMAKE_SOURCE_DIR}/src/atl_commands
-	${CMAKE_SOURCE_DIR}/src/atl_build_system
-	${CMAKE_SOURCE_DIR}/src/atl_lua_rt
-	${CMAKE_SOURCE_DIR}/src/atl_platform
-	${CMAKE_SOURCE_DIR}/src/atl_platform/linux
+	${CMAKE_SOURCE_DIR}/src/barr_commands
+	${CMAKE_SOURCE_DIR}/src/barr_build_system
+	${CMAKE_SOURCE_DIR}/src/barr_platform
+	${CMAKE_SOURCE_DIR}/src/barr_platform/linux
 )
 
-set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DATL_DEBUG)
+set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DBARR_DEBUG)
 set(RELEASE_FLAGS -Wall -Wextra -Werror -Ofast -march=native -flto -ffp-contract=fast -DNDEBUG)
 target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>
@@ -88,19 +87,19 @@ file(WRITE "${CMAKE_SOURCE_DIR}/.pounce/data/target_type" "executable")
 
 # ------------------------------------------------------------------------------------
 # For build script stuff
-# Write full path to build/bin_fullpath.atl (directory only)
-set(ATL_BIN_PATH_FILE "${CMAKE_BINARY_DIR}/path_to_bin_dir.atl")
-set(ATL_LOCK_FILE "${CMAKE_BINARY_DIR}/atl_install.lock")
+# Write full path to build/bin_fullpath.barr (directory only)
+set(BARR_BIN_PATH_FILE "${CMAKE_BINARY_DIR}/path_to_bin_dir.barr")
+set(BARR_LOCK_FILE "${CMAKE_BINARY_DIR}/barr_install.lock")
 
 add_custom_command(TARGET ${APP_NAME} POST_BUILD
     # Ensure the target dir exists
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${APP_NAME}>"
     # Write the directory containing the binary, not the binary itself
-    COMMAND ${CMAKE_COMMAND} -E echo "$<TARGET_FILE_DIR:${APP_NAME}>" > "${ATL_BIN_PATH_FILE}"
+	COMMAND ${CMAKE_COMMAND} -E echo "$<TARGET_FILE_DIR:${APP_NAME}>" > "${BARR_BIN_PATH_FILE}"
     # Write lock file with version info
-    COMMAND ${CMAKE_COMMAND} -E echo "version=${PROJECT_VERSION}" > "${ATL_LOCK_FILE}"
-    COMMENT "Wrote ATL bin directory to ${ATL_BIN_PATH_FILE}, lock file ${ATL_LOCK_FILE}"
+	COMMAND ${CMAKE_COMMAND} -E echo "version=${PROJECT_VERSION}" > "${BARR_LOCK_FILE}"
+	COMMENT "Wrote BARR bin directory to ${BARR_BIN_PATH_FILE}, lock file ${BARR_LOCK_FILE}"
 )
 
-message(STATUS "Executable Path File (directory): ${ATL_BIN_PATH_FILE}")
-message(STATUS "Install Lock File:                ${ATL_LOCK_FILE}")
+message(STATUS "Executable Path File (directory): ${BARR_BIN_PATH_FILE}")
+message(STATUS "Install Lock File:                ${BARR_LOCK_FILE}")

@@ -1,9 +1,9 @@
 #ifndef CRX_H_
 #define CRX_H_
 
-#include "atl_arena.h"
+#include "barr_arena.h"
 
-extern ATL_Arena g_crx_arena;
+extern BARR_Arena g_crx_arena;
 
 #define CRX_GLOB_ARENA_SIZE (6 * 1024)
 
