@@ -1,0 +1,15 @@
+#include "crx.h"
+
+BARR_Arena g_crx_arena;
+
+bool CRX_init(void)
+{
+    BARR_arena_init(&g_crx_arena, CRX_GLOB_ARENA_SIZE, "g_crx_arena", 8);
+    return true;
+}
+
+bool CRX_close(void)
+{
+    BARR_destroy_arena(&g_crx_arena);
+    return true;
+}

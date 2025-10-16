@@ -157,8 +157,8 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
             nsec += 1000000000LL;
         }
         double elapsed = (double) sec + (double) nsec / 1e9;
-        BARR_printf("\rScanned: %zu files in %zu dirs (%.2f files per sec) in \033[34;1m%.6fsec", files_count, dir_count,
-                   (double) list->count / elapsed, elapsed);
+        BARR_printf("\rScanned: %zu files in %zu dirs (%.2f files per sec) in \033[34;1m%.6fsec", files_count,
+                    dir_count, (double) list->count / elapsed, elapsed);
     }
     for (size_t j = 0; j < que_size; ++j)
     {

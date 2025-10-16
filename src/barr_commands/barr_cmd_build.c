@@ -1,4 +1,5 @@
 #include "barr_cmd_build.h"
+#include "barr_build_ctx.h"
 #include "barr_debug.h"
 #include "barr_env.h"
 #include "barr_glob_config_keys.h"
@@ -11,6 +12,7 @@
 
 #include <inttypes.h>
 #include <libgen.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -155,26 +157,66 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // TODO: this stage will become a compile job with args_ctx probably
     // TODO: add multi thread
 
+    // placeholder flags
+    const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
+    const char *includes[] = {"-Iinc", NULL};
+    const char *defines[] = {"-DDEBUG", NULL};
+
+    BARR_CompileInfoCTX compile_ctx = {.compiler = "gcc",
+                                       .flags = flags,
+                                       .out_dir = "build/obj",
+                                       .includes = includes,
+                                       .defines = defines,
+                                       .debug_build = true};
+
+    BARR_BuildProgressCTX progress_ctx = {
+        .completed = 0, .total = compile_list.count, .log_mutex = PTHREAD_MUTEX_INITIALIZER};
+
+    barr_i32 cores = BARR_OS_GET_CORES();
+    BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
+
+    // get the precompile file from crux
+    const char *precompile_file = "src/common.h";
+    compile_ctx.pch_file = precompile_file;
+
+    if (BARR_isfile(compile_ctx.pch_file))
+    {
+        char out_pch[BARR_PATH_MAX];
+        snprintf(out_pch, sizeof(out_pch), "%s/%s.pch", compile_ctx.out_dir, basename((char *) compile_ctx.pch_file));
+
+        if (BARR_compile_pch(&compile_ctx))
+        {
+            BARR_errlog("%s(): failed to precompile header '%s'", __func__, compile_ctx.pch_file);
+            return 1;
+        }
+    }
+
     for (size_t i = 0; i < compile_list.count; i++)
     {
         const char *src = compile_list.entries[i];
+        BARR_CompileJob *job = malloc(sizeof(BARR_CompileJob));
+        if (!job)
+        {
+            BARR_errlog("%s(): failed to allocate compile job", __func__);
+            continue;
+        }
+
+        job->src = strdup(src);
+        job->ctx = &compile_ctx;
+        job->progress_ctx = &progress_ctx;
+
         char *tmp_src = strdup(src);
         char *base_with_ext = basename(tmp_src);
+        snprintf(job->out_file, sizeof(job->out_file), "build/obj/%s.o", base_with_ext);
 
-        char out_file[BARR_BUF_SIZE_2048];
-        snprintf(out_file, sizeof(out_file), "build/obj/%s.o", base_with_ext);
-
-        // placeholder args
-        char *args[] = {"gcc",     "-c",      (char *) src, "-o",      out_file, "-Wall",
-                        "-Werror", "-Wextra", "-g",         "-DDEBUG", NULL
-
-        };
-
-        if (BARR_run_process(args[0], args, false) != 0)
+        if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
         {
-            BARR_errlog("Compilation failed for: %s", src);
+            BARR_errlog("%s() failed to add to thread pool", __func__);
+            free(job->src);
+            free(job);
 
             // cleanup
+            BARR_destroy_thread_pool(pool);
             CRX_close();
             BARR_destroy_source_list(&list);
             BARR_destroy_source_list(&compile_list);
@@ -186,14 +228,20 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             rc_table->destroy(rc_table);
             return 1;
         }
-        printf("\r[%zu/%zu] >>>> %s", i + 1, list.count, src);
-        fflush(stdout);
+
+        // TODO: push job->out_file to object_list for linker
+
         free(tmp_src);
     }
-    printf("\n");
+    BARR_thread_pool_wait(pool);
+
+    BARR_printf("\n");
 
     //----------------------------------------------------------------------------------------------------
     // link stage placeholder
+    // TODO: -fuse-ld=lld , -Wl,--threads=N for lld in
+    // exec ar for libbarr.a
+    // exec gcc for linker
 
     if (!BARR_isdir("build/bin"))
     {
@@ -228,6 +276,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_log("Build completed! | Time: \033[34;1m %.6fs", elapsed);
 
     // cleanup
+    BARR_destroy_thread_pool(pool);
     CRX_close();
     BARR_destroy_source_list(&list);
     BARR_destroy_source_list(&compile_list);

@@ -19,6 +19,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
                `barr tool --gdb run <args>` maybe can be added.  
 - A user install `barr config --install-user` that will add the binary to `$HOME/.local/bin`
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
+- Project sessions and possibly `live-build` daemon.  
 
 ---
 
