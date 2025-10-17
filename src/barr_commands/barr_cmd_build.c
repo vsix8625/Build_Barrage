@@ -5,6 +5,7 @@
 #include "barr_glob_config_keys.h"
 #include "barr_glob_config_parser.h"
 #include "barr_io.h"
+#include "barr_linker.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
 #include "crx.h"
@@ -93,10 +94,29 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
+    // object list to use in LINK STAGE
+    BARR_SourceList object_list;
+    if (!BARR_source_list_init(&object_list, BARR_SOURCE_LIST_INITIAL_FILES))
+    {
+        BARR_errlog("%s(): failed to initialize object list.", __func__);
+        CRX_close();
+        BARR_destroy_source_list(&list);
+        BARR_destroy_source_list(&compile_list);
+        rc_table->destroy(rc_table);
+        return 1;
+    }
+
     BARR_source_list_scan_dir(&list, scan_dir);
 
-    BARR_HashMap *current_map = BARR_hashmap_create(BARR_BUF_SIZE_8192);
-    BARR_source_list_hash(&list, current_map, "-Wall");
+    BARR_HashMap *current_map = BARR_hashmap_create(list.count + (list.count >> 2));
+    BARR_dbglog("%s() current map created", __func__);
+
+    // Create thread pool
+    barr_i32 cores = BARR_OS_GET_CORES();
+    BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
+
+    // cflags we will get them from crux
+    BARR_source_list_hash_mt(&list, current_map, "-Wall", pool);
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -122,7 +142,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             changed = true;
         }
-        else if (memcmp(current_hash, cached_hash, BARR_SHA256_LEN) != 0)
+        else if (memcmp(current_hash, cached_hash, BARR_XXHASH_LEN) != 0)
         {
             changed = true;
         }
@@ -172,9 +192,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_BuildProgressCTX progress_ctx = {
         .completed = 0, .total = compile_list.count, .log_mutex = PTHREAD_MUTEX_INITIALIZER};
 
-    barr_i32 cores = BARR_OS_GET_CORES();
-    BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
-
     // get the precompile file from crux
     const char *precompile_file = "src/common.h";
     compile_ctx.pch_file = precompile_file;
@@ -209,6 +226,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         char *base_with_ext = basename(tmp_src);
         snprintf(job->out_file, sizeof(job->out_file), "build/obj/%s.o", base_with_ext);
 
+        // add to pool for compilation stage
         if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
         {
             BARR_errlog("%s() failed to add to thread pool", __func__);
@@ -220,6 +238,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             CRX_close();
             BARR_destroy_source_list(&list);
             BARR_destroy_source_list(&compile_list);
+            BARR_destroy_source_list(&object_list);
             if (cached_map)
             {
                 BARR_destroy_hashmap(cached_map);
@@ -230,6 +249,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // TODO: push job->out_file to object_list for linker
+        if (!BARR_strmatch(job->out_file, "build/obj/main.c.o"))
+        {
+            BARR_source_list_push(&object_list, job->out_file);
+        }
 
         free(tmp_src);
     }
@@ -238,10 +261,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_printf("\n");
 
     //----------------------------------------------------------------------------------------------------
-    // link stage placeholder
-    // TODO: -fuse-ld=lld , -Wl,--threads=N for lld in
-    // exec ar for libbarr.a
-    // exec gcc for linker
 
     if (!BARR_isdir("build/bin"))
     {
@@ -250,7 +269,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Failed to create bin directory");
             return 1;
         }
-        // TODO: need to change this with config build type
+        // TODO: need to change this with config build type from crux
         if (barr_mkdir("build/bin/debug"))
         {
             BARR_errlog("Failed to create debug directory");
@@ -258,9 +277,32 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
-    // NOTE: either we go with batch link , static archives or incremental link?
-    // char *link_args[] = {"gcc", "build/obj/*.o", "-o", "build/bin/debug/barr_placeholder", NULL};
-    // BARR_run_process(link_args[0], link_args, true);
+    // archive stage
+    barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
+    if (archive_ret != 0)
+    {
+        BARR_errlog("Archive stage failed");
+    }
+
+    // link stage
+    // out file will be obtain from crux as well build type and ncores maybe
+    // linker for -fuse flag etc
+    // following link_args are a placeholder
+
+    char *link_args[] = {"gcc",
+                         "build/obj/main.c.o",  // main object
+                         "-Lbuild",
+                         "-lbarr",
+                         "-fuse-ld=lld",
+                         "-Wl,--threads=4",
+                         "-o",
+                         "build/bin/debug/barr_placeholder",
+                         NULL};
+    barr_i32 link_ret = BARR_link_stage(link_args);
+    if (link_ret != 0)
+    {
+        BARR_errlog("Link stage failed");
+    }
 
     //----------------------------------------------------------------------------------------------------
     // CLOCK
@@ -280,6 +322,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     CRX_close();
     BARR_destroy_source_list(&list);
     BARR_destroy_source_list(&compile_list);
+    BARR_destroy_source_list(&object_list);
     if (cached_map)
     {
         BARR_destroy_hashmap(cached_map);

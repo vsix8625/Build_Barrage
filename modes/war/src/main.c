@@ -23,6 +23,7 @@ static void get_assets_path(char *out, size_t out_size)
 {
     char exec_path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", exec_path, sizeof(exec_path) - 1);
+
     if (len == -1)
     {
         snprintf(out, out_size, WAR_MODE_REL_ASSETS_PATH);
@@ -31,7 +32,21 @@ static void get_assets_path(char *out, size_t out_size)
 
     exec_path[len] = '\0';
     char *dir = dirname(exec_path);
-    snprintf(out, out_size, "%s/%s", dir, WAR_MODE_REL_ASSETS_PATH);
+
+    /* Move one directory up */
+    char parent_dir[PATH_MAX];
+    snprintf(parent_dir, sizeof(parent_dir), "%s/..", dir);
+
+    /* Normalize path (optional, realpath handles ../) */
+    char resolved_parent[PATH_MAX];
+    if (realpath(parent_dir, resolved_parent) == NULL)
+    {
+        /* If realpath fails, fallback to relative path */
+        snprintf(out, out_size, "%s/%s", parent_dir, WAR_MODE_REL_ASSETS_PATH);
+        return;
+    }
+
+    snprintf(out, out_size, "%s/%s", resolved_parent, WAR_MODE_REL_ASSETS_PATH);
 }
 
 static void spawn_sound(const char *sound)
@@ -66,7 +81,6 @@ static bool is_mode_still_active(const char *expected)
         return false;
     }
     fclose(f);
-    //   printf("[WAR-MODE]: buffer = %s | expected = %s\n", buf, expected);
 
     buf[strcspn(buf, "\n")] = '\0';
     return strcmp(buf, expected) == 0;

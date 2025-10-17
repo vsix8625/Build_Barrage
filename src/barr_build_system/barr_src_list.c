@@ -1,7 +1,8 @@
 #include "barr_src_list.h"
+#include "barr_arena.h"
 #include "barr_debug.h"
 #include "barr_io.h"
-#include "barr_sha256.h"
+#include "barr_xxhash.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -61,50 +62,80 @@ bool BARR_source_list_push(BARR_SourceList *list, const char *path)
     return true;
 }
 
-bool BARR_source_list_hash(BARR_SourceList *list, BARR_HashMap *map, const char *flags_str)
+//----------------------------------------------------------------------------------------------------
+// Hash file job
+
+static void barr_hash_file_job(void *arg)
 {
-    if (!list || !map)
+    BARR_HashJobArg *job = (BARR_HashJobArg *) arg;
+
+    barr_u8 file_hash[BARR_XXHASH_LEN];
+    barr_u8 include_hash[BARR_XXHASH_LEN];
+    barr_u8 final_hash[BARR_XXHASH_LEN];
+
+    if (!BARR_hash_file_xxh3(job->file, file_hash))
+    {
+        BARR_errlog("%s(): failed to hash file %s", __func__, job->file);
+        return;
+    }
+
+    if (!BARR_hash_includes_xxh3(job->file, include_hash))
+    {
+        BARR_errlog("%s(): failed to hash includes for %s", __func__, job->file);
+        return;
+    }
+
+    if (!BARR_hashes_merge_xxh3(file_hash, include_hash, (barr_u8 *) job->flags_hash, final_hash))
+    {
+        BARR_errlog("%s(): failed to merge hashes", __func__);
+        return;
+    }
+
+    if (!BARR_hashmap_insert_ts(job->map, job->file, final_hash))
+    {
+        BARR_errlog("%s(): failed to insert %s", __func__, job->file);
+    }
+}
+
+bool BARR_source_list_hash_mt(BARR_SourceList *list, BARR_HashMap *map, const char *flags_str, BARR_ThreadPool *pool)
+{
+    if (!list || !map || !pool)
     {
         return false;
     }
 
-    for (size_t i = 0; i < list->count; i++)
+    // pre-compute flags hash
+    barr_u8 flags_hash[BARR_XXHASH_LEN];
+    if (!BARR_hash_flags_xxh3(flags_str, flags_hash))
     {
-        const char *file = list->entries[i];
-        barr_u8 file_hash[BARR_SHA256_LEN];
-        barr_u8 include_hash[BARR_SHA256_LEN];
-        barr_u8 flags_hash[BARR_SHA256_LEN];
-        barr_u8 final_hash[BARR_SHA256_LEN];
+        BARR_errlog("%s(): failed hash %s", __func__, flags_str);
+    }
 
-        if (!BARR_hash_file_sha256(file, file_hash))
-        {
-            BARR_errlog("%s(): failed hash %s", __func__, file);
-            continue;
-        }
-        if (!BARR_hash_includes_sha256(file, include_hash))
-        {
-            BARR_errlog("%s(): failed hash %s", __func__, file);
-            continue;
-        }
-        // flags should be in source list
-        if (!BARR_hash_flags_sha256(flags_str, flags_hash))
-        {
-            BARR_errlog("%s(): failed hash %s", __func__, flags_str);
-            continue;
-        }
-        if (!BARR_hashes_merge_sha256(file_hash, include_hash, flags_hash, final_hash))
-        {
-            BARR_errlog("%s(): failed merge hashes", __func__);
-            continue;
-        }
+    size_t arena_size = BARR_align_up(sizeof(BARR_HashJobArg), 16) * list->count;
+    BARR_Arena arena = {0};
+    BARR_arena_init(&arena, arena_size, "hash_job_arena", 16);
 
-        if (!BARR_hashmap_insert(map, file, final_hash))
+    for (size_t i = 0; i < list->count; ++i)
+    {
+        BARR_HashJobArg *job_arg = (BARR_HashJobArg *) BARR_arena_alloc(&arena, sizeof(BARR_HashJobArg));
+
+        job_arg->file = list->entries[i];
+        job_arg->flags_hash = flags_hash;
+        job_arg->map = map;
+
+        if (!BARR_thread_pool_add(pool, barr_hash_file_job, job_arg))
         {
-            return false;
+            BARR_errlog("%s(): failed to add job for %s", __func__, list->entries[i]);
         }
     }
+
+    BARR_thread_pool_wait(pool);
+    BARR_destroy_arena(&arena);
+
     return true;
 }
+
+//----------------------------------------------------------------------------------------------------
 
 bool BARR_destroy_source_list(BARR_SourceList *list)
 {

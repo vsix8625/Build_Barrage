@@ -6,20 +6,30 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Custom build: hash + dependency graph + cache systems (foundation work ongoing)
-- Thread pool + queue job system
+- Custom build: hash + dependency graph + cache systems (core systems implemented) 
 - Custom DSL with a C-like syntax
-- Logging system
-- More CLI commands (`barr run`, `barr clean`, etc) with more options.
-- Windows support  
-- Cmake-ninja template projects support
 - Valgrind and gdb support via `barr tool <tool_name>` 
     - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
                `barr tool --gdb run <args>` maybe can be added.  
-- A user install `barr config --install-user` that will add the binary to `$HOME/.local/bin`
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
 - Project sessions and possibly `live-build` daemon.  
+- More CLI commands (`barr run`, `barr clean`, etc) with more options.
+- Logging system
+- Cmake-ninja template projects support
+- Windows support  
+
+---
+
+## [0.10.1] – 2025-10-15
+### Added
+- `modes` added unnecessary `barr mode` command.  
+    - Example: `barr mode WAR` will initiate war mode.  
+    - `barr mode OFF` will turn off any active modes.   
+- Add `barr_thread_pool.c/.h` basic thread pool created that runs based on amount of physical cores found by `sysconf`.  
+### Changed
+### Fixed 
+### Removed
 
 ---
 

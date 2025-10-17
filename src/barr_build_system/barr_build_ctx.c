@@ -20,7 +20,7 @@ barr_i32 BARR_compile_pch(BARR_CompileInfoCTX *ctx)
     }
 
     char out_pch[BARR_BUF_SIZE_2048];
-    snprintf(out_pch, sizeof(out_pch), "%s/pch_common.h.pch", ctx->out_dir);
+    snprintf(out_pch, sizeof(out_pch), "%s/common.h.pch", ctx->out_dir);
 
     char *args[] = {(char *) ctx->compiler, "-x", "c-header", (char *) ctx->pch_file, "-o", out_pch, NULL};
 

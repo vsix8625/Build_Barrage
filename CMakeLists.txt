@@ -17,6 +17,12 @@ endif()
 
 set(APP_NAME barr)
 
+# Find xxHash library
+find_library(XXHASH_LIBRARY NAMES xxhash libxxhash)
+if(NOT XXHASH_LIBRARY)
+    message(FATAL_ERROR "xxHash library not found. Please install libxxhash-dev (e.g., 'sudo apt install libxxhash-dev' on Ubuntu).")
+endif()
+
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
 	src/crux/*.c
@@ -39,15 +45,15 @@ target_include_directories(${APP_NAME} PRIVATE
 	${CMAKE_SOURCE_DIR}/src/barr_platform/linux
 )
 
-set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DBARR_DEBUG)
-set(RELEASE_FLAGS -Wall -Wextra -Werror -Ofast -march=native -flto -ffp-contract=fast -DNDEBUG)
+set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DBARR_DEBUG -pthread)
+set(RELEASE_FLAGS -Wall -Wextra -Werror -Ofast -march=native -flto -ffp-contract=fast -DNDEBUG -pthread)
 target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>
     $<$<CONFIG:Release>:${RELEASE_FLAGS}>
 )
 
-find_package(OpenSSL REQUIRED)
-target_link_libraries(${APP_NAME} PRIVATE OpenSSL::Crypto)
+# Link xxHash library
+target_link_libraries(${APP_NAME} PRIVATE ${XXHASH_LIBRARY})
 
 if(DEFINED CMAKE_FLAGS_EXTRA)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_FLAGS_EXTRA}")

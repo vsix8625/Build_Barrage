@@ -98,7 +98,7 @@ barr_i32 BARR_command_mode(barr_i32 argc, char **argv)
         else if (BARR_strmatch(argv[i], "WAR"))
         {
             char exec_path[BARR_PATH_MAX];
-            snprintf(exec_path, sizeof(exec_path), "%s/modes/war/war_mode", root_dir_str);
+            snprintf(exec_path, sizeof(exec_path), "%s/modes/war/build/war_mode", root_dir_str);
 
             char write_active_file_path[BARR_PATH_MAX];
             snprintf(write_active_file_path, sizeof(write_active_file_path), "%s/modes/active", data_dir_str);

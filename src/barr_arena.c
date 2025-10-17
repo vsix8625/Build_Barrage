@@ -13,7 +13,7 @@ static inline size_t barr_arena_free_space(const BARR_Arena *a)
     return a ? (a->capacity - a->offset) : 0;
 }
 
-static inline size_t barr_align_up(size_t size, size_t alignment)
+size_t BARR_align_up(size_t size, size_t alignment)
 {
     return (size + alignment - 1) & ~(alignment - 1);
 }
@@ -79,11 +79,11 @@ barr_ptr BARR_arena_alloc(BARR_Arena *a, size_t size)
     assert(a->magic_start == BARR_ARENA_MAGIC_START && a->magic_end == BARR_ARENA_MAGIC_END);
 #endif
 
-    size_t aligned_size = barr_align_up(size, a->alignment);
+    size_t aligned_size = BARR_align_up(size, a->alignment);
     size_t free_space = barr_arena_free_space(a);
     if (aligned_size > free_space)
     {
-        BARR_errlog("Arena out of memory: %p", a);
+        BARR_errlog("Arena %s:%p is out of memory", a->name, a);
         BARR_errlog("Requested: %zu", aligned_size);
         BARR_errlog("Available: %zu", free_space);
         return NULL;

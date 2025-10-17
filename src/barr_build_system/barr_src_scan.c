@@ -4,7 +4,7 @@
 #include "barr_src_scan.h"
 #include "barr_debug.h"
 #include "barr_io.h"
-#include "barr_sha256.h"
+#include "barr_xxhash.h"
 
 #include <dirent.h>
 #include <fcntl.h>

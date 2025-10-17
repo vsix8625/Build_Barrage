@@ -30,4 +30,6 @@ void BARR_arena_reset(BARR_Arena *a);
 void BARR_destroy_arena(BARR_Arena *a);
 void BARR_arena_stats(const BARR_Arena *a);
 
+size_t BARR_align_up(size_t size, size_t alignment);
+
 #endif  // BARR_ARENA_H_
