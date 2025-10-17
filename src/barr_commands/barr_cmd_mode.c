@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool barr_is_mode_still_active(const char *expected)
+bool BARR_is_mode_active(const char *expected)
 {
     char *home = BARR_GET_HOME();
     char fullpath[BARR_PATH_MAX];
@@ -57,7 +57,7 @@ barr_i32 BARR_command_mode(barr_i32 argc, char **argv)
     {
         if (BARR_strmatch(argv[i], "OFF"))
         {
-            if (barr_is_mode_still_active("off"))
+            if (BARR_is_mode_active("off"))
             {
                 BARR_warnlog("All modes are already turned OFF");
                 break;

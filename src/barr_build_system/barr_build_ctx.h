@@ -7,6 +7,7 @@
 typedef struct BARR_BuildProgressCTX
 {
     _Atomic size_t completed;
+    _Atomic size_t failed;
     size_t total;
     pthread_mutex_t log_mutex;
 } BARR_BuildProgressCTX;

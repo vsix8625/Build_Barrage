@@ -1,5 +1,6 @@
 #include "barr_cmd_build.h"
 #include "barr_build_ctx.h"
+#include "barr_cmd_mode.h"
 #include "barr_debug.h"
 #include "barr_env.h"
 #include "barr_glob_config_keys.h"
@@ -116,7 +117,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
 
     // cflags we will get them from crux
-    BARR_source_list_hash_mt(&list, current_map, "-Wall", pool);
+    BARR_source_list_hash_mt(&list, current_map, "-Wall -Wextra", pool);
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -133,19 +134,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         const barr_u8 *cached_hash = cached_map ? BARR_hashmap_get(cached_map, file) : NULL;
 
         // Only compare if both hashes are valid
-        bool changed = false;
-        if (!current_hash)
-        {
-            changed = true;
-        }
-        else if (!cached_hash)
-        {
-            changed = true;
-        }
-        else if (memcmp(current_hash, cached_hash, BARR_XXHASH_LEN) != 0)
-        {
-            changed = true;
-        }
+        bool changed = (!current_hash) || (!cached_hash) || (memcmp(current_hash, cached_hash, BARR_XXHASH_LEN) != 0);
 
         if (changed)
         {
@@ -156,12 +145,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
-    // write current hash to cache
-    if (!BARR_hashmap_write_cache(current_map, BARR_CACHE_FILE))
-    {
-        BARR_errlog("%s(): failed to write cache", __func__);
-    }
-
+    // info logs
     if (compile_list.count > 0)
     {
         BARR_log("Unchanged files: %zu", list.count - compile_list.count);
@@ -174,8 +158,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     //----------------------------------------------------------------------------------------------------
     // compile stage
-    // TODO: this stage will become a compile job with args_ctx probably
-    // TODO: add multi thread
 
     // placeholder flags
     const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
@@ -248,7 +230,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             return 1;
         }
 
-        // TODO: push job->out_file to object_list for linker
+        // keep the main.c.o out of the archive
         if (!BARR_strmatch(job->out_file, "build/obj/main.c.o"))
         {
             BARR_source_list_push(&object_list, job->out_file);
@@ -257,6 +239,19 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         free(tmp_src);
     }
     BARR_thread_pool_wait(pool);
+
+    if (!progress_ctx.failed)
+    {
+        // only write new hash if compilation was successful
+        if (!BARR_hashmap_write_cache(current_map, BARR_CACHE_FILE))
+        {
+            BARR_errlog("%s(): failed to write cache", __func__);
+        }
+    }
+    else
+    {
+        BARR_warnlog("%zu compile jobs failed, cache not updated", progress_ctx.failed);
+    }
 
     BARR_printf("\n");
 
@@ -316,6 +311,28 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     double elapsed = (double) sec + (double) nsec / 1e9;
     BARR_log("Build completed! | Time: \033[34;1m %.6fs", elapsed);
+
+    //----------------------------------------------------------------------------------------------------
+    // MODES
+
+    if (!link_ret && BARR_is_mode_active("war"))
+    {
+        BARR_ConfigEntry *root_dir_entry = BARR_config_table_get(rc_table, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
+        if (!root_dir_entry)
+        {
+            BARR_errlog("%s(): failed to get config entry for %s", __func__, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
+        }
+        const char *barr_install_dir_path = root_dir_entry->value.str_val ? root_dir_entry->value.str_val : "N/A";
+
+        char victory_sound_path[BARR_PATH_MAX];
+        snprintf(victory_sound_path, sizeof(victory_sound_path), "%s/%s", barr_install_dir_path,
+                 "assets/sounds/machine-gun.mp3");
+
+        char *placeholder_sound_args[] = {"paplay", victory_sound_path, NULL};
+        BARR_run_process_BG(placeholder_sound_args[0], placeholder_sound_args, false);
+    }
+
+    //----------------------------------------------------------------------------------------------------
 
     // cleanup
     BARR_destroy_thread_pool(pool);

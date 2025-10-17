@@ -122,6 +122,8 @@ void BARR_compile_job(barr_ptr arg)
     if (BARR_run_process(args[0], args, false) != 0)
     {
         BARR_errlog("Compilation failed for: %s", job->src);
+
+        atomic_fetch_add(&job->progress_ctx->failed, 1);
     }
     else
     {

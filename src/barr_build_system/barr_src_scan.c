@@ -26,8 +26,8 @@ static inline barr_i32 barr_is_source_file(const char *path)
 
 static inline bool barr_skip_dir(const char *path)
 {
-    static const char *skip_names[] = {"build", "bin",  "obj",        ".git",  "cache",   ".vs",
-                                       ".idea", "test", "CMakeFiles", "Debug", "Release", NULL};
+    static const char *skip_names[] = {"build", "bin",        "obj",   ".git",    "cache", ".vs", ".idea",
+                                       "test",  "CMakeFiles", "Debug", "Release", ".barr", NULL};
 
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
