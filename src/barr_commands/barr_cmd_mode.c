@@ -105,7 +105,7 @@ barr_i32 BARR_command_mode(barr_i32 argc, char **argv)
             BARR_file_write(write_active_file_path, "war");
 
             char *war_mode[] = {exec_path, NULL};
-            barr_i32 bg_pid = BARR_run_process_BG(war_mode[0], war_mode, true);
+            barr_i32 bg_pid = BARR_run_process_BG(war_mode[0], war_mode);
             if (bg_pid > 0)
             {
                 BARR_log("WAR mode running in background with PID %d", bg_pid);

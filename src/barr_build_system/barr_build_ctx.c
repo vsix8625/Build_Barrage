@@ -77,7 +77,7 @@ void BARR_compile_job(barr_ptr arg)
 
     size_t idx = 0;
     args[idx++] = (char *) ctx->compiler;
-    args[idx++] = "-c";
+    args[idx++] = job->dry_run ? "-fsyntax-only" : "-c";
     args[idx++] = "-pipe";
     args[idx++] = job->src;
     args[idx++] = "-o";

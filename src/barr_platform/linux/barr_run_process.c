@@ -1,10 +1,11 @@
 #include "barr_debug.h"
 #include "barr_io.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 
-barr_i32 BARR_run_process_BG(const char *name, char **args, bool verbose)
+barr_i32 BARR_run_process_BG(const char *name, char **args)
 {
     pid_t pid = fork();
     if (pid == 0)
@@ -12,11 +13,18 @@ barr_i32 BARR_run_process_BG(const char *name, char **args, bool verbose)
         // child process: detach from terminal/session
         if (setsid() == -1)
         {
-            if (verbose)
-            {
-                BARR_errlog("Failed to setsid for %s", name);
-            }
+            BARR_errlog("Failed to setsid for %s", name);
         }
+
+        int fd = open("/dev/null", O_RDWR);
+        if (fd != -1)
+        {
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            close(fd);
+        }
+
         execvp(name, args);
         BARR_errlog("Failed to execvp: %s", name);
         BARR_dumb_backtrace();
@@ -29,10 +37,7 @@ barr_i32 BARR_run_process_BG(const char *name, char **args, bool verbose)
     }
     else if (pid > 0)
     {
-        if (verbose)
-        {
-            BARR_log("Started %s in background with PID %d", name, pid);
-        }
+        BARR_log("Started %s in background with PID %d", name, pid);
         return pid;  // return child PID so caller can track/kill if needed
     }
     else

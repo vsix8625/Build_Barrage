@@ -46,6 +46,16 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
+    bool dry_run_compile = false;
+    for (barr_i32 i = 1; i < argc; ++i)
+    {
+        char *cmd = argv[i];
+        if (BARR_strmatch(cmd, "--dry-run"))
+        {
+            dry_run_compile = true;
+        }
+    }
+
     bool has_cache = false;
     if (BARR_isfile(BARR_CACHE_FILE))
     {
@@ -203,6 +213,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         job->src = strdup(src);
         job->ctx = &compile_ctx;
         job->progress_ctx = &progress_ctx;
+        job->dry_run = dry_run_compile;
 
         char *tmp_src = strdup(src);
         char *base_with_ext = basename(tmp_src);
@@ -240,63 +251,82 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_thread_pool_wait(pool);
 
-    if (!progress_ctx.failed)
+    if (!progress_ctx.failed && !dry_run_compile)
     {
         // only write new hash if compilation was successful
         if (!BARR_hashmap_write_cache(current_map, BARR_CACHE_FILE))
         {
+            printf("\n");
             BARR_errlog("%s(): failed to write cache", __func__);
         }
     }
     else
     {
-        BARR_warnlog("%zu compile jobs failed, cache not updated", progress_ctx.failed);
+        printf("\n");
+        if (!dry_run_compile)
+        {
+            BARR_warnlog("%zu compile jobs failed, cache not updated", progress_ctx.failed);
+        }
+        else
+        {
+            BARR_log("barr build --dry-run completed");
+            if (progress_ctx.failed)
+            {
+                BARR_log("Failed compiles: \033[31;1m%zu", progress_ctx.failed);
+            }
+            BARR_warnlog("NOTICE: No object files produced, the build cache will not update, and the linker stage will "
+                         "be skipped");
+            BARR_warnlog("This check validates compilation only.");
+        }
     }
 
     BARR_printf("\n");
 
     //----------------------------------------------------------------------------------------------------
 
-    if (!BARR_isdir("build/bin"))
+    if (!dry_run_compile)
     {
-        if (barr_mkdir("build/bin"))
+        if (!BARR_isdir("build/bin"))
         {
-            BARR_errlog("Failed to create bin directory");
-            return 1;
+            if (barr_mkdir("build/bin"))
+            {
+                BARR_errlog("Failed to create bin directory");
+                return 1;
+            }
+            // TODO: need to change this with config build type from crux
+            if (barr_mkdir("build/bin/debug"))
+            {
+                BARR_errlog("Failed to create debug directory");
+                return 1;
+            }
         }
-        // TODO: need to change this with config build type from crux
-        if (barr_mkdir("build/bin/debug"))
+
+        // archive stage
+        barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
+        if (archive_ret != 0)
         {
-            BARR_errlog("Failed to create debug directory");
-            return 1;
+            BARR_errlog("Archive stage failed");
         }
-    }
 
-    // archive stage
-    barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
-    if (archive_ret != 0)
-    {
-        BARR_errlog("Archive stage failed");
-    }
+        // link stage
+        // out file will be obtain from crux as well build type and ncores maybe
+        // linker for -fuse flag etc
+        // following link_args are a placeholder
 
-    // link stage
-    // out file will be obtain from crux as well build type and ncores maybe
-    // linker for -fuse flag etc
-    // following link_args are a placeholder
-
-    char *link_args[] = {"gcc",
-                         "build/obj/main.c.o",  // main object
-                         "-Lbuild",
-                         "-lbarr",
-                         "-fuse-ld=lld",
-                         "-Wl,--threads=4",
-                         "-o",
-                         "build/bin/debug/barr_placeholder",
-                         NULL};
-    barr_i32 link_ret = BARR_link_stage(link_args);
-    if (link_ret != 0)
-    {
-        BARR_errlog("Link stage failed");
+        char *link_args[] = {"gcc",
+                             "build/obj/main.c.o",  // main object
+                             "-Lbuild",
+                             "-lbarr",
+                             "-fuse-ld=lld",
+                             "-Wl,--threads=4",
+                             "-o",
+                             "build/bin/debug/barr_placeholder",
+                             NULL};
+        barr_i32 link_ret = BARR_link_stage(link_args);
+        if (link_ret != 0)
+        {
+            BARR_errlog("Link stage failed");
+        }
     }
 
     //----------------------------------------------------------------------------------------------------
@@ -313,9 +343,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_log("Build completed! | Time: \033[34;1m %.6fs", elapsed);
 
     //----------------------------------------------------------------------------------------------------
+    // will probably remove this stupidity
     // MODES
 
-    if (!link_ret && BARR_is_mode_active("war"))
+    if (BARR_is_mode_active("war"))
     {
         BARR_ConfigEntry *root_dir_entry = BARR_config_table_get(rc_table, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
         if (!root_dir_entry)
@@ -329,7 +360,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                  "assets/sounds/machine-gun.mp3");
 
         char *placeholder_sound_args[] = {"paplay", victory_sound_path, NULL};
-        BARR_run_process_BG(placeholder_sound_args[0], placeholder_sound_args, false);
+        BARR_run_process_BG(placeholder_sound_args[0], placeholder_sound_args);
     }
 
     //----------------------------------------------------------------------------------------------------

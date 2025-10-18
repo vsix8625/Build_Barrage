@@ -91,11 +91,6 @@ void BARR_warnlog(const char *format, ...)
     vfprintf(stderr, format, args);
     va_end(args);
 
-    if (errno)
-    {
-        fprintf(stderr, " | \033[38;2;255;165;0m[stderr]: %s: %d", strerror(errno), errno);
-        errno = 0;
-    }
     if (is_tty)
     {
         fprintf(stderr, "\033[0m\n");

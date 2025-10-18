@@ -5,12 +5,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ---
 
 ## [Unreleased]
-### BUG
-- Fix hashing commit, right now it commits hashes as soon they created and that leads to update of `uncompiled`
-  hashes, in the next run of `barr build` those files will not checked for compilation. 
 ### Planned
 - Custom build: hash + dependency graph + cache systems (core systems implemented) 
 - Custom DSL with a C-like syntax
+- Optimize build process. 
 - Valgrind and gdb support via `barr tool <tool_name>` 
     - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`

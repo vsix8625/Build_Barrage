@@ -27,6 +27,7 @@ typedef struct BARR_CompileInfoCTX
 
 typedef struct BARR_CompileJob
 {
+    bool dry_run;  // could use bit flags if we need more
     char *src;
     char out_file[BARR_BUF_SIZE_2048];
     BARR_CompileInfoCTX *ctx;

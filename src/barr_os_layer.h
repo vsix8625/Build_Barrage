@@ -31,7 +31,7 @@ typedef struct stat barr_stat_t;
 #define barr_getcwd getcwd
 #define BARR_SYSTEM_CMD_CLEAR "clear"
 
-barr_i32 BARR_run_process_BG(const char *name, char **args, bool verbose);
+barr_i32 BARR_run_process_BG(const char *name, char **args);
 barr_i32 BARR_run_process(const char *name, char **args, bool verbose);
 
 #include "barr_thread_pool.h"
