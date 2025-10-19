@@ -3,6 +3,7 @@
 #include "barr_cmd_mode.h"
 #include "barr_debug.h"
 #include "barr_env.h"
+#include "barr_gc.h"
 #include "barr_glob_config_keys.h"
 #include "barr_glob_config_parser.h"
 #include "barr_io.h"
@@ -127,7 +128,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
 
     // cflags we will get them from crux
-    BARR_source_list_hash_mt(&list, current_map, "-Wall -Wextra", pool);
+    BARR_PROFILE_CALL(BARR_source_list_hash_mt(&list, current_map, "-Wall -Wextra", pool));
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -148,10 +149,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         if (changed)
         {
-            if (!BARR_source_list_push(&compile_list, file))
-            {
-                BARR_errlog("%s(): failed to push to compile list", __func__);
-            }
+            (void) BARR_source_list_push(&compile_list, file);
         }
     }
 
@@ -244,7 +242,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         // keep the main.c.o out of the archive
         if (!BARR_strmatch(job->out_file, "build/obj/main.c.o"))
         {
-            BARR_source_list_push(&object_list, job->out_file);
+            (void) BARR_source_list_push(&object_list, job->out_file);
         }
 
         free(tmp_src);

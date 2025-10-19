@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+//----------------------------------------------------------------------------------------------------
+// alloc wrappers
+
+//----------------------------------------------------------------------------------------------------
+
 static inline size_t barr_arena_free_space(const BARR_Arena *a)
 {
     return a ? (a->capacity - a->offset) : 0;

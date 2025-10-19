@@ -6,19 +6,29 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Custom build: hash + dependency graph + cache systems (core systems implemented) 
+- Custom build: hash + dependency track + cache systems (core systems implemented) 
+- Garbage collector (initial system implemented)
+    - Test gc functionality with a subsytem 
 - Custom DSL with a C-like syntax
 - Optimize build process. 
-- Valgrind and gdb support via `barr tool <tool_name>` 
-    - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
-    - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
-               `barr tool --gdb run <args>` maybe can be added.  
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
 - Project sessions and possibly `live-build` daemon.  
 - More CLI commands (`barr run`, `barr clean`, etc) with more options.
 - Logging system
-- Cmake-ninja template projects support
+- Valgrind and gdb support via `barr tool <tool_name>` 
+    - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
+    - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
+               `barr tool --gdb run <args>` maybe can be added.  
 - Windows support  
+
+---
+
+## [0.11.1] – 2025-10-19
+### Added
+- Add `barr_gc.c/.h` Garbage collector for memory allocations
+### Changed
+### Fixed 
+### Removed
 
 ---
 

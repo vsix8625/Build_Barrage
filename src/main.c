@@ -2,6 +2,7 @@
 #include "barr_commands.h"
 #include "barr_debug.h"
 #include "barr_env.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <stdio.h>
@@ -136,6 +137,9 @@ barr_i32 main(barr_i32 argc, char **argv)
     g_barr_cmds_list = (BARR_Command *) BARR_arena_alloc(&g_barr_cmds_arena, sizeof(BARR_Command) * BARR_MAX_COMMANDS);
     g_barr_cmds_count = 0;
 
+    // init GC
+    BARR_gc_init();
+
     //----------------------------------------------------------------------------------------------------
     // Register commands
 
@@ -214,6 +218,8 @@ barr_i32 main(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
 
     // Cleanup
+    BARR_gc_shutdown();
+    BARR_gc_dump();
     BARR_destroy_arena(&g_barr_cmds_arena);
 
     //----------------------------------------------------------------------------------------------------

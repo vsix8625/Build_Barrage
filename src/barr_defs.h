@@ -22,6 +22,8 @@ typedef double barr_f64;
 typedef void *barr_ptr;
 typedef void (*barr_func_ptr)(void);
 
+#define BARR_SIZE_MAX ((size_t) -1)
+
 // BUFFER SIZES
 #define BARR_BUF_SIZE_32 0x20
 #define BARR_BUF_SIZE_64 0x40
@@ -32,6 +34,7 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_BUF_SIZE_2048 0x800
 #define BARR_BUF_SIZE_4096 0x1000
 #define BARR_BUF_SIZE_8192 0x2000
+#define BARR_BUF_SIZE_16K 0x4000
 
 #define BARR_PATH_MAX (0x1000)
 
@@ -57,5 +60,7 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_CACHE_FILE ".barr/cache/build.cache"
 
 #define BARR_XXHASH_LEN (8)
+
+#define BARR_MAX_FILE_SIZE (1ULL << 30)
 
 #endif  // BARR_DEFS_H_

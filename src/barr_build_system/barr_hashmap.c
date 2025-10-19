@@ -53,7 +53,10 @@ bool BARR_destroy_hashmap(BARR_HashMap *map)
         while (node)
         {
             BARR_HashNode *next = node->next;
-            free(node->key);
+            if (node->key)
+            {
+                free(node->key);
+            }
             free(node);
             node = next;
         }
@@ -68,11 +71,15 @@ bool BARR_destroy_hashmap(BARR_HashMap *map)
 bool barr_hashmap_rehash(BARR_HashMap *map, size_t new_capacity)
 {
     if (!map || new_capacity <= map->capacity)
+    {
         return false;
+    }
 
     BARR_HashNode **new_nodes = calloc(new_capacity, sizeof(BARR_HashNode *));
     if (!new_nodes)
+    {
         return false;
+    }
 
     // re-insert all nodes
     for (size_t i = 0; i < map->capacity; ++i)

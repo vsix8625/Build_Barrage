@@ -1,8 +1,10 @@
 #include "barr_xxhash.h"
+#include "barr_debug.h"
 #include "barr_hashmap.h"
 #include "barr_io.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,51 +13,56 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-static bool barr_filestack_push(BARR_Filestack *fstack, const char *file)
+static bool barr_filestack_push(BARR_Filestack *flstack, const char *file)
 {
-    if (!fstack)
+    if (!flstack)
     {
         return false;
     }
-    if (fstack->count >= fstack->capacity)
+    if (flstack->count >= flstack->capacity)
     {
-        size_t new_cap = fstack->capacity * 2;
-        char **tmp = realloc(fstack->files, new_cap * sizeof(char *));
+        size_t new_cap = flstack->capacity * 2;
+        char **tmp = realloc(flstack->files, new_cap * sizeof(char *));
         if (!tmp)
         {
             return false;
         }
 
-        fstack->files = tmp;
-        fstack->capacity = new_cap;
+        flstack->files = tmp;
+        flstack->capacity = new_cap;
     }
-    fstack->files[fstack->count++] = strdup(file);
+    flstack->files[flstack->count++] = strdup(file);
     return true;
 }
 
-static char *BARR_filestack_pop(BARR_Filestack *fstack)
+static char *BARR_filestack_pop(BARR_Filestack *flstack)
 {
-    if (!fstack || fstack->count == 0)
+    if (!flstack || flstack->count == 0)
     {
         return NULL;
     }
-    return fstack->files[--fstack->count];
+    return flstack->files[--flstack->count];
 }
 
-static void barr_filestack_free(BARR_Filestack *fstack)
+static void barr_filestack_free(BARR_Filestack *flstack)
 {
-    if (!fstack)
+    if (!flstack)
     {
         return;
     }
-    for (size_t i = 0; i < fstack->count; i++)
+
+    if (flstack->count > 0)
     {
-        if (fstack->files[i])
+        BARR_dbglog("%s(): freeing %zu filestack entries", __func__, flstack->count);
+    }
+    for (size_t i = 0; i < flstack->count; i++)
+    {
+        if (flstack->files[i])
         {
-            free(fstack->files[i]);
+            free(flstack->files[i]);
         }
     }
-    free(fstack->files);
+    free(flstack->files);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -177,7 +184,7 @@ bool BARR_hash_includes_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_
         barr_u8 dummy_hash[BARR_XXHASH_LEN] = {0};
         BARR_hashmap_insert(seen, current_file, dummy_hash);  // unused
 
-        FILE *fp = fopen(filepath, "r");
+        FILE *fp = fopen(current_file, "r");
         if (!fp)
         {
             BARR_warnlog("%s(): failed to open \"%s\"", __func__, current_file);
@@ -187,27 +194,53 @@ bool BARR_hash_includes_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_
 
         if (fseek(fp, 0, SEEK_END) == 0)
         {
-            barr_i64 fsize = ftell(fp);
-            if (fseek(fp, 0, SEEK_SET) == 0)
+            barr_i64 ftell_result = ftell(fp);
+            if (ftell_result == -1 || ftell_result < 0)
             {
-                char *buffer = malloc(fsize);
-                if (buffer)
-                {
-                    size_t bytes_read = fread(buffer, 1, fsize, fp);
-                    if (bytes_read > 0)
-                    {
-                        XXH3_64bits_update(state, buffer, fsize);
-                        free(buffer);
-                    }
-                }
+                BARR_warnlog("%s(): ftell failed for %s: %s", __func__, current_file, strerror(errno));
                 fclose(fp);
+                free(current_file);
+                continue;
             }
+            size_t fsize = (size_t) ftell_result;
+            if (fsize > BARR_MAX_FILE_SIZE)
+            {
+                BARR_warnlog("%s(): file %s too large (%zu bytes)", __func__, current_file, fsize);
+                fclose(fp);
+                free(current_file);
+                continue;
+            }
+            if (fseek(fp, 0, SEEK_SET) != 0)
+            {
+                BARR_warnlog("%s(): fseek failed for %s: %s", __func__, current_file, strerror(errno));
+                fclose(fp);
+                free(current_file);
+                continue;
+            }
+            char buffer[BARR_BUF_SIZE_16K * 2];
+            size_t bytes_read;
+            while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+            {
+                XXH3_64bits_update(state, buffer, bytes_read);
+            }
+            if (ferror(fp))
+            {
+                BARR_warnlog("%s(): error reading %s: %s", __func__, current_file, strerror(errno));
+            }
+            fclose(fp);
+        }
+        else
+        {
+            BARR_warnlog("%s(): fseek to end failed for %s: %s", __func__, current_file, strerror(errno));
+            fclose(fp);
+            free(current_file);
+            continue;
         }
 
         fp = fopen(current_file, "r");
         if (fp)
         {
-            char line[BARR_BUF_SIZE_1024];
+            char line[BARR_BUF_SIZE_2048];
             while (fgets(line, sizeof(line), fp))
             {
                 char *p = line;
@@ -246,16 +279,25 @@ bool BARR_hash_includes_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_
 
                         if (!BARR_hashmap_get(seen, full_include_path))
                         {
-                            barr_filestack_push(&fstack, full_include_path);
+                            if (!barr_filestack_push(&fstack, full_include_path))
+                            {
+                                BARR_warnlog("%s(): failed to push include %s", __func__, full_include_path);
+                                free(current_file);
+                            }
                         }
                     }
                 }
             }
+            fclose(fp);
         }
-        fclose(fp);
+        else
+        {
+            BARR_warnlog("%s(): failed to open %s for includes: %s", __func__, current_file, strerror(errno));
+            free(current_file);
+            continue;
+        }
+        free(current_file);
     }
-
-    free(current_file);
 
     XXH64_hash_t final_hash = XXH3_64bits_digest(state);
     memcpy(out_hash, &final_hash, BARR_XXHASH_LEN);

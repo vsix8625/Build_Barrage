@@ -19,13 +19,31 @@ bool BARR_source_list_init(BARR_SourceList *list, size_t initial_file_cap)
         BARR_errlog("%s(): failed to allocate %zu bytes for source list entries", __func__, list_size);
         list->count = 0;
         list->capacity = 0;
+        list->path_buffer = NULL;
+        list->path_buffer_size = 0;
+        list->path_buffer_used = 0;
+        return false;
+    }
+
+    list->path_buffer_size = initial_file_cap * BARR_PATH_MAX;
+    list->path_buffer = malloc(list->path_buffer_size);
+    if (!list->path_buffer)
+    {
+        BARR_errlog("%s(): failed to allocate %zu bytes for path buffer", __func__, list->path_buffer_size);
+        free(list->entries);
+        list->entries = NULL;
+        list->count = 0;
+        list->capacity = 0;
+        list->path_buffer_size = 0;
+        list->path_buffer_used = 0;
         return false;
     }
 
     list->count = 0;
     list->capacity = initial_file_cap;
+    list->path_buffer_used = 0;
+    BARR_dbglog("%s(): List capacity = %zu, path_buffer = %zu", __func__, initial_file_cap, list->path_buffer_size);
 
-    BARR_dbglog("%s(): cap=%zu", __func__, initial_file_cap);
     return true;
 }
 
@@ -36,29 +54,35 @@ bool BARR_source_list_push(BARR_SourceList *list, const char *path)
         return false;
     }
 
-    if (list->count >= list->capacity)
+    size_t len = strlen(path) + 1;
+    if (list->count >= list->capacity || list->path_buffer_used + len > list->path_buffer_size)
     {
         size_t new_capacity = list->capacity * 2;
+        size_t new_path_buffer_size = new_capacity * BARR_PATH_MAX;
         char **new_entries = realloc(list->entries, new_capacity * sizeof(char *));
         if (!new_entries)
         {
             BARR_errlog("%s(): failed to realloc entries (cap=%zu)", __func__, new_capacity);
             return false;
         }
+        char *new_path_buffer = realloc(list->path_buffer, new_path_buffer_size);
+        if (!new_path_buffer)
+        {
+            BARR_errlog("%s(): failed to realloc path buffer (%zu bytes)", __func__, new_path_buffer_size);
+            free(new_entries);
+            return false;
+        }
 
         list->entries = new_entries;
+        list->path_buffer = new_path_buffer;
         list->capacity = new_capacity;
-
-        BARR_dbglog("%s(): entries to grow: %zu", __func__, new_capacity);
+        list->path_buffer_size = new_path_buffer_size;
+        BARR_dbglog("%s(): realloc to: %zu", __func__, new_capacity);
     }
-
-    char *copy = strdup(path);
-    if (!copy)
-    {
-        return false;
-    }
-
+    char *copy = list->path_buffer + list->path_buffer_used;
+    memcpy(copy, path, len);
     list->entries[list->count++] = copy;
+    list->path_buffer_used += len;
     return true;
 }
 
@@ -137,27 +161,25 @@ bool BARR_source_list_hash_mt(BARR_SourceList *list, BARR_HashMap *map, const ch
 
 //----------------------------------------------------------------------------------------------------
 
-bool BARR_destroy_source_list(BARR_SourceList *list)
+void BARR_destroy_source_list(BARR_SourceList *list)
 {
     if (!list)
     {
-        return false;
+        return;
+    }
+    if (list->path_buffer)
+    {
+        free(list->path_buffer);
     }
     if (list->entries)
     {
-        for (size_t i = 0; i < list->count; ++i)
-        {
-            if (list->entries[i])
-            {
-                free(list->entries[i]);
-            }
-        }
         free(list->entries);
-        list->entries = NULL;
     }
+    list->path_buffer = NULL;
+    list->entries = NULL;
     list->count = 0;
     list->capacity = 0;
-
+    list->path_buffer_size = 0;
+    list->path_buffer_used = 0;
     BARR_dbglog("%s(): destroyed source list", __func__);
-    return true;
 }
