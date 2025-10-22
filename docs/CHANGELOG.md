@@ -13,6 +13,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Optimize build process. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
 - Project sessions and possibly `live-build` daemon.  
+- Create compile_commands.json 
 - More CLI commands (`barr run`, `barr clean`, etc) with more options.
 - Logging system
 - Valgrind and gdb support via `barr tool <tool_name>` 

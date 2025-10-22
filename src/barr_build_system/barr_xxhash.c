@@ -13,6 +13,87 @@
 
 // ----------------------------------------------------------------------------------------------------
 
+bool BARR_resolve_path(const char *base_dir, const char *input_path, char out_path[BARR_PATH_MAX])
+{
+    if (!input_path || !out_path)
+    {
+        return false;
+    }
+
+    char tmp_path[BARR_PATH_MAX + 2];
+    if (input_path[0] == '/')
+    {
+        strncpy(tmp_path, input_path, sizeof(tmp_path));
+        tmp_path[sizeof(tmp_path) - 1] = '\0';
+    }
+    else
+    {
+        char base[BARR_PATH_MAX];
+        if (base_dir)
+        {
+            strncpy(base, base_dir, sizeof(base));
+            base[sizeof(base) - 1] = '\0';
+        }
+        else
+        {
+            if (!barr_getcwd(base, sizeof(base)))
+            {
+                BARR_errlog("%s(): getcwd failed", __func__);
+                return false;
+            }
+        }
+
+        snprintf(tmp_path, sizeof(tmp_path), "%s/%s", base, input_path);
+    }
+
+    if (realpath(tmp_path, out_path) == NULL)
+    {
+        char tmp[BARR_PATH_MAX];
+        strncpy(tmp, tmp_path, sizeof(tmp));
+        tmp[sizeof(tmp) - 1] = '\0';
+
+        char *segments[BARR_BUF_SIZE_256];
+        size_t seg_count = 0;
+
+        char *token = strtok(tmp, "/");
+        while (token && seg_count < (sizeof(segments) / sizeof(segments[0])))
+        {
+            if (BARR_strmatch(token, "."))
+            {
+                continue;
+            }
+            else if (BARR_strmatch(token, ".."))
+            {
+                if (seg_count > 0)
+                {
+                    seg_count--;
+                }
+            }
+            else
+            {
+                segments[seg_count++] = token;
+            }
+            token = strtok(NULL, "/");
+        }
+
+        out_path[0] = '/';
+        out_path[1] = '\0';
+
+        for (size_t i = 0; i < seg_count; i++)
+        {
+            strncat(out_path, segments[i], BARR_PATH_MAX - strlen(out_path) - 1);
+            if (i + 1 < seg_count)
+            {
+                strncat(out_path, "/", BARR_PATH_MAX - strlen(out_path) - 1);
+            }
+        }
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 static bool barr_filestack_push(BARR_Filestack *flstack, const char *file)
 {
     if (!flstack)
@@ -126,12 +207,19 @@ bool BARR_hash_file_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN]
     return success;
 }
 
-bool BARR_hash_includes_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN])
+bool BARR_hash_includes_xxh3(const char *filapath, barr_u8 out_hash[BARR_XXHASH_LEN])
 {
     BARR_HashMap *seen = BARR_hashmap_create(BARR_BUF_SIZE_4096);
     if (!seen)
     {
         BARR_errlog("%s(): failed to create hashmap for filestack", __func__);
+        return false;
+    }
+
+    char resolved[BARR_PATH_MAX];
+    if (!BARR_resolve_path(NULL, filapath, resolved))
+    {
+        BARR_errlog("%s(): failed to resolve path: %s", __func__, filapath);
         return false;
     }
 
@@ -145,11 +233,11 @@ bool BARR_hash_includes_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_
         return false;
     }
 
-    if (!barr_filestack_push(&fstack, filepath))
+    if (!barr_filestack_push(&fstack, resolved))
     {
         barr_filestack_free(&fstack);
         BARR_destroy_hashmap(seen);
-        BARR_errlog("%s(): failed to push file '%s' to hashmap", __func__, filepath);
+        BARR_errlog("%s(): failed to push file '%s' to hashmap", __func__, resolved);
         return false;
     }
 
