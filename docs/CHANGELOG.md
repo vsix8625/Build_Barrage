@@ -6,10 +6,11 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Fix: find_package order flow and removing duplicates in the process
 - Custom build: hash + dependency track + cache systems (core systems implemented) 
 - Garbage collector (initial system implemented)
     - Test gc functionality with a subsytem 
-- Custom DSL with a C-like syntax
+- Custom DSL`(Crux)` with a C-like syntax
 - Optimize build process. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
 - Project sessions and possibly `live-build` daemon.  

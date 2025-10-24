@@ -101,7 +101,7 @@ void BARR_gc_shutdown(void)
     g_barr_gc_list.count = 0;
     g_barr_gc_list.capacity = 0;
 
-    BARR_dbglog("Garbage collector shtutdown");
+    BARR_dbglog("Garbage collector shutdown");
 
     pthread_mutex_unlock(&g_barr_gc_list.lock);
     pthread_mutex_destroy(&g_barr_gc_list.lock);

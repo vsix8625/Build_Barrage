@@ -1,9 +1,68 @@
 #include "barr_debug.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
+
+char *BARR_run_process_capture(char *const argv[])
+{
+    barr_i32 pipefd[2];
+    if (pipe(pipefd) == -1)
+    {
+        return NULL;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return NULL;
+    }
+
+    if (pid == 0)
+    {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+
+    close(pipefd[1]);
+    char buffer[BARR_BUF_SIZE_256];
+    size_t len = 0;
+    size_t cap = BARR_BUF_SIZE_512;
+    char *output = BARR_gc_alloc(cap);
+    output[0] = '\0';
+
+    ssize_t n;
+    while ((n = read(pipefd[0], buffer, sizeof(buffer))) > 0)
+    {
+        if (len + n + 1 > cap)
+        {
+            cap *= 2;
+            output = BARR_gc_realloc(output, cap);
+        }
+
+        memcpy(output + len, buffer, n);
+        len += n;
+    }
+
+    output[len] = '\0';
+    close(pipefd[0]);
+    waitpid(pid, NULL, 0);
+
+    if (len > 0 && output[len - 1] == '\n')
+    {
+        output[len - 1] = '\0';
+    }
+
+    return output;
+}
 
 barr_i32 BARR_run_process_BG(const char *name, char **args)
 {

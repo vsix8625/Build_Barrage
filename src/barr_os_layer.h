@@ -33,6 +33,7 @@ typedef struct stat barr_stat_t;
 
 barr_i32 BARR_run_process_BG(const char *name, char **args);
 barr_i32 BARR_run_process(const char *name, char **args, bool verbose);
+char *BARR_run_process_capture(char *const argv[]);
 
 #include "barr_thread_pool.h"
 

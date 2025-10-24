@@ -3,11 +3,13 @@
 #include "barr_cmd_mode.h"
 #include "barr_debug.h"
 #include "barr_env.h"
+#include "barr_find_package.h"
 #include "barr_gc.h"
 #include "barr_glob_config_keys.h"
 #include "barr_glob_config_parser.h"
 #include "barr_io.h"
 #include "barr_linker.h"
+#include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
 #include "crx.h"
@@ -165,11 +167,19 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     //----------------------------------------------------------------------------------------------------
+    // Find packages
+
+    BARR_PackageInfo *zlib_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
+    BARR_find_package("zlib", zlib_info, 0, NULL);
+    BARR_PackageInfo *curl_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
+    BARR_find_package("libcurl", curl_info, 0, NULL);
+
+    //----------------------------------------------------------------------------------------------------
     // compile stage
 
     // placeholder flags
     const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
-    const char *includes[] = {"-Iinc", NULL};
+    const char *includes[] = {"-Iinc", zlib_info->cflags, curl_info->cflags, NULL};
     const char *defines[] = {"-DDEBUG", NULL};
 
     BARR_CompileInfoCTX compile_ctx = {.compiler = "gcc",
@@ -311,15 +321,39 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         // linker for -fuse flag etc
         // following link_args are a placeholder
 
-        char *link_args[] = {"gcc",
-                             "build/obj/main.c.o",  // main object
-                             "-Lbuild",
-                             "-lbarr",
-                             "-fuse-ld=lld",
-                             "-Wl,--threads=4",
-                             "-o",
-                             "build/bin/debug/barr_placeholder",
-                             NULL};
+        char *base_link_args[] = {"gcc",
+                                  "build/obj/main.c.o",  // main object
+                                  "-Lbuild",
+                                  "-lbarr",
+                                  "-fuse-ld=lld",
+                                  "-Wl,--threads=4"};
+
+        BARR_LinkArgs *la = BARR_link_args_create();
+
+        // push base link args
+        size_t base_la_count = sizeof(base_link_args) / sizeof(base_link_args[0]);
+        for (size_t i = 0; i < base_la_count; ++i)
+        {
+            BARR_link_args_add(la, base_link_args[i]);
+        }
+
+        // add package info args
+        BARR_link_args_add(la, zlib_info->libs);
+        BARR_link_args_add(la, curl_info->libs);
+
+        BARR_link_args_add(la, "-o");
+        BARR_link_args_add(la, "build/bin/debug/barr_placeholder");
+
+        // finalize link args
+        char **link_args = BARR_link_args_finalize(la);
+        if (1)  // TODO: add verbose in future
+        {
+            for (char **arg = link_args; *arg != NULL; ++arg)
+            {
+                BARR_printf("%s ", *arg);
+            }
+        }
+        BARR_printf("\n");
         barr_i32 link_ret = BARR_link_stage(link_args);
         if (link_ret != 0)
         {
