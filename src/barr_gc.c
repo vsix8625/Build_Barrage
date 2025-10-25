@@ -248,3 +248,34 @@ void BARR_gc_dump(void)
 
     pthread_mutex_unlock(&g_barr_gc_list.lock);
 }
+
+void BARR_gc_file_dump(void)
+{
+    pthread_mutex_lock(&g_barr_gc_list.lock);
+
+    const char *filename = "barr_gc_dump.txt";
+    if (!g_barr_gc_list.count)
+    {
+        BARR_file_write(filename, "[BARR_GC]: No active allocations\n");
+        pthread_mutex_unlock(&g_barr_gc_list.lock);
+        return;
+    }
+
+    BARR_file_write(
+        filename, "==================================== BARR_GC Allocations ====================================\n\n");
+    size_t total_allocated = 0;
+    for (size_t i = 0; i < g_barr_gc_list.count; ++i)
+    {
+        BARR_GC_Info *a = &g_barr_gc_list.items[i];
+        BARR_file_append(filename, "[%zu] %p (%zu bytes) %s: %s:%d\n", i, a->ptr, a->size, a->fn, a->file, a->line);
+        total_allocated += a->size;
+    }
+    BARR_file_append(
+        filename,
+        "====================================================================================================\n");
+    char *metric_str = total_allocated > 1024 ? "kb" : "b";
+    total_allocated = total_allocated > 1024 ? total_allocated / 1024 : total_allocated;
+    BARR_file_append(filename, "Total allocated: %zu%s", total_allocated, metric_str);
+
+    pthread_mutex_unlock(&g_barr_gc_list.lock);
+}

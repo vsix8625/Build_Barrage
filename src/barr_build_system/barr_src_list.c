@@ -1,6 +1,7 @@
 #include "barr_src_list.h"
 #include "barr_arena.h"
 #include "barr_debug.h"
+#include "barr_hashmap.h"
 #include "barr_io.h"
 #include "barr_xxhash.h"
 #include <stdlib.h>
@@ -103,7 +104,7 @@ static void barr_hash_file_job(void *arg)
         return;
     }
 
-    if (!BARR_hash_includes_xxh3(job->file, include_hash))
+    if (!BARR_hash_includes_xxh3(job->headers, job->file, include_hash))
     {
         BARR_errlog("%s(): failed to hash includes for %s", __func__, job->file);
         return;
@@ -121,9 +122,11 @@ static void barr_hash_file_job(void *arg)
     }
 }
 
-bool BARR_source_list_hash_mt(BARR_SourceList *list, BARR_HashMap *map, const char *flags_str, BARR_ThreadPool *pool)
+// in hashmap.h
+bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers, BARR_HashMap *map,
+                              const char *flags_str, BARR_ThreadPool *pool)
 {
-    if (!list || !map || !pool)
+    if (!sources || !map || !pool)
     {
         return false;
     }
@@ -135,21 +138,22 @@ bool BARR_source_list_hash_mt(BARR_SourceList *list, BARR_HashMap *map, const ch
         BARR_errlog("%s(): failed hash %s", __func__, flags_str);
     }
 
-    size_t arena_size = BARR_align_up(sizeof(BARR_HashJobArg), 16) * list->count;
+    size_t arena_size = BARR_align_up(sizeof(BARR_HashJobArg), 16) * sources->count;
     BARR_Arena arena = {0};
     BARR_arena_init(&arena, arena_size, "hash_job_arena", 16);
 
-    for (size_t i = 0; i < list->count; ++i)
+    for (size_t i = 0; i < sources->count; ++i)
     {
         BARR_HashJobArg *job_arg = (BARR_HashJobArg *) BARR_arena_alloc(&arena, sizeof(BARR_HashJobArg));
 
-        job_arg->file = list->entries[i];
+        job_arg->file = sources->entries[i];
         job_arg->flags_hash = flags_hash;
         job_arg->map = map;
+        job_arg->headers = headers;
 
         if (!BARR_thread_pool_add(pool, barr_hash_file_job, job_arg))
         {
-            BARR_errlog("%s(): failed to add job for %s", __func__, list->entries[i]);
+            BARR_errlog("%s(): failed to add job for %s", __func__, sources->entries[i]);
         }
     }
 

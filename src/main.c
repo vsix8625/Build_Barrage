@@ -219,6 +219,7 @@ barr_i32 main(barr_i32 argc, char **argv)
 
     // Cleanup
     // BARR_gc_dump();
+    BARR_gc_file_dump();
     BARR_gc_shutdown();
     BARR_gc_dump();
     BARR_destroy_arena(&g_barr_cmds_arena);

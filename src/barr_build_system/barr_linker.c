@@ -76,7 +76,6 @@ void BARR_dedup_libs_and_add_to_link_args(BARR_LinkArgs *la, const char **libs_a
         return;
     }
 
-    BARR_dbglog("pre dedubp flags_array");
     const char **deduped = BARR_dedup_flags_array(libs_array);
     if (!deduped)
     {

@@ -131,7 +131,7 @@ void BARR_compile_job(barr_ptr arg)
 
         pthread_mutex_lock(&job->progress_ctx->log_mutex);
 
-        printf("\r[%zu/%zu] >>>> %s", done, job->progress_ctx->total, job->src);
+        printf("\r[%zu/%zu] >>>> %s\033[K", done, job->progress_ctx->total, job->src);
         fflush(stdout);
 
         pthread_mutex_unlock(&job->progress_ctx->log_mutex);

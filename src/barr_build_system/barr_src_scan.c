@@ -3,6 +3,7 @@
 
 #include "barr_src_scan.h"
 #include "barr_debug.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_xxhash.h"
 
@@ -12,6 +13,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+static inline barr_i32 barr_is_header_file(const char *path)
+{
+    const char *ext = strrchr(path, '.');
+    if (!ext)
+    {
+        return 0;
+    }
+
+    return BARR_strmatch(ext, ".h") || BARR_strmatch(ext, ".hpp");
+}
 
 static inline barr_i32 barr_is_source_file(const char *path)
 {
@@ -26,11 +38,22 @@ static inline barr_i32 barr_is_source_file(const char *path)
 
 static inline bool barr_skip_dir(const char *path)
 {
-    static const char *skip_names[] = {"build", "bin",        "obj",   ".git",    "cache", ".vs", ".idea",
-                                       "test",  "CMakeFiles", "Debug", "Release", ".barr", NULL};
+    static const char *skip_names[] = {"build", "bin",    "obj",        ".git",  "cache",   ".vs",
+                                       ".idea", "test",   "CMakeFiles", "Debug", "Release", ".barr",
+                                       "docs",  "assets", "scripts",    "modes", NULL};
+
+    if (strstr(path, "/.") != NULL)
+    {
+        return true;
+    }
 
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
+
+    if (base[0] == '.')
+    {
+        return true;
+    }
 
     for (const char **p = skip_names; *p; ++p)
     {
@@ -167,4 +190,74 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
     free(queue);
     printf("\n");
     BARR_log("Found: %zu source files", list->count);
+}
+
+void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list)
+{
+    if (!list || !dirpath)
+    {
+        BARR_errlog("%s(): invalid args", __func__);
+        return;
+    }
+
+    char **queue = BARR_gc_alloc(64 * sizeof(char *));
+    if (!queue)
+    {
+        BARR_errlog("%s(): failed to allocate memory for queue", __func__);
+        return;
+    }
+
+    size_t que_size = 0;
+    size_t que_cap = BARR_SCAN_QUEUE_CAP;
+
+    queue[que_size++] = BARR_gc_strdup(dirpath);
+
+    for (size_t i = 0; i < que_size; ++i)
+    {
+        char *current = queue[i];
+        DIR *dir = opendir(current);
+        if (!dir)
+        {
+            continue;
+        }
+
+        struct dirent *dent;
+        while ((dent = readdir(dir)))
+        {
+            if (BARR_strmatch(dent->d_name, ".") || BARR_strmatch(dent->d_name, ".."))
+            {
+                continue;
+            }
+
+            char fullpath[BARR_PATH_MAX];
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", current, dent->d_name);
+
+            if (dent->d_type == DT_DIR)
+            {
+                if (!barr_skip_dir(dent->d_name))
+                {
+                    BARR_dbglog("Pushing to dir_list: %s -----> %s", __func__, fullpath);
+                    BARR_source_list_push(inc_dir_list, fullpath);
+                    if (que_size >= que_cap)
+                    {
+                        que_cap *= 2;
+                        char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
+                        if (!new_queue)
+                        {
+                            BARR_errlog("%s(): failed to realloc", __func__);
+                            closedir(dir);
+                        }
+                        queue = new_queue;
+                    }
+                    queue[que_size++] = BARR_gc_strdup(fullpath);
+                }
+            }
+            else if (dent->d_type == DT_REG && barr_is_header_file(fullpath))
+            {
+                BARR_source_list_push(list, fullpath);
+            }
+        }
+        closedir(dir);
+    }
+    BARR_log("Found: %zu header files", list->count);
 }

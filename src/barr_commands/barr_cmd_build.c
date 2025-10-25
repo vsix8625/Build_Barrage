@@ -7,8 +7,10 @@
 #include "barr_gc.h"
 #include "barr_glob_config_keys.h"
 #include "barr_glob_config_parser.h"
+#include "barr_hashmap.h"
 #include "barr_io.h"
 #include "barr_linker.h"
+#include "barr_list.h"
 #include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
@@ -88,11 +90,31 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     const char *scan_dir = BARR_getcwd();
 
     // generic list for full scan
-    BARR_SourceList list;
-    if (!BARR_source_list_init(&list, BARR_SOURCE_LIST_INITIAL_FILES))
+    BARR_SourceList sources;
+    if (!BARR_source_list_init(&sources, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize source list.", __func__);
         CRX_close();
+        rc_table->destroy(rc_table);
+        return 1;
+    }
+
+    BARR_SourceList headers;
+    if (!BARR_source_list_init(&headers, BARR_SOURCE_LIST_INITIAL_FILES))
+    {
+        BARR_errlog("%s(): failed to initialize header list.", __func__);
+        CRX_close();
+        rc_table->destroy(rc_table);
+        return 1;
+    }
+
+    BARR_SourceList inc_dir_list;
+    if (!BARR_source_list_init(&inc_dir_list, BARR_BUF_SIZE_32))
+    {
+        BARR_errlog("%s(): failed to initialize include dirs list list.", __func__);
+        CRX_close();
+        BARR_destroy_source_list(&sources);
+        BARR_destroy_source_list(&headers);
         rc_table->destroy(rc_table);
         return 1;
     }
@@ -103,7 +125,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize compile list.", __func__);
         CRX_close();
-        BARR_destroy_source_list(&list);
+        BARR_destroy_source_list(&sources);
+        BARR_destroy_source_list(&headers);
+        BARR_destroy_source_list(&inc_dir_list);
         rc_table->destroy(rc_table);
         return 1;
     }
@@ -114,15 +138,18 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize object list.", __func__);
         CRX_close();
-        BARR_destroy_source_list(&list);
+        BARR_destroy_source_list(&sources);
+        BARR_destroy_source_list(&headers);
+        BARR_destroy_source_list(&inc_dir_list);
         BARR_destroy_source_list(&compile_list);
         rc_table->destroy(rc_table);
         return 1;
     }
 
-    BARR_source_list_scan_dir(&list, scan_dir);
+    BARR_source_list_scan_dir(&sources, scan_dir);
+    BARR_header_list_scan_dir(&headers, scan_dir, &inc_dir_list);
 
-    BARR_HashMap *current_map = BARR_hashmap_create(list.count + (list.count >> 2));
+    BARR_HashMap *current_map = BARR_hashmap_create(sources.count + (sources.count >> 2));
     BARR_dbglog("%s() current map created", __func__);
 
     // Create thread pool
@@ -130,7 +157,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
 
     // cflags we will get them from crux
-    BARR_PROFILE_CALL(BARR_source_list_hash_mt(&list, current_map, "-Wall -Wextra", pool));
+    BARR_PROFILE_CALL(BARR_source_list_hash_mt(&sources, &headers, current_map, "-Wall -Wextra", pool));
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -140,9 +167,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         cached_map = BARR_hashmap_read_cache(BARR_CACHE_FILE);
     }
 
-    for (size_t i = 0; i < list.count; i++)
+    for (size_t i = 0; i < sources.count; i++)
     {
-        const char *file = list.entries[i];
+        const char *file = sources.entries[i];
         const barr_u8 *current_hash = BARR_hashmap_get(current_map, file);
         const barr_u8 *cached_hash = cached_map ? BARR_hashmap_get(cached_map, file) : NULL;
 
@@ -158,7 +185,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // info logs
     if (compile_list.count > 0)
     {
-        BARR_log("Unchanged files: %zu", list.count - compile_list.count);
+        BARR_log("Unchanged files: %zu", sources.count - compile_list.count);
         BARR_log("Files to compile: %zu", compile_list.count);
     }
     else
@@ -169,18 +196,43 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
     // Find packages
 
-    BARR_PackageInfo *zlib_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
-    BARR_find_package("zlib", zlib_info, 0, NULL);
+    BARR_List pkgs;
+    BARR_list_init(&pkgs, 4);
 
-    BARR_PackageInfo *curl_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
-    BARR_find_package("libcurl", curl_info, 0, NULL);
+    BARR_PackageInfo *xxhash_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
+    BARR_find_package("xxhash", xxhash_info, 0, NULL);
 
     //----------------------------------------------------------------------------------------------------
     // compile stage
 
     const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
-    const char *includes_raw[] = {"-Iinc", zlib_info->cflags, curl_info->cflags, NULL};
-    const char **includes = BARR_dedup_flags_array(includes_raw);
+    const char *includes_raw[] = {xxhash_info->cflags, NULL};
+    // const char *includes_raw[] = {0};
+    //  --------------------------------------------------------------------------------------------
+    size_t orig_count = 0;
+    while (includes_raw[orig_count])
+    {
+        orig_count++;
+    }
+
+    size_t total = orig_count + inc_dir_list.count + 1;  // +1 for NULL terminator
+    const char **includes_combined = calloc(total, sizeof(char *));
+
+    for (size_t i = 0; i < orig_count; ++i)
+    {
+        includes_combined[i] = includes_raw[i];  // copy original flags
+    }
+
+    for (size_t i = 0; i < inc_dir_list.count; ++i)
+    {
+        char *buf = malloc(BARR_PATH_MAX + 3);  // "-I" + path + '\0'
+        snprintf(buf, BARR_PATH_MAX + 3, "-I%s", inc_dir_list.entries[i]);
+        includes_combined[orig_count + i] = buf;
+    }
+    includes_combined[total - 1] = NULL;
+
+    const char **includes = BARR_dedup_flags_array(includes_combined);
+    // --------------------------------------------------------------------------------------------
     const char *defines[] = {"-DDEBUG", NULL};
 
     BARR_dbglog("------ dedup includes start ------");
@@ -245,7 +297,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             // cleanup
             BARR_destroy_thread_pool(pool);
             CRX_close();
-            BARR_destroy_source_list(&list);
+            BARR_destroy_source_list(&sources);
+            BARR_destroy_source_list(&headers);
+            BARR_destroy_source_list(&inc_dir_list);
             BARR_destroy_source_list(&compile_list);
             BARR_destroy_source_list(&object_list);
             if (cached_map)
@@ -331,10 +385,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         char *base_link_args[] = {"gcc",
                                   "build/obj/main.c.o",  // main object
-                                  "-Lbuild",
-                                  "-lbarr",
-                                  "-fuse-ld=lld",
-                                  "-Wl,--threads=4"};
+                                  "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
 
         BARR_LinkArgs *la = BARR_link_args_create();
 
@@ -346,8 +397,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // add package info args
-        const char *libs_raw[] = {zlib_info->libs, curl_info->libs, NULL};
+        // const char *libs_raw[] = {zlib_info->libs, curl_info->libs, NULL};
+        const char *libs_raw[] = {xxhash_info->libs, NULL};
         BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
+
+        BARR_link_args_add(la, "-lbarr");
+        BARR_link_args_add(la, "-pthread");
 
         BARR_link_args_add(la, "-o");
         BARR_link_args_add(la, "build/bin/debug/barr_placeholder");
@@ -408,7 +463,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // cleanup
     BARR_destroy_thread_pool(pool);
     CRX_close();
-    BARR_destroy_source_list(&list);
+    BARR_destroy_source_list(&sources);
+    BARR_destroy_source_list(&headers);
+    BARR_destroy_source_list(&inc_dir_list);
     BARR_destroy_source_list(&compile_list);
     BARR_destroy_source_list(&object_list);
     if (cached_map)

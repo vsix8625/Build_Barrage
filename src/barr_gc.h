@@ -152,6 +152,8 @@ void BARR_gc_collect_all(void);
  */
 void BARR_gc_dump(void);
 
+void BARR_gc_file_dump(void);
+
 // -------------------------------------------------------------------------------------
 // Macro helpers
 

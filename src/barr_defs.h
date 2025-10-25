@@ -63,4 +63,6 @@ typedef void (*barr_func_ptr)(void);
 
 #define BARR_MAX_FILE_SIZE (1ULL << 30)
 
+#define BARR_LOOP_RUNNER (1111)
+
 #endif  // BARR_DEFS_H_

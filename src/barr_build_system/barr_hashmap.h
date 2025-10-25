@@ -2,6 +2,8 @@
 #define BARR_HASHMAP_H_
 
 #include "barr_defs.h"
+#include "barr_src_list.h"
+
 #include <bits/pthreadtypes.h>
 
 #define BARR_HASH_MAP_DEFAULT_CAP 65536
@@ -27,6 +29,7 @@ typedef struct BARR_HashJobArg
     const char *file;
     const barr_u8 *flags_hash;
     BARR_HashMap *map;
+    BARR_SourceList *headers;
 } BARR_HashJobArg;
 
 BARR_HashMap *BARR_hashmap_create(size_t capacity);
@@ -37,5 +40,8 @@ const barr_u8 *BARR_hashmap_get(BARR_HashMap *map, const char *key);
 bool BARR_hashmap_write_cache(const BARR_HashMap *map, const char *cache_file);
 BARR_HashMap *BARR_hashmap_read_cache(const char *cache_file);
 void BARR_hashmap_debug(const BARR_HashMap *map);
+
+bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers, BARR_HashMap *map,
+                              const char *flags_str, BARR_ThreadPool *pool);
 
 #endif  // BARR_HASHMAP_H_

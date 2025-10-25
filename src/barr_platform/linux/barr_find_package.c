@@ -24,7 +24,7 @@ BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool
     }
     else
     {
-        const char *home = BARR_GET_HOME();
+        // const char *home = BARR_GET_HOME();
         const char *sys_paths[] = {"/usr/local/lib/pkgconfig",
                                    "/usr/lib/pkgconfig",
                                    "/usr/share/pkgconfig",
@@ -34,7 +34,6 @@ BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool
                                    "/opt/lib/pkgconfig",                   // For custom or Homebrew-like setups
                                    "/usr/local",
                                    "/usr",
-                                   home,
                                    NULL};
 
         for (const char **p = sys_paths; *p; ++p)
@@ -114,3 +113,28 @@ BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool
 }
 
 //----------------------------------------------------------------------------------------------------
+
+static BARR_PkgCacheNode *g_barr_pkgcache_head = NULL;
+
+BARR_PackageInfo *BARR_pkg_cache_get(const char *name)
+{
+    BARR_PkgCacheNode *node = g_barr_pkgcache_head;
+    while (node)
+    {
+        if (BARR_strmatch(node->name, name))
+        {
+            return node->info;
+        }
+        node = node->next;
+    }
+    return NULL;
+}
+
+void BARR_pkg_cache_set(const char *name, BARR_PackageInfo *info)
+{
+    BARR_PkgCacheNode *node = BARR_gc_alloc(sizeof(BARR_PkgCacheNode));
+    node->name = name;
+    node->info = info;
+    node->next = g_barr_pkgcache_head;
+    g_barr_pkgcache_head = node;
+}
