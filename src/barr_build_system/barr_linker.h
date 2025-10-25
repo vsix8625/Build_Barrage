@@ -20,4 +20,6 @@ BARR_LinkArgs *BARR_link_args_create(void);
 void BARR_link_args_add(BARR_LinkArgs *la, const char *arg);
 char **BARR_link_args_finalize(BARR_LinkArgs *la);
 
+void BARR_dedup_libs_and_add_to_link_args(BARR_LinkArgs *la, const char **libs_array);
+
 #endif  // BARR_LINKER_H_

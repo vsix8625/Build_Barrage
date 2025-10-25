@@ -171,16 +171,24 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_PackageInfo *zlib_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
     BARR_find_package("zlib", zlib_info, 0, NULL);
+
     BARR_PackageInfo *curl_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
     BARR_find_package("libcurl", curl_info, 0, NULL);
 
     //----------------------------------------------------------------------------------------------------
     // compile stage
 
-    // placeholder flags
     const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
-    const char *includes[] = {"-Iinc", zlib_info->cflags, curl_info->cflags, NULL};
+    const char *includes_raw[] = {"-Iinc", zlib_info->cflags, curl_info->cflags, NULL};
+    const char **includes = BARR_dedup_flags_array(includes_raw);
     const char *defines[] = {"-DDEBUG", NULL};
+
+    BARR_dbglog("------ dedup includes start ------");
+    for (const char **p = includes; p && *p; ++p)
+    {
+        BARR_dbglog("include[%zu]: '%s'", (size_t) (p - includes), *p);
+    }
+    BARR_dbglog("------ dedup includes end ------");
 
     BARR_CompileInfoCTX compile_ctx = {.compiler = "gcc",
                                        .flags = flags,
@@ -338,8 +346,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // add package info args
-        BARR_link_args_add(la, zlib_info->libs);
-        BARR_link_args_add(la, curl_info->libs);
+        const char *libs_raw[] = {zlib_info->libs, curl_info->libs, NULL};
+        BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
 
         BARR_link_args_add(la, "-o");
         BARR_link_args_add(la, "build/bin/debug/barr_placeholder");

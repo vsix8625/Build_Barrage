@@ -1,4 +1,5 @@
 #include "barr_linker.h"
+#include "barr_debug.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 
@@ -66,4 +67,24 @@ char **BARR_link_args_finalize(BARR_LinkArgs *la)
     }
     la->args[la->count] = NULL;
     return la->args;
+}
+
+void BARR_dedup_libs_and_add_to_link_args(BARR_LinkArgs *la, const char **libs_array)
+{
+    if (!la || !libs_array)
+    {
+        return;
+    }
+
+    BARR_dbglog("pre dedubp flags_array");
+    const char **deduped = BARR_dedup_flags_array(libs_array);
+    if (!deduped)
+    {
+        return;
+    }
+
+    for (size_t i = 0; deduped[i] != NULL; ++i)
+    {
+        BARR_link_args_add(la, deduped[i]);
+    }
 }

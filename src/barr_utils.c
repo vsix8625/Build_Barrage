@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE 700
 
 #include "barr_debug.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <ctype.h>
@@ -221,3 +222,164 @@ bool BARR_isdir_empty(const char *path)
     closedir(d);
     return true;  // empty only . and ..
 }
+
+//----------------------------------------------------------------------------------------------------
+
+static size_t barr_count_tokens_in_string(const char *s)
+{
+    size_t count = 0;
+
+    if (!s)
+    {
+        return 0;
+    }
+
+    const char *p = s;
+    for (;;)
+    {
+        while ((*p != '\0') && isspace((barr_u8) *p))
+        {
+            ++p;
+        }
+
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        ++count;
+
+        while ((*p != '\0') && !isspace((barr_u8) *p))
+        {
+            ++p;
+        }
+    }
+
+    return count;
+}
+
+static size_t barr_count_tokens_in_array(const char **arr)
+{
+    if (!arr)
+    {
+        return 0;
+    }
+    size_t total = 0;
+
+    for (size_t i = 0; arr[i] != NULL; ++i)
+    {
+        total += barr_count_tokens_in_string(arr[i]);
+    }
+    return total;
+}
+
+static bool barr_token_exists_in_out(char **out, size_t n, const char *tok)
+{
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (BARR_strmatch(out[i], tok))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_count, const char *src)
+{
+    if (!out || !out_count || !src)
+    {
+        return;
+    }
+
+    const char *p = src;
+
+    while (*p != '\0')
+    {
+        while ((*p != '\0') && isspace((barr_u8) *p))
+        {
+            ++p;
+        }
+
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        const char *start = p;
+
+        while ((*p != '\0') && !isspace((unsigned char) *p))
+        {
+            ++p;
+        }
+
+        size_t len = (size_t) (p - start);
+
+        if (len == 0)
+        {
+            break;
+        }
+
+        char *tok = BARR_gc_alloc(len + 1);
+        if (!tok)
+        {
+            continue;
+        }
+
+        memcpy(tok, start, len);
+        tok[len] = '\0';
+
+        if (!barr_token_exists_in_out(out, *out_count, tok))
+        {
+            if (*out_count < cap)
+            {
+                out[*out_count] = tok;
+                *out_count += 1;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+}
+
+const char **BARR_dedup_flags_array(const char **src_arr)
+{
+    if (!src_arr)
+    {
+        return NULL;
+    }
+
+    size_t total_tokens = barr_count_tokens_in_array(src_arr);
+
+    if (total_tokens == 0)
+    {
+        const char **empty = BARR_gc_alloc(sizeof(char *));
+        if (!empty)
+        {
+            return NULL;
+        }
+        ((char **) empty)[0] = NULL;
+        return empty;
+    }
+
+    char **out = BARR_gc_alloc((total_tokens + 1) * sizeof(char *));
+    if (!out)
+    {
+        return NULL;
+    }
+
+    size_t out_count = 0;
+
+    for (size_t i = 0; src_arr[i] != NULL; ++i)
+    {
+        barr_tokenize_and_append_unique(out, total_tokens, &out_count, src_arr[i]);
+    }
+
+    out[out_count] = NULL;
+
+    return (const char **) out;
+}
+
+//----------------------------------------------------------------------------------------------------

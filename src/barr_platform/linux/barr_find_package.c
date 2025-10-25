@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+//----------------------------------------------------------------------------------------------------
+
 BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool is_static, const char *search_path)
 {
     if (!pkg || !out)
@@ -110,3 +112,5 @@ BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool
 
     return out;
 }
+
+//----------------------------------------------------------------------------------------------------
