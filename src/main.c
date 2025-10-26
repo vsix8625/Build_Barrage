@@ -160,6 +160,10 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *rebuild_aliases[] = {"-rb", NULL};
     barr_register_command("rebuild", BARR_command_rebuild, "Clean and build project", rebuild_aliases, NULL);
 
+    // run
+    static const char *run_aliases[] = {"-r", NULL};
+    barr_register_command("run", BARR_command_run, "Run latest binary", run_aliases, NULL);
+
     // clean
     static const char *clean_aliases[] = {"-c", NULL};
     barr_register_command("clean", BARR_command_clean, "Clean build directory", clean_aliases, NULL);

@@ -30,6 +30,9 @@ Only `print()` is currently supported for logging purposes.
 |`build_type` | `"debug"` or `"release"` |
 |`compiler` | Compiler to use (`"gcc"` or `"clang"`)|
 |`out_dir` | Base output directory for build artifacts |
+|`user_libs` | User defined `-l` librarys |
+|`lib_paths` | Additional (`-L`) paths | 
+|`target_type` | `"executable"` or `"library"` |
 
 ## Example Barrfile
 
@@ -53,5 +56,6 @@ Only `print()` is currently supported for logging purposes.
 - `project` is used to generate the output binary path. 
 - `cflags` and `cflags_release` are automatically selected based on the `build_type`.  
 - `defines` and `includes` override the defaults and passed to the compiler.  
+- `target_type` library creates both shared and static lib.  
 
 

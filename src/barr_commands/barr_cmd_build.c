@@ -509,6 +509,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
         }
 
+        // out name
+        const char *project_name = OLM_get_var("project");
+        if (!project_name)
+        {
+            project_name = "barr_default";
+        }
+
         // archive stage
         barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
         if (archive_ret != 0)
@@ -516,99 +523,175 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Archive stage failed");
         }
 
-        // link stage
-        // out file will be obtain from crux as well build type and ncores maybe
-        // linker for -fuse flag etc
-        // following link_args are a placeholder
-
-        char *base_link_args[] = {"gcc",
-                                  "build/obj/main.c.o",  // main object
-                                  "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
-
-        BARR_LinkArgs *la = BARR_link_args_create();
-
-        // push base link args
-        size_t base_la_count = sizeof(base_link_args) / sizeof(base_link_args[0]);
-        for (size_t i = 0; i < base_la_count; ++i)
+        const char *target_type = OLM_get_var("target_type");
+        if (!target_type || !target_type[0])
         {
-            BARR_link_args_add(la, base_link_args[i]);
+            target_type = "executable";
         }
 
-        size_t lib_count = 0;
-        for (size_t i = 0; i < pkg_list.count; ++i)
+        char lib_dir[BARR_PATH_MAX];
+        snprintf(lib_dir, sizeof(lib_dir), "build/lib/%s", debug_build ? "debug" : "release");
+        barr_mkdir("build/lib");
+        barr_mkdir(lib_dir);
+
+        if (BARR_strmatch(target_type, "library"))
         {
-            BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
-            if (!pkg_info)
+            // ----------------------------------------------------------------------------------------------------
+            // STATIC & SHARED LIB
+            // ----------------------------------------------------------------------------------------------------
+
+            char dest_static[BARR_PATH_MAX * 2];
+            snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, project_name);
+
+            BARR_mv("build/libbarr.a", dest_static);
+
+            char dest_shared[BARR_PATH_MAX * 2];
+            snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, project_name);
+
+            BARR_log("Building shared library: %s", dest_shared);
+
+            BARR_List so_args;
+            BARR_list_init(&so_args, 16);
+            BARR_list_push(&so_args, (char *) compiler);
+            BARR_list_push(&so_args, "-shared");
+            BARR_list_push(&so_args, "-fPIC");
+            BARR_list_push(&so_args, "-o");
+            BARR_list_push(&so_args, dest_shared);
+
+            for (size_t i = 0; i < object_list.count; ++i)
             {
-                continue;
+                const char *obj = object_list.entries[i];
+                if (!BARR_strmatch(obj, "build/obj/main.c.o"))
+                {
+                    BARR_dbglog("objects for shared: %s", (char *) obj);
+                    BARR_list_push(&so_args, (char *) obj);
+                }
             }
-            if (pkg_info->libs && pkg_info->libs[0])
+            BARR_list_push(&so_args, NULL);
+
+            char **so_cmd = (char **) so_args.items;
+            barr_i32 so_ret = BARR_run_process(so_cmd[0], so_cmd, false);
+            if (so_ret != 0)
             {
-                lib_count++;
+                BARR_errlog("Shared lib creation failed");
             }
         }
-
-        if (lib_count > 0)
+        else
         {
-            const char **libs_raw = BARR_gc_calloc(lib_count + 1, sizeof(char *));
-            size_t idx = 0;
+            BARR_log("Building executable target: %s", project_name);
+            // base linker args
+            char *base_link_args[] = {"gcc",
+                                      "build/obj/main.c.o",  // main object
+                                      "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
 
+            BARR_LinkArgs *la = BARR_link_args_create();
+
+            // push base link args
+            size_t base_la_count = sizeof(base_link_args) / sizeof(base_link_args[0]);
+            for (size_t i = 0; i < base_la_count; ++i)
+            {
+                BARR_link_args_add(la, base_link_args[i]);
+            }
+
+            size_t lib_count = 0;
             for (size_t i = 0; i < pkg_list.count; ++i)
             {
                 BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
                 if (!pkg_info)
                 {
-                    BARR_warnlog("Null package info at index %zu — skipping", i);
                     continue;
                 }
-
                 if (pkg_info->libs && pkg_info->libs[0])
                 {
-                    BARR_dbglog("[pkg] libs for package: %s -> %s", pkg_info->name, pkg_info->libs);
-                    libs_raw[idx++] = pkg_info->libs;
+                    lib_count++;
                 }
             }
 
-            libs_raw[idx] = NULL;
-
-            BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
-        }
-        else
-        {
-            BARR_dbglog("No package libs to link — skipping pkg libs stage.");
-        }
-
-        BARR_link_args_add(la, "-lbarr");
-        BARR_link_args_add(la, "-pthread");
-
-        const char *project_name = OLM_get_var("project");
-        if (!project_name)
-        {
-            project_name = "barr_default";
-        }
-
-        char output_path[BARR_PATH_MAX];
-        snprintf(output_path, sizeof(output_path), "%s/bin/%s/%s", "build", debug_build ? "debug" : "release",
-                 project_name);
-
-        BARR_link_args_add(la, "-o");
-        BARR_link_args_add(la, output_path);
-
-        // finalize link args
-        char **link_args = BARR_link_args_finalize(la);
-        if (1)  // TODO: add verbose in future
-        {
-            for (char **arg = link_args; *arg != NULL; ++arg)
+            if (lib_count > 0)
             {
-                BARR_printf("%s ", *arg);
+                const char **libs_raw = BARR_gc_calloc(lib_count + 1, sizeof(char *));
+                size_t idx = 0;
+
+                for (size_t i = 0; i < pkg_list.count; ++i)
+                {
+                    BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
+                    if (!pkg_info)
+                    {
+                        BARR_warnlog("Null package info at index %zu — skipping", i);
+                        continue;
+                    }
+
+                    if (pkg_info->libs && pkg_info->libs[0])
+                    {
+                        BARR_dbglog("[pkg] libs for package: %s -> %s", pkg_info->name, pkg_info->libs);
+                        libs_raw[idx++] = pkg_info->libs;
+                    }
+                }
+
+                libs_raw[idx] = NULL;
+
+                BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
             }
-        }
-        BARR_printf("\n");
-        barr_i32 link_ret = BARR_link_stage(link_args);
-        if (link_ret != 0)
-        {
-            BARR_errlog("Link stage failed");
-        }
+            else
+            {
+                BARR_dbglog("No package libs to link — skipping pkg libs stage.");
+            }
+
+            BARR_link_args_add(la, "-lbarr");
+            BARR_link_args_add(la, "-pthread");
+
+            const char *lib_paths_raw = OLM_get_var("lib_paths");
+            if (lib_paths_raw && lib_paths_raw[0])
+            {
+                char **lib_paths = BARR_tokenize_string(lib_paths_raw);
+                for (char **p = lib_paths; p && *p; ++p)
+                {
+                    BARR_link_args_add(la, *p);
+                }
+            }
+            else
+            {
+                lib_paths_raw = "";
+            }
+
+            const char *user_libs_raw = OLM_get_var("user_libs");
+            if (user_libs_raw && user_libs_raw[0])
+            {
+                char **user_libs = BARR_tokenize_string(user_libs_raw);
+                for (char **p = user_libs; p && *p; ++p)
+                {
+                    BARR_link_args_add(la, *p);
+                }
+            }
+            else
+            {
+                user_libs_raw = "";
+            }
+
+            char output_path[BARR_PATH_MAX];
+            snprintf(output_path, sizeof(output_path), "%s/bin/%s/%s", "build", debug_build ? "debug" : "release",
+                     project_name);
+
+            BARR_link_args_add(la, "-o");
+            BARR_link_args_add(la, output_path);
+
+            // finalize link args
+            char **link_args = BARR_link_args_finalize(la);
+            if (1)  // TODO: add verbose in future
+            {
+                for (char **arg = link_args; *arg != NULL; ++arg)
+                {
+                    BARR_printf("%s ", *arg);
+                }
+            }
+            BARR_printf("\n");
+            barr_i32 link_ret = BARR_link_stage(link_args);
+            if (link_ret != 0)
+            {
+                BARR_errlog("Link stage failed");
+            }
+            BARR_file_write(".barr/data/last_bin", "%s", output_path);
+        }  // executable
     }
 
     //----------------------------------------------------------------------------------------------------
