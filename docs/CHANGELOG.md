@@ -9,8 +9,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Fix: find_package order flow and removing duplicates in the process
 - Custom build: hash + dependency track + cache systems (core systems implemented) 
 - Garbage collector (initial system implemented)
-    - Test gc functionality with a subsytem 
-- Custom DSL`(Crux)` with a C-like syntax
+- Custom DSL`(Olmos)` with a C-like syntax
 - Optimize build process. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
 - Project sessions and possibly `live-build` daemon.  
@@ -22,6 +21,18 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
     - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
                `barr tool --gdb run <args>` maybe can be added.  
 - Windows support  
+
+---
+
+## [0.12.1] – 2025-10-26
+### Added
+- `BARR_gc_file_dump()` that writes to `barr_gc_dump.txt` file, all active allocations at the call time.  
+- Initial integration for `Olmos DSL` for defining `Barr` build configurations.  
+### Changed
+- Renamed `Crux` to `Olmos`
+### Fixed 
+- Fixed some issues with detecting directories to include in `-I` flags
+### Removed
 
 ---
 

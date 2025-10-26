@@ -25,7 +25,7 @@ endif()
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.c
-	src/crux/*.c
+	src/olmos/*.c
     src/barr_commands/*.c
     src/barr_lua_rt/*.c
     src/barr_build_system/*.c
@@ -38,7 +38,7 @@ add_executable(${APP_NAME} ${SRC_FILES})
 target_include_directories(${APP_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/inc
-	${CMAKE_SOURCE_DIR}/src/crux
+	${CMAKE_SOURCE_DIR}/src/olmos
 	${CMAKE_SOURCE_DIR}/src/barr_commands
 	${CMAKE_SOURCE_DIR}/src/barr_build_system
 	${CMAKE_SOURCE_DIR}/src/barr_platform

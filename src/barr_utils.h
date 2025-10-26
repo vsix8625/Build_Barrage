@@ -35,4 +35,6 @@ bool BARR_isdir_empty(const char *path);
 
 const char **BARR_dedup_flags_array(const char **src_arr);
 
+char **BARR_tokenize_string(const char *str);
+
 #endif  // BARR_UTILS_H_

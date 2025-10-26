@@ -383,3 +383,38 @@ const char **BARR_dedup_flags_array(const char **src_arr)
 }
 
 //----------------------------------------------------------------------------------------------------
+// tokenize str
+
+// NOTE: tokens point into GC-allocated string, do NOT free individually
+char **BARR_tokenize_string(const char *str)
+{
+    if (!str)
+    {
+        return NULL;
+    }
+
+    size_t count = 0;
+    const char *p = str;
+    while (*p)
+    {
+        if (*p == ' ')
+        {
+            count++;
+        }
+        p++;
+    }
+
+    char **arr = BARR_gc_calloc(count + 2, sizeof(char *));
+    char *copy = BARR_gc_strdup(str);
+
+    size_t i = 0;
+    char *token = strtok(copy, " ");
+    while (token)
+    {
+        arr[i++] = token;
+        token = strtok(NULL, " ");
+    }
+    arr[i] = NULL;
+
+    return arr;
+}

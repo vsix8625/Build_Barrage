@@ -14,8 +14,8 @@
 #include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
-#include "crx.h"
-#include "crx_ast.h"
+#include "olmos.h"
+#include "olmos_ast.h"
 
 #include <inttypes.h>
 #include <libgen.h>
@@ -42,6 +42,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (barr_mkdir("build"))
         {
             BARR_errlog("Failed to create build directory");
+            return 1;
+        }
+        if (barr_mkdir("build/bin"))
+        {
+            BARR_errlog("Failed to create bin directory");
             return 1;
         }
         if (barr_mkdir("build/obj"))
@@ -72,17 +77,35 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_ConfigTable *rc_table = BARR_config_parse_file(rc_file);
 
     //----------------------------------------------------------------------------------------------------
-    // Crux
+    // olmos
 
-    if (!CRX_init())
+    if (!OLM_init())
     {
-        BARR_errlog("%s(): failed to initialize crux", __func__);
+        BARR_errlog("%s(): failed to initialize olmos", __func__);
         rc_table->destroy(rc_table);
         return 1;
     }
 
-    CRX_AST_Node *root = crx_test_ast();
-    CRX_eval_node(root);
+    if (!BARR_isfile(BARR_OLMOS_FILE))
+    {
+        BARR_errlog("Fatal: barr build command require 'Barrfile' in %s to run", BARR_getcwd());
+        rc_table->destroy(rc_table);
+        return 1;
+    }
+    OLM_AST_Node *olmos_ast = OLM_parse_file(BARR_OLMOS_FILE);
+    if (!olmos_ast)
+    {
+        BARR_errlog("Fatal: failed to parse %s", BARR_OLMOS_FILE);
+        rc_table->destroy(rc_table);
+        return 1;
+    }
+    OLM_eval_node(olmos_ast);
+
+    // example retrieving variables from Barrfile
+    const char *olmos_cflags = OLM_get_var("cflags");
+    const char *olmos_defines = OLM_get_var("defines");
+    BARR_log("Barrfile clfags = %s", olmos_cflags);
+    BARR_log("Barrfile defines = %s", olmos_defines);
 
     //----------------------------------------------------------------------------------------------------
     // Begin build
@@ -94,7 +117,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!BARR_source_list_init(&sources, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize source list.", __func__);
-        CRX_close();
+        OLM_close();
         rc_table->destroy(rc_table);
         return 1;
     }
@@ -103,7 +126,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!BARR_source_list_init(&headers, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize header list.", __func__);
-        CRX_close();
+        OLM_close();
         rc_table->destroy(rc_table);
         return 1;
     }
@@ -112,7 +135,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!BARR_source_list_init(&inc_dir_list, BARR_BUF_SIZE_32))
     {
         BARR_errlog("%s(): failed to initialize include dirs list list.", __func__);
-        CRX_close();
+        OLM_close();
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
         rc_table->destroy(rc_table);
@@ -124,7 +147,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!BARR_source_list_init(&compile_list, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize compile list.", __func__);
-        CRX_close();
+        OLM_close();
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
@@ -137,7 +160,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!BARR_source_list_init(&object_list, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize object list.", __func__);
-        CRX_close();
+        OLM_close();
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
@@ -156,8 +179,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     barr_i32 cores = BARR_OS_GET_CORES();
     BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
 
-    // cflags we will get them from crux
-    BARR_PROFILE_CALL(BARR_source_list_hash_mt(&sources, &headers, current_map, "-Wall -Wextra", pool));
+    BARR_source_list_hash_mt(&sources, &headers, current_map, olmos_cflags ? olmos_cflags : "", pool);
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -196,44 +218,160 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
     // Find packages
 
-    BARR_List pkgs;
-    BARR_list_init(&pkgs, 4);
+    BARR_List pkg_list;
+    BARR_list_init(&pkg_list, 4);
 
-    BARR_PackageInfo *xxhash_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
-    BARR_find_package("xxhash", xxhash_info, 0, NULL);
+    for (size_t i = 0; i < olmos_ast->child_count; i++)
+    {
+        OLM_AST_Node *node = olmos_ast->children[i];
+
+        if (node->type == OLM_NODE_FN_CALL && BARR_strmatch(node->name, "find_package"))
+        {
+            BARR_dbglog("pre tokenize string ====  %s", node->args[0]);
+
+            char **pkgs = BARR_tokenize_string(node->args[0]);
+            for (char **p = pkgs; p && *p; ++p)
+            {
+                BARR_PackageInfo *pkg_info = BARR_gc_alloc(sizeof(BARR_PackageInfo));
+                memset(pkg_info, 0, sizeof(*pkg_info));
+
+                if (!BARR_find_package(*p, pkg_info, 0, NULL))
+                {
+                    BARR_warnlog("Package %s not found", *p);
+                    continue;
+                }
+
+                if (!pkg_info->cflags)
+                {
+                    pkg_info->cflags = BARR_gc_strdup("");
+                }
+
+                BARR_list_push(&pkg_list, pkg_info);
+            }
+        }
+    }
 
     //----------------------------------------------------------------------------------------------------
     // compile stage
 
-    const char *flags[] = {"-Werror", "-Wextra", "-Wall", "-g", NULL};
-    const char *includes_raw[] = {xxhash_info->cflags, NULL};
-    // const char *includes_raw[] = {0};
-    //  --------------------------------------------------------------------------------------------
-    size_t orig_count = 0;
-    while (includes_raw[orig_count])
+    const char *compiler = OLM_get_var("compiler");
+    if (!compiler)
     {
-        orig_count++;
+        compiler = "gcc";
     }
 
-    size_t total = orig_count + inc_dir_list.count + 1;  // +1 for NULL terminator
-    const char **includes_combined = calloc(total, sizeof(char *));
-
-    for (size_t i = 0; i < orig_count; ++i)
+    const char *out_dir = OLM_get_var("out_dir");
+    if (!out_dir)
     {
-        includes_combined[i] = includes_raw[i];  // copy original flags
+        out_dir = "build/obj";
     }
 
-    for (size_t i = 0; i < inc_dir_list.count; ++i)
+    const char *build_type = OLM_get_var("build_type");
+    if (!build_type)
     {
-        char *buf = malloc(BARR_PATH_MAX + 3);  // "-I" + path + '\0'
-        snprintf(buf, BARR_PATH_MAX + 3, "-I%s", inc_dir_list.entries[i]);
-        includes_combined[orig_count + i] = buf;
+        build_type = "debug";
     }
-    includes_combined[total - 1] = NULL;
+    bool debug_build = (build_type && BARR_strmatch(build_type, "debug"));
 
-    const char **includes = BARR_dedup_flags_array(includes_combined);
+    char build_dir_path[BARR_BUF_SIZE_1024];
+    snprintf(build_dir_path, sizeof(build_dir_path), "build/bin/%s", build_type);
+
+    if (barr_mkdir(build_dir_path))
+    {
+        BARR_warnlog("%s(): failed to create %s", __func__, build_dir_path);
+    }
+
+    char **flags = NULL;
+    if (debug_build)
+    {
+        const char *cflags = OLM_get_var("cflags");
+        if (!cflags || !cflags[0])
+        {
+            cflags = "-Wall -Wextra -Werror -g";
+        }
+        flags = BARR_tokenize_string(cflags);
+    }
+    else
+    {
+        const char *cflags_release = OLM_get_var("cflags_release");
+        if (!cflags_release || !cflags_release[0])
+        {
+            cflags_release = "-O3 -Wall";
+        }
+        flags = BARR_tokenize_string(cflags_release);
+    }
+
+    // prepare includes
+    const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
+    const char **includes = NULL;
+
+    const char *olmos_includes_raw = OLM_get_var("includes");
+    if (olmos_includes_raw && olmos_includes_raw[0] != '\0')
+    {
+        includes = (const char **) BARR_tokenize_string(olmos_includes_raw);
+    }
+    else
+    {
+        size_t orig_count = 0;
+        while (includes_raw[orig_count])
+        {
+            orig_count++;
+        }
+
+        size_t total = orig_count + inc_dir_list.count + 1;  // +1 for NULL terminator
+        const char **includes_combined = BARR_gc_calloc(total, sizeof(char *));
+
+        for (size_t i = 0; i < orig_count; ++i)
+        {
+            includes_combined[i] = includes_raw[i];  // copy original flags
+        }
+
+        for (size_t i = 0; i < inc_dir_list.count; ++i)
+        {
+            char *buf = BARR_gc_alloc(BARR_PATH_MAX + 3);  // "-I" + path + '\0'
+            snprintf(buf, BARR_PATH_MAX + 3, "-I%s", inc_dir_list.entries[i]);
+            includes_combined[orig_count + i] = buf;
+            BARR_dbglog("BUF _-`-_ = %s", buf);
+        }
+        includes_combined[total - 1] = NULL;
+        includes = includes_combined;
+    }
+
+    BARR_List merged_includes;
+    BARR_list_init(&merged_includes, 8);
+
+    for (const char **p = includes; p && *p; ++p)
+    {
+        BARR_list_push(&merged_includes, BARR_gc_strdup(*p));
+    }
+
+    for (size_t i = 0; i < pkg_list.count; ++i)
+    {
+        BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
+
+        if (!pkg_info || !pkg_info->cflags)
+        {
+            continue;
+        }
+
+        char **pkg_flags = BARR_tokenize_string(pkg_info->cflags);
+        for (char **f = pkg_flags; f && *f; ++f)
+        {
+            BARR_dbglog("pushing to merged = %s", *f);
+            BARR_list_push(&merged_includes, BARR_gc_strdup(*f));
+        }
+    }
+
+    BARR_list_push(&merged_includes, NULL);
+
+    includes = BARR_dedup_flags_array((const char **) merged_includes.items);
     // --------------------------------------------------------------------------------------------
-    const char *defines[] = {"-DDEBUG", NULL};
+    const char *olm_defines = OLM_get_var("defines");
+    if (!olm_defines)
+    {
+        olm_defines = "-DDEBUG";
+    }
+    char **defines = BARR_tokenize_string(olm_defines);
 
     BARR_dbglog("------ dedup includes start ------");
     for (const char **p = includes; p && *p; ++p)
@@ -242,17 +380,17 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_dbglog("------ dedup includes end ------");
 
-    BARR_CompileInfoCTX compile_ctx = {.compiler = "gcc",
-                                       .flags = flags,
-                                       .out_dir = "build/obj",
+    BARR_CompileInfoCTX compile_ctx = {.compiler = compiler,
+                                       .flags = (const char **) flags,
+                                       .out_dir = out_dir,
                                        .includes = includes,
-                                       .defines = defines,
-                                       .debug_build = true};
+                                       .defines = (const char **) defines,
+                                       .debug_build = debug_build};
 
     BARR_BuildProgressCTX progress_ctx = {
         .completed = 0, .total = compile_list.count, .log_mutex = PTHREAD_MUTEX_INITIALIZER};
 
-    // get the precompile file from crux
+    // get the precompile file from olmos
     const char *precompile_file = "src/common.h";
     compile_ctx.pch_file = precompile_file;
 
@@ -296,7 +434,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
             // cleanup
             BARR_destroy_thread_pool(pool);
-            CRX_close();
+            OLM_close();
             BARR_destroy_source_list(&sources);
             BARR_destroy_source_list(&headers);
             BARR_destroy_source_list(&inc_dir_list);
@@ -363,7 +501,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 BARR_errlog("Failed to create bin directory");
                 return 1;
             }
-            // TODO: need to change this with config build type from crux
+            // TODO: need to change this with config build type from olmos
             if (barr_mkdir("build/bin/debug"))
             {
                 BARR_errlog("Failed to create debug directory");
@@ -396,16 +534,65 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_link_args_add(la, base_link_args[i]);
         }
 
-        // add package info args
-        // const char *libs_raw[] = {zlib_info->libs, curl_info->libs, NULL};
-        const char *libs_raw[] = {xxhash_info->libs, NULL};
-        BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
+        size_t lib_count = 0;
+        for (size_t i = 0; i < pkg_list.count; ++i)
+        {
+            BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
+            if (!pkg_info)
+            {
+                continue;
+            }
+            if (pkg_info->libs && pkg_info->libs[0])
+            {
+                lib_count++;
+            }
+        }
+
+        if (lib_count > 0)
+        {
+            const char **libs_raw = BARR_gc_calloc(lib_count + 1, sizeof(char *));
+            size_t idx = 0;
+
+            for (size_t i = 0; i < pkg_list.count; ++i)
+            {
+                BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
+                if (!pkg_info)
+                {
+                    BARR_warnlog("Null package info at index %zu — skipping", i);
+                    continue;
+                }
+
+                if (pkg_info->libs && pkg_info->libs[0])
+                {
+                    BARR_dbglog("[pkg] libs for package: %s -> %s", pkg_info->name, pkg_info->libs);
+                    libs_raw[idx++] = pkg_info->libs;
+                }
+            }
+
+            libs_raw[idx] = NULL;
+
+            BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
+        }
+        else
+        {
+            BARR_dbglog("No package libs to link — skipping pkg libs stage.");
+        }
 
         BARR_link_args_add(la, "-lbarr");
         BARR_link_args_add(la, "-pthread");
 
+        const char *project_name = OLM_get_var("project");
+        if (!project_name)
+        {
+            project_name = "barr_default";
+        }
+
+        char output_path[BARR_PATH_MAX];
+        snprintf(output_path, sizeof(output_path), "%s/bin/%s/%s", "build", debug_build ? "debug" : "release",
+                 project_name);
+
         BARR_link_args_add(la, "-o");
-        BARR_link_args_add(la, "build/bin/debug/barr_placeholder");
+        BARR_link_args_add(la, output_path);
 
         // finalize link args
         char **link_args = BARR_link_args_finalize(la);
@@ -462,7 +649,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // cleanup
     BARR_destroy_thread_pool(pool);
-    CRX_close();
+    OLM_close();
     BARR_destroy_source_list(&sources);
     BARR_destroy_source_list(&headers);
     BARR_destroy_source_list(&inc_dir_list);
