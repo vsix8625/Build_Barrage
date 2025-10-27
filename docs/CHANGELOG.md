@@ -24,6 +24,19 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.14.2] – 2025-10-27
+### Added
+### Changed
+### Fixed 
+- Usage of `BARR_gc` heap allocations tracked on most systems.  
+- Fix source list reallocation corruption on large projects
+    - Correctly grow path buffer and entries array when capacity is zero
+    - Prevent buffer shrink that caused crashes for large number of source files
+    - Ensures all src_path pointers remain valid after realloc
+### Removed
+
+---
+
 ## [0.12.1] – 2025-10-26
 ### Added
 - `BARR_gc_file_dump()` that writes to `barr_gc_dump.txt` file, all active allocations at the call time.  

@@ -1,5 +1,7 @@
 #include "barr_cmd_build.h"
+#include "barr_batch_build.h"
 #include "barr_build_ctx.h"
+#include "barr_cmd_clean.h"
 #include "barr_cmd_mode.h"
 #include "barr_debug.h"
 #include "barr_env.h"
@@ -27,8 +29,6 @@
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
-    BARR_VOID(argc);
-    BARR_VOID(argv);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -177,6 +177,42 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_source_list_scan_dir(&sources, scan_dir);
     BARR_header_list_scan_dir(&headers, scan_dir, &inc_dir_list);
+
+    bool is_batch_build = false;
+    if (argc > 1)
+    {
+        for (barr_i32 i = 1; i < argc; i++)
+        {
+            const char *args = argv[i];
+            if (BARR_strmatch(args, "--batch"))
+            {
+                BARR_log("Batch mode initialized");
+                is_batch_build = true;
+            }
+            else
+            {
+                BARR_warnlog("Invalid option for build command: %s", args);
+            }
+        }
+    }
+
+    BARR_SourceList batch_list = {0};
+    if (is_batch_build)
+    {
+        if (!BARR_source_list_init(&batch_list, BARR_SOURCE_LIST_INITIAL_FILES))
+        {
+            BARR_warnlog("%s(): failed to initialize batch list, disabling batch mode", __func__);
+            is_batch_build = false;
+        }
+        else
+        {
+            BARR_create_batches(&sources, &batch_list);
+            sources = batch_list;
+
+            BARR_destroy_source_list(&batch_list);
+            memset(&batch_list, 0, sizeof(BARR_SourceList));
+        }
+    }
 
     BARR_HashMap *current_map = BARR_hashmap_create(sources.count + (sources.count >> 2));
     BARR_dbglog("%s() current map created", __func__);
@@ -477,6 +513,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             printf("\n");
             BARR_errlog("%s(): failed to write cache", __func__);
         }
+        BARR_rmrf("build/batch");
     }
     else
     {

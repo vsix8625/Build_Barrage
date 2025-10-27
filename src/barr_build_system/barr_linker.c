@@ -8,7 +8,7 @@
 barr_i32 BARR_archive_stage(BARR_SourceList *list, const char *archive_path)
 {
     size_t argc = list->count + 3;
-    char **args = malloc(sizeof(char *) * (argc + 1));
+    char **args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
     size_t idx = 0;
     args[idx++] = "ar";
     args[idx++] = "rcs";
@@ -21,7 +21,6 @@ barr_i32 BARR_archive_stage(BARR_SourceList *list, const char *archive_path)
     args[idx] = NULL;
 
     barr_i32 ret = BARR_run_process(args[0], args, false);
-    free(args);
     return ret;
 }
 

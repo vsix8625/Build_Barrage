@@ -173,7 +173,6 @@ bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers
     {
         const char *src_path = sources->entries[i];
 
-        BARR_dbglog("pre job arg alloc gc");
         BARR_HashJobArg *job_arg = (BARR_HashJobArg *) BARR_gc_alloc(sizeof(BARR_HashJobArg));
         if (job_arg == NULL)
         {
