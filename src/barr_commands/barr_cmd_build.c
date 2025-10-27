@@ -103,9 +103,15 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // example retrieving variables from Barrfile
     const char *olmos_cflags = OLM_get_var("cflags");
+    if (!olmos_cflags)
+    {
+        olmos_cflags = "-Wall -Wextra -Werror -g";
+    }
     const char *olmos_defines = OLM_get_var("defines");
-    BARR_log("Barrfile clfags = %s", olmos_cflags);
-    BARR_log("Barrfile defines = %s", olmos_defines);
+    if (!olmos_defines)
+    {
+        olmos_defines = "-DDEBUG";
+    }
 
     //----------------------------------------------------------------------------------------------------
     // Begin build
@@ -179,7 +185,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     barr_i32 cores = BARR_OS_GET_CORES();
     BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
 
-    BARR_source_list_hash_mt(&sources, &headers, current_map, olmos_cflags ? olmos_cflags : "", pool);
+    const char *olmos_cflags_cp = BARR_gc_strdup(olmos_cflags);
+    BARR_source_list_hash_mt(&sources, &headers, current_map, olmos_cflags_cp, pool);
     BARR_hashmap_debug(current_map);
 
     BARR_HashMap *cached_map = NULL;
@@ -276,9 +283,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     char build_dir_path[BARR_BUF_SIZE_1024];
     snprintf(build_dir_path, sizeof(build_dir_path), "build/bin/%s", build_type);
 
-    if (barr_mkdir(build_dir_path))
+    if (!BARR_isdir(build_dir_path))
     {
-        BARR_warnlog("%s(): failed to create %s", __func__, build_dir_path);
+        if (barr_mkdir(build_dir_path))
+        {
+            BARR_warnlog("%s(): failed to create %s", __func__, build_dir_path);
+        }
     }
 
     char **flags = NULL;
@@ -357,7 +367,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         char **pkg_flags = BARR_tokenize_string(pkg_info->cflags);
         for (char **f = pkg_flags; f && *f; ++f)
         {
-            BARR_dbglog("pushing to merged = %s", *f);
             BARR_list_push(&merged_includes, BARR_gc_strdup(*f));
         }
     }
@@ -380,6 +389,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_dbglog("------ dedup includes end ------");
 
+    // TODO: need to add std flag
     BARR_CompileInfoCTX compile_ctx = {.compiler = compiler,
                                        .flags = (const char **) flags,
                                        .out_dir = out_dir,
@@ -563,7 +573,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 const char *obj = object_list.entries[i];
                 if (!BARR_strmatch(obj, "build/obj/main.c.o"))
                 {
-                    BARR_dbglog("objects for shared: %s", (char *) obj);
                     BARR_list_push(&so_args, (char *) obj);
                 }
             }

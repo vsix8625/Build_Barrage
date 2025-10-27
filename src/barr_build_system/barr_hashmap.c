@@ -1,4 +1,5 @@
 #include "barr_hashmap.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <pthread.h>
@@ -19,17 +20,16 @@ static inline barr_i64 barr_hash_str(const char *str)
 
 BARR_HashMap *BARR_hashmap_create(size_t capacity)
 {
-    BARR_HashMap *map = malloc(sizeof(BARR_HashMap));
+    BARR_HashMap *map = BARR_gc_alloc(sizeof(BARR_HashMap));
     if (!map)
     {
         BARR_errlog("%s(): failed to allocate memory for hashmap", __func__);
         return NULL;
     }
 
-    map->nodes = calloc(capacity, sizeof(BARR_HashNode *));
+    map->nodes = BARR_gc_calloc(capacity, sizeof(BARR_HashNode *));
     if (!map->nodes)
     {
-        free(map);
         BARR_errlog("%s(): failed to allocate memory for hashmap nodes", __func__);
         return NULL;
     }
@@ -46,25 +46,7 @@ bool BARR_destroy_hashmap(BARR_HashMap *map)
     {
         return false;
     }
-
-    for (size_t i = 0; i < map->capacity; ++i)
-    {
-        BARR_HashNode *node = map->nodes[i];
-        while (node)
-        {
-            BARR_HashNode *next = node->next;
-            if (node->key)
-            {
-                free(node->key);
-            }
-            free(node);
-            node = next;
-        }
-    }
-
     pthread_mutex_destroy(&map->lock);
-    free(map->nodes);
-    free(map);
     return true;
 }
 
@@ -75,7 +57,7 @@ bool barr_hashmap_rehash(BARR_HashMap *map, size_t new_capacity)
         return false;
     }
 
-    BARR_HashNode **new_nodes = calloc(new_capacity, sizeof(BARR_HashNode *));
+    BARR_HashNode **new_nodes = BARR_gc_calloc(new_capacity, sizeof(BARR_HashNode *));
     if (!new_nodes)
     {
         return false;
@@ -95,7 +77,6 @@ bool barr_hashmap_rehash(BARR_HashMap *map, size_t new_capacity)
         }
     }
 
-    free(map->nodes);
     map->nodes = new_nodes;
     map->capacity = new_capacity;
     return true;
@@ -103,7 +84,7 @@ bool barr_hashmap_rehash(BARR_HashMap *map, size_t new_capacity)
 
 bool BARR_hashmap_insert(BARR_HashMap *map, const char *key, const barr_u8 hash[BARR_XXHASH_LEN])
 {
-    if (!map || !key || !hash)
+    if (map == NULL || key == NULL || hash == NULL)
     {
         BARR_errlog("%s(): map key or hash are NULL", __func__);
         return false;
@@ -131,14 +112,14 @@ bool BARR_hashmap_insert(BARR_HashMap *map, const char *key, const barr_u8 hash[
         node = node->next;
     }
 
-    BARR_HashNode *new_node = malloc(sizeof(BARR_HashNode));
+    BARR_HashNode *new_node = BARR_gc_alloc(sizeof(BARR_HashNode));
     if (!new_node)
     {
         BARR_errlog("%s(): failed to allocate memory for new_node", __func__);
         return false;
     }
 
-    new_node->key = strdup(key);
+    new_node->key = BARR_gc_strdup(key);
     memcpy(new_node->hash, hash, BARR_XXHASH_LEN);
     new_node->next = map->nodes[h];
     map->nodes[h] = new_node;
@@ -157,7 +138,7 @@ bool BARR_hashmap_insert_ts(BARR_HashMap *map, const char *key, const barr_u8 ha
 
 const barr_u8 *BARR_hashmap_get(BARR_HashMap *map, const char *key)
 {
-    if (!map || !key)
+    if (map == NULL || key == NULL)
     {
         return NULL;
     }
@@ -166,7 +147,7 @@ const barr_u8 *BARR_hashmap_get(BARR_HashMap *map, const char *key)
     BARR_HashNode *node = map->nodes[h];
     while (node)
     {
-        if (strcmp(node->key, key) == 0)
+        if (BARR_strmatch(node->key, key))
         {
             return node->hash;
         }
@@ -177,6 +158,10 @@ const barr_u8 *BARR_hashmap_get(BARR_HashMap *map, const char *key)
 
 void BARR_hashmap_debug(const BARR_HashMap *map)
 {
+    if (map == NULL)
+    {
+        return;
+    }
     BARR_log("HashMap: %zu entries, %zu nodes", map->count, map->capacity);
     size_t max_chain = 0;
     for (size_t i = 0; i < map->capacity; ++i)
@@ -196,7 +181,7 @@ void BARR_hashmap_debug(const BARR_HashMap *map)
 
 bool BARR_hashmap_write_cache(const BARR_HashMap *map, const char *cache_file)
 {
-    if (!map)
+    if (map == NULL || cache_file == NULL)
     {
         return false;
     }

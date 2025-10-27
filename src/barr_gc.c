@@ -24,10 +24,13 @@ static bool barr_gc_grow(void)
 
 static void barr_gc_push(void *ptr, size_t size, const char *fn, const char *file, barr_i32 line)
 {
-    if (!ptr)
+    if (ptr == NULL)
     {
         return;
     }
+
+    fn = fn ? fn : "N/A";
+    file = file ? file : "N/A";
 
     pthread_mutex_lock(&g_barr_gc_list.lock);
 
@@ -36,6 +39,7 @@ static void barr_gc_push(void *ptr, size_t size, const char *fn, const char *fil
         if (!barr_gc_grow())
         {
             pthread_mutex_unlock(&g_barr_gc_list.lock);
+            BARR_errlog("%s(): failed to grow GC list", __func__);
             return;
         }
     }
@@ -52,7 +56,7 @@ static void barr_gc_push(void *ptr, size_t size, const char *fn, const char *fil
 
 static void barr_gc_pop(void *ptr)
 {
-    if (!ptr)
+    if (ptr == NULL)
     {
         return;
     }
@@ -112,14 +116,17 @@ void BARR_gc_shutdown(void)
 
 void *BARR_gc_alloc_tracked(size_t size, const char *fn, const char *file, barr_i32 line)
 {
-    if (!size)
+    if (size == 0)
     {
         size = 1;
     }
 
+    fn = fn ? fn : "N/A";
+    file = file ? file : "N/A";
+
     void *p = malloc(size);
 
-    if (!p)
+    if (p == NULL)
     {
         BARR_errlog("%s(): malloc failed (%zu bytes) at %s:%d", fn, size, file, line);
         return NULL;
@@ -131,18 +138,21 @@ void *BARR_gc_alloc_tracked(size_t size, const char *fn, const char *file, barr_
 
 void *BARR_gc_calloc_tracked(size_t n, size_t size, const char *fn, const char *file, barr_i32 line)
 {
-    if (!size)
+    if (size == 0)
     {
         size = 1;
     }
-    if (!n)
+    if (n == 0)
     {
         n = 1;
     }
 
+    fn = fn ? fn : "N/A";
+    file = file ? file : "N/A";
+
     void *p = calloc(n, size);
 
-    if (!p)
+    if (p == NULL)
     {
         BARR_errlog("%s(): calloc failed (%zu bytes) at %s:%d", fn, n * size, file, line);
         return NULL;
@@ -157,6 +167,9 @@ void *BARR_gc_realloc_tracked(void *ptr, size_t size, const char *fn, const char
     uintptr_t old_addr = (uintptr_t) ptr;
     void *p;
 
+    fn = fn ? fn : "N/A";
+    file = file ? file : "N/A";
+
     if (size == 0)
     {
         size = 1;
@@ -164,7 +177,7 @@ void *BARR_gc_realloc_tracked(void *ptr, size_t size, const char *fn, const char
 
     p = realloc(ptr, size);
 
-    if (!p)
+    if (p == NULL)
     {
         BARR_errlog("%s(): realloc failed (%zu bytes) at %s:%d", fn, size, file, line);
         return NULL;
@@ -181,15 +194,19 @@ void *BARR_gc_realloc_tracked(void *ptr, size_t size, const char *fn, const char
 
 char *BARR_gc_strdup_tracked(const char *src, const char *fn, const char *file, barr_i32 line)
 {
-    if (!src)
+    if (src == NULL)
     {
+        BARR_errlog("%s(): NULL pointer passed to strdup", __func__);
         return NULL;
     }
+
+    fn = fn ? fn : "N/A";
+    file = file ? file : "N/A";
 
     size_t len = strlen(src) + 1;
     char *copy = BARR_gc_alloc_tracked(len, fn, file, line);
 
-    if (!copy)
+    if (copy == NULL)
     {
         return NULL;
     }
@@ -200,7 +217,7 @@ char *BARR_gc_strdup_tracked(const char *src, const char *fn, const char *file, 
 
 void BARR_gc_free_tracked(void *ptr)
 {
-    if (!ptr)
+    if (ptr == NULL)
     {
         return;
     }
@@ -273,8 +290,21 @@ void BARR_gc_file_dump(void)
     BARR_file_append(
         filename,
         "====================================================================================================\n");
-    char *metric_str = total_allocated > 1024 ? "kb" : "b";
-    total_allocated = total_allocated > 1024 ? total_allocated / 1024 : total_allocated;
+    char *metric_str;
+    if (total_allocated > 1024 * 1024)
+    {
+        total_allocated /= 1024 * 1024;
+        metric_str = "MB";
+    }
+    else if (total_allocated > 1024)
+    {
+        total_allocated /= 1024;
+        metric_str = "KB";
+    }
+    else
+    {
+        metric_str = "B";
+    }
     BARR_file_append(filename, "Total allocated: %zu%s", total_allocated, metric_str);
 
     pthread_mutex_unlock(&g_barr_gc_list.lock);

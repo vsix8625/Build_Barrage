@@ -120,10 +120,17 @@ static void barr_filestack_free(BARR_Filestack *flstack)
 
 bool BARR_hash_file_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN])
 {
+    if (filepath == NULL)
+    {
+        BARR_errlog("%s(): filepath is NULL", __func__);
+        return false;
+    }
+    BARR_dbglog("Hashing: %p -> %s", filepath, filepath);
+
     FILE *fp = fopen(filepath, "rb");
     if (!fp)
     {
-        BARR_errlog("%s(): failed to open \"%s\" to read", __func__, filepath);
+        BARR_errlog("%s(): failed to open file to read", __func__);
         return false;
     }
 

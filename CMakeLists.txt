@@ -45,7 +45,7 @@ target_include_directories(${APP_NAME} PRIVATE
 	${CMAKE_SOURCE_DIR}/src/barr_platform/linux
 )
 
-set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -pedantic -ggdb -DDEBUG -DBARR_DEBUG -pthread)
+set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -fsanitize=address,undefined -pedantic -ggdb -DDEBUG -DBARR_DEBUG -pthread)
 set(RELEASE_FLAGS -Wall -Wextra -Werror -Ofast -march=native -flto -ffp-contract=fast -DNDEBUG -pthread)
 target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>

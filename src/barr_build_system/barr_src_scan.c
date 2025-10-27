@@ -71,7 +71,7 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
     clock_gettime(CLOCK_MONOTONIC, &start);
     //----------------------------------------------------------------------------------------------------
 
-    if (!list || !dirpath)
+    if (list == NULL || dirpath == NULL)
     {
         BARR_errlog("%s(): invalid args", __func__);
         return;
@@ -117,8 +117,8 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
                 continue;
             }
 
-            char fullpath[BARR_PATH_MAX];
-            snprintf(fullpath, sizeof(fullpath), "%s/%s", current, dent->d_name);
+            char *fullpath = BARR_gc_alloc(BARR_PATH_MAX);
+            snprintf(fullpath, BARR_PATH_MAX, "%s/%s", current, dent->d_name);
 
             struct barr_stat st;
 
@@ -236,20 +236,22 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
             {
                 if (!barr_skip_dir(dent->d_name))
                 {
-                    BARR_dbglog("Pushing to dir_list: %s -----> %s", __func__, fullpath);
-                    BARR_source_list_push(inc_dir_list, fullpath);
-                    if (que_size >= que_cap)
+                    if (strncmp(fullpath, "src/", 4) == 0 || BARR_strmatch(fullpath, "src"))
                     {
-                        que_cap *= 2;
-                        char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
-                        if (!new_queue)
+                        BARR_source_list_push(inc_dir_list, fullpath);
+                        if (que_size >= que_cap)
                         {
-                            BARR_errlog("%s(): failed to realloc", __func__);
-                            closedir(dir);
+                            que_cap *= 2;
+                            char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
+                            if (!new_queue)
+                            {
+                                BARR_errlog("%s(): failed to realloc", __func__);
+                                closedir(dir);
+                            }
+                            queue = new_queue;
                         }
-                        queue = new_queue;
+                        queue[que_size++] = BARR_gc_strdup(fullpath);
                     }
-                    queue[que_size++] = BARR_gc_strdup(fullpath);
                 }
             }
             else if (dent->d_type == DT_REG && barr_is_header_file(fullpath))

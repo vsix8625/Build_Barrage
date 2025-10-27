@@ -1,6 +1,7 @@
 #include "barr_src_list.h"
 #include "barr_arena.h"
 #include "barr_debug.h"
+#include "barr_gc.h"
 #include "barr_hashmap.h"
 #include "barr_io.h"
 #include "barr_xxhash.h"
@@ -13,7 +14,7 @@ bool BARR_source_list_init(BARR_SourceList *list, size_t initial_file_cap)
     {
         return false;
     }
-    list->entries = calloc(initial_file_cap, sizeof(char *));
+    list->entries = BARR_gc_calloc(initial_file_cap, sizeof(char *));
     if (!list->entries)
     {
         size_t list_size = initial_file_cap * sizeof(char *);
@@ -27,11 +28,10 @@ bool BARR_source_list_init(BARR_SourceList *list, size_t initial_file_cap)
     }
 
     list->path_buffer_size = initial_file_cap * BARR_PATH_MAX;
-    list->path_buffer = malloc(list->path_buffer_size);
+    list->path_buffer = BARR_gc_alloc(list->path_buffer_size);
     if (!list->path_buffer)
     {
         BARR_errlog("%s(): failed to allocate %zu bytes for path buffer", __func__, list->path_buffer_size);
-        free(list->entries);
         list->entries = NULL;
         list->count = 0;
         list->capacity = 0;
@@ -50,7 +50,7 @@ bool BARR_source_list_init(BARR_SourceList *list, size_t initial_file_cap)
 
 bool BARR_source_list_push(BARR_SourceList *list, const char *path)
 {
-    if (!list || !path)
+    if (list == NULL || path == NULL)
     {
         return false;
     }
@@ -58,32 +58,44 @@ bool BARR_source_list_push(BARR_SourceList *list, const char *path)
     size_t len = strlen(path) + 1;
     if (list->count >= list->capacity || list->path_buffer_used + len > list->path_buffer_size)
     {
-        size_t new_capacity = list->capacity * 2;
+        size_t new_capacity = list->capacity ? list->capacity * 2 : (list->path_buffer_size / BARR_PATH_MAX) + 64;
         size_t new_path_buffer_size = new_capacity * BARR_PATH_MAX;
-        char **new_entries = realloc(list->entries, new_capacity * sizeof(char *));
-        if (!new_entries)
+
+        char *new_path_buffer = BARR_gc_realloc(list->path_buffer, new_path_buffer_size);
+        if (new_path_buffer == NULL)
+        {
+            BARR_errlog("%s(): failed to realloc path buffer (%zu bytes)", __func__, new_path_buffer_size);
+            return false;
+        }
+
+        // if buffer moved , rebase
+        if (new_path_buffer != list->path_buffer)
+        {
+            for (size_t i = 0; i < list->count; ++i)
+            {
+                list->entries[i] = new_path_buffer + (list->entries[i] - list->path_buffer);
+            }
+        }
+        list->path_buffer = new_path_buffer;
+        list->path_buffer_size = new_path_buffer_size;
+
+        // realloc entries arr
+        char **new_entries = BARR_gc_realloc(list->entries, new_capacity * sizeof(char *));
+        if (new_entries == NULL)
         {
             BARR_errlog("%s(): failed to realloc entries (cap=%zu)", __func__, new_capacity);
             return false;
         }
-        char *new_path_buffer = realloc(list->path_buffer, new_path_buffer_size);
-        if (!new_path_buffer)
-        {
-            BARR_errlog("%s(): failed to realloc path buffer (%zu bytes)", __func__, new_path_buffer_size);
-            free(new_entries);
-            return false;
-        }
-
         list->entries = new_entries;
-        list->path_buffer = new_path_buffer;
         list->capacity = new_capacity;
-        list->path_buffer_size = new_path_buffer_size;
+
         BARR_dbglog("%s(): realloc to: %zu", __func__, new_capacity);
     }
     char *copy = list->path_buffer + list->path_buffer_used;
     memcpy(copy, path, len);
     list->entries[list->count++] = copy;
     list->path_buffer_used += len;
+
     return true;
 }
 
@@ -98,15 +110,21 @@ static void barr_hash_file_job(void *arg)
     barr_u8 include_hash[BARR_XXHASH_LEN];
     barr_u8 final_hash[BARR_XXHASH_LEN];
 
+    if (job == NULL)
+    {
+        BARR_errlog("%s(): job is NULL", __func__);
+        return;
+    }
+
     if (!BARR_hash_file_xxh3(job->file, file_hash))
     {
-        BARR_errlog("%s(): failed to hash file %s", __func__, job->file);
+        BARR_errlog("%s(): failed to hash files", __func__);
         return;
     }
 
     if (!BARR_hash_includes_xxh3(job->headers, job->file, include_hash))
     {
-        BARR_errlog("%s(): failed to hash includes for %s", __func__, job->file);
+        BARR_errlog("%s(): failed to hash includes", __func__);
         return;
     }
 
@@ -118,7 +136,7 @@ static void barr_hash_file_job(void *arg)
 
     if (!BARR_hashmap_insert_ts(job->map, job->file, final_hash))
     {
-        BARR_errlog("%s(): failed to insert %s", __func__, job->file);
+        BARR_errlog("%s(): failed to insert", __func__);
     }
 }
 
@@ -126,39 +144,65 @@ static void barr_hash_file_job(void *arg)
 bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers, BARR_HashMap *map,
                               const char *flags_str, BARR_ThreadPool *pool)
 {
-    if (!sources || !map || !pool)
+    if (sources == NULL || map == NULL || pool == NULL || headers == NULL || flags_str == NULL)
     {
+        BARR_errlog("%s(): passed NULL pointer", __func__);
         return false;
     }
 
     // pre-compute flags hash
-    barr_u8 flags_hash[BARR_XXHASH_LEN];
-    if (!BARR_hash_flags_xxh3(flags_str, flags_hash))
+    barr_u8 tmp_flags_hash[BARR_XXHASH_LEN];
+    if (!BARR_hash_flags_xxh3(flags_str, tmp_flags_hash))
     {
-        BARR_errlog("%s(): failed hash %s", __func__, flags_str);
+        BARR_errlog("%s(): failed hash", __func__);
     }
+    barr_u8 *flags_hash_gc = (barr_u8 *) BARR_gc_alloc(sizeof(tmp_flags_hash));
+    if (flags_hash_gc == NULL)
+    {
+        BARR_errlog("%s(): failed to allocate flags_hash_gc", __func__);
+        return false;
+    }
+    memcpy(flags_hash_gc, tmp_flags_hash, sizeof(tmp_flags_hash));
 
-    size_t arena_size = BARR_align_up(sizeof(BARR_HashJobArg), 16) * sources->count;
-    BARR_Arena arena = {0};
-    BARR_arena_init(&arena, arena_size, "hash_job_arena", 16);
+    for (size_t j = 0; j < headers->count; ++j)
+    {
+        headers->entries[j] = BARR_gc_strdup(headers->entries[j]);
+    }
 
     for (size_t i = 0; i < sources->count; ++i)
     {
-        BARR_HashJobArg *job_arg = (BARR_HashJobArg *) BARR_arena_alloc(&arena, sizeof(BARR_HashJobArg));
+        const char *src_path = sources->entries[i];
 
-        job_arg->file = sources->entries[i];
-        job_arg->flags_hash = flags_hash;
+        BARR_dbglog("pre job arg alloc gc");
+        BARR_HashJobArg *job_arg = (BARR_HashJobArg *) BARR_gc_alloc(sizeof(BARR_HashJobArg));
+        if (job_arg == NULL)
+        {
+            BARR_errlog("%s(): OOM allocating job struct in GC for index %zu", __func__, i);
+            continue;
+        }
+
+        // duplicate the src_path into GC so worker can safely read the string
+        const char *file_gc = BARR_gc_strdup(src_path);
+
+        job_arg->file = (const char *) file_gc;
+        job_arg->flags_hash = (const barr_u8 *) flags_hash_gc;
         job_arg->map = map;
         job_arg->headers = headers;
 
         if (!BARR_thread_pool_add(pool, barr_hash_file_job, job_arg))
         {
-            BARR_errlog("%s(): failed to add job for %s", __func__, sources->entries[i]);
+            BARR_errlog("%s(): failed to add job for %s", __func__, job_arg->file);
+            // no free GC owns job and file copy.
+            continue;
         }
     }
-
     BARR_thread_pool_wait(pool);
-    BARR_destroy_arena(&arena);
+
+    /* NOTE:
+     * We intentionally do NOT destroy GC allocations here. GC memory is tracked and
+     * will live for program lifetime (or until your GC frees it). This guarantees
+     * job_arg->file and job_arg->flags_hash remain valid for the workers.
+     */
 
     return true;
 }
@@ -167,17 +211,9 @@ bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers
 
 void BARR_destroy_source_list(BARR_SourceList *list)
 {
-    if (!list)
+    if (list == NULL)
     {
         return;
-    }
-    if (list->path_buffer)
-    {
-        free(list->path_buffer);
-    }
-    if (list->entries)
-    {
-        free(list->entries);
     }
     list->path_buffer = NULL;
     list->entries = NULL;

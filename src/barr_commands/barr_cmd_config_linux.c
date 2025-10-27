@@ -392,13 +392,20 @@ barr_i32 barr_config_view(barr_i32 argc, char **argv)
     return 0;
 }
 
-barr_i32 barr_config_edit(barr_i32 argc, char **argv)
+static barr_i32 barr_config_local_edit(barr_i32 argc, char **argv)
 {
     BARR_VOID(argc);
     BARR_VOID(argv);
 
-    char cmd_buf[BARR_BUF_SIZE_256];
-    snprintf(cmd_buf, sizeof(cmd_buf), "%s %s", BARR_get_config("editor"), BARR_get_config("file"));
+    char *args[] = {(char *) BARR_get_config("editor"), "Barrfile", NULL};
+    BARR_run_process(args[0], args, false);
+    return 0;
+}
+
+barr_i32 barr_config_edit(barr_i32 argc, char **argv)
+{
+    BARR_VOID(argc);
+    BARR_VOID(argv);
 
     char *args[] = {(char *) BARR_get_config("editor"), (char *) BARR_get_config("file"), NULL};
     BARR_run_process(args[0], args, false);
@@ -432,6 +439,11 @@ barr_i32 BARR_cmd_config(barr_i32 argc, char **argv)
         if (BARR_strmatch(argv[i], "--edit"))
         {
             return barr_config_edit(argc, argv);
+        }
+        if (BARR_strmatch(argv[i], "--local"))
+        {
+            BARR_log("Opening: %s/Barrfile", BARR_getcwd());
+            return barr_config_local_edit(argc, argv);
         }
     }
 
