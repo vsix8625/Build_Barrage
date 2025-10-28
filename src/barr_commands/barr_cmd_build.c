@@ -255,7 +255,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     else
     {
-        BARR_log("Nothing to compile, all files are up-to-date!");
+        if (sources.count == 0)
+        {
+            BARR_warnlog("Nothing to compile, found 0 source files!");
+        }
+        else
+        {
+            BARR_log("\033[35;1mNothing to compile, all files are up-to-date!");
+        }
     }
 
     //----------------------------------------------------------------------------------------------------

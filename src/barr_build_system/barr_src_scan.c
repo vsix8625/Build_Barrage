@@ -17,7 +17,7 @@
 static inline barr_i32 barr_is_header_file(const char *path)
 {
     const char *ext = strrchr(path, '.');
-    if (!ext)
+    if (ext == NULL)
     {
         return 0;
     }
@@ -28,7 +28,7 @@ static inline barr_i32 barr_is_header_file(const char *path)
 static inline barr_i32 barr_is_source_file(const char *path)
 {
     const char *ext = strrchr(path, '.');
-    if (!ext)
+    if (ext == NULL)
     {
         return 0;
     }
@@ -36,11 +36,36 @@ static inline barr_i32 barr_is_source_file(const char *path)
     return BARR_strmatch(ext, ".c") || BARR_strmatch(ext, ".cpp");
 }
 
+static inline bool barr_is_project_root(const char *dirpath)
+{
+    if (dirpath == NULL)
+    {
+        return false;
+    }
+
+    static const char *project_files[] = {"Barrfile", "Makefile",     "pyproject.toml", "CMakeLists.txt",
+                                          "setup.py", "package.json", "Cargo.toml",     NULL};
+
+    char config_path[BARR_PATH_MAX];
+    for (const char **filename = project_files; *filename; ++filename)
+    {
+        snprintf(config_path, sizeof(config_path), "%s/%s", dirpath, *filename);
+        if (BARR_isfile(config_path))
+        {
+            BARR_log("Skipped: %s, Contains: %s", dirpath, *filename);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static inline bool barr_skip_dir(const char *path)
 {
-    static const char *skip_names[] = {"build", "bin",    "obj",        ".git",  "cache",   ".vs",
-                                       ".idea", "test",   "CMakeFiles", "Debug", "Release", ".barr",
-                                       "docs",  "assets", "scripts",    "modes", NULL};
+    static const char *skip_names[] = {"build",   "bin",        "obj",     ".git",    "cache",   ".vs",  ".idea",
+                                       "test",    "CMakeFiles", "Debug",   "Release", ".barr",   "docs", "assets",
+                                       "scripts", "modes",      "pycache", ".vscode", "objects", "out",  "target",
+                                       ".svn",    ".hg",        "vendor",  NULL};
 
     if (strstr(path, "/.") != NULL)
     {
@@ -124,7 +149,17 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
 
             if (dent->d_type == DT_DIR)
             {
-                if (!barr_skip_dir(dent->d_name) && que_size >= que_cap)
+                if (barr_skip_dir(dent->d_name))
+                {
+                    continue;
+                }
+
+                if (barr_is_project_root(fullpath))
+                {
+                    continue;
+                }
+
+                if (que_size >= que_cap)
                 {
                     que_cap *= 2;
                     char **new_queue = realloc(queue, que_cap * sizeof(char *));
