@@ -321,7 +321,7 @@ static bool barr_token_exists_in_out(char **out, size_t n, const char *tok)
 
 static void barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_count, const char *src)
 {
-    if (!out || !out_count || !src)
+    if (out == NULL || out_count == 0 || src == NULL)
     {
         return;
     }
@@ -419,36 +419,76 @@ const char **BARR_dedup_flags_array(const char **src_arr)
 //----------------------------------------------------------------------------------------------------
 // tokenize str
 
-// NOTE: tokens point into GC-allocated string, do NOT free individually
 char **BARR_tokenize_string(const char *str)
 {
-    if (!str)
+    if (str == NULL)
     {
         return NULL;
     }
 
-    size_t count = 0;
+    size_t token_count = 0;
     const char *p = str;
+
     while (*p)
     {
-        if (*p == ' ')
+        while (*p && isspace((barr_u8) *p))
         {
-            count++;
+            p++;
         }
-        p++;
+
+        if (!p)
+        {
+            break;
+        }
+
+        ++token_count;
+
+        while (*p && !isspace((barr_u8) *p))
+        {
+            p++;
+        }
     }
 
-    char **arr = BARR_gc_calloc(count + 2, sizeof(char *));
-    char *copy = BARR_gc_strdup(str);
-
-    size_t i = 0;
-    char *token = strtok(copy, " ");
-    while (token)
+    char **arr = BARR_gc_calloc(token_count + 2, sizeof(char *));
+    if (arr == NULL)
     {
-        arr[i++] = token;
-        token = strtok(NULL, " ");
+        return NULL;
     }
-    arr[i] = NULL;
 
+    size_t idx = 0;
+    const char *start = str;
+    while (*start)
+    {
+        while (*start && isspace((barr_u8) *start))
+        {
+            ++start;
+        }
+        if (!*start)
+        {
+            break;
+        }
+
+        const char *end = start;
+        while (*end && !isspace((barr_u8) *end))
+        {
+            ++end;
+        }
+
+        size_t len = (size_t) (end - start);
+        char *tok = BARR_gc_alloc(len + 1);
+        if (tok == NULL)
+        {
+            start = end;
+            continue;
+        }
+
+        memcpy(tok, start, len);
+        tok[len] = '\0';
+        arr[idx++] = tok;
+
+        start = end;
+    }
+
+    arr[idx] = NULL;
     return arr;
 }

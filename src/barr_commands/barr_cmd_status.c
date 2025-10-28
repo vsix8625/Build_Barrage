@@ -1,6 +1,5 @@
 #include "barr_cmd_status.h"
 #include "barr_io.h"
-#include <stdlib.h>
 
 barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 {
@@ -8,7 +7,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     BARR_VOID(argv);
     barr_i32 result = 0;
 
-    BARR_printf("----------------------------------------STATUS----------------------------------------\n");
+    BARR_printf("--------------------------------------------------------------------------------------\n");
 
     BARR_InitStatus res = BARR_check_initialized();
 

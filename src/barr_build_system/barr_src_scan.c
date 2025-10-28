@@ -43,8 +43,10 @@ static inline bool barr_is_project_root(const char *dirpath)
         return false;
     }
 
-    static const char *project_files[] = {"Barrfile", "Makefile",     "pyproject.toml", "CMakeLists.txt",
-                                          "setup.py", "package.json", "Cargo.toml",     NULL};
+    static const char *project_files[] = {
+        "Barrfile",      "Makefile",    "pyproject.toml", "CMakeLists.txt", "setup.py", "package.json",
+        "Cargo.toml",    "meson.build", "SConstruct",     "go.md",          ".csproj",  "WORKSPACE",
+        "WORSPACE.baze", "BUILD",       "BUILD.bazel",    "configure.ac",   NULL};
 
     char config_path[BARR_PATH_MAX];
     for (const char **filename = project_files; *filename; ++filename)
@@ -72,6 +74,22 @@ static inline bool barr_skip_dir(const char *path)
         return true;
     }
 
+    for (const char **p = skip_names; *p; ++p)
+    {
+        const char *found = strstr(path, *p);
+        if (found)
+        {
+            /* make sure it's a directory component, not substring of another name */
+            char before = (found == path) ? '/' : *(found - 1);
+            char after = *(found + strlen(*p));
+            if ((before == '/' || before == '\0') && (after == '/' || after == '\0'))
+            {
+                return true;
+            }
+        }
+    }
+
+    /* last segment guard */
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
 
@@ -80,13 +98,6 @@ static inline bool barr_skip_dir(const char *path)
         return true;
     }
 
-    for (const char **p = skip_names; *p; ++p)
-    {
-        if (BARR_strmatch(base, *p))
-        {
-            return true;
-        }
-    }
     return false;
 }
 
@@ -271,22 +282,19 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
             {
                 if (!barr_skip_dir(dent->d_name))
                 {
-                    if (strncmp(fullpath, "src/", 4) == 0 || BARR_strmatch(fullpath, "src"))
+                    BARR_source_list_push(inc_dir_list, fullpath);
+                    if (que_size >= que_cap)
                     {
-                        BARR_source_list_push(inc_dir_list, fullpath);
-                        if (que_size >= que_cap)
+                        que_cap *= 2;
+                        char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
+                        if (!new_queue)
                         {
-                            que_cap *= 2;
-                            char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
-                            if (!new_queue)
-                            {
-                                BARR_errlog("%s(): failed to realloc", __func__);
-                                closedir(dir);
-                            }
-                            queue = new_queue;
+                            BARR_errlog("%s(): failed to realloc", __func__);
+                            closedir(dir);
                         }
-                        queue[que_size++] = BARR_gc_strdup(fullpath);
+                        queue = new_queue;
                     }
+                    queue[que_size++] = BARR_gc_strdup(fullpath);
                 }
             }
             else if (dent->d_type == DT_REG && barr_is_header_file(fullpath))

@@ -12,11 +12,29 @@ and other build variables in a human-readable syntax.
 - Strings must be quoted (`"` or `'`)
 - Lines must end with a semicolon (`;`)
 - Comments start with (`#`)
-- Function calls: 
+
+## Function calls: 
+- Olmos supports function calls to perform dynamic configuration or query information.
+ Currently, the following functions are supported:
+`print()`
+- Logs messages during the build evaluation.
 ```olmos
   print("Hello World");
 ```
-Only `print()` is currently supported for logging purposes.  
+
+`find_package()`
+- Requests external packages for the build.
+- The argument can be a single package or a space-separated list of package names.
+- Packages are resolved via `barr`'s package scan system or a `pkg-config` fallback. 
+```olmos
+  find_package("zlib");
+  find_package("xxhash fmt");
+```
+- Build Barrage will automatically tokenize the string and try resolve each package.
+- If a package is found, its compiler flags(`cflags`) are added to the build context.  
+- If a package is not found, a warning is issued and nothing is added for that package.  
+- Failure to find a package that is required for compilation will result in a build/link error.  
+
 
 ## Common Variables
 
@@ -49,6 +67,8 @@ Only `print()` is currently supported for logging purposes.
 
   # Optional include directories, NOTICE: using includes var will turn off barr auto dir detection!
   # includes = "-Iinc";
+
+  find_package("xxhash fmt");
 
   print("Barrfile ended");
 ```

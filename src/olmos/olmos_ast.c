@@ -194,7 +194,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             char *start = strchr(line, '(');
             char *end = strchr(line, ')');
 
-            if (!start || !end || end <= start)
+            if (start == NULL || end == NULL || end <= start)
             {
                 BARR_errlog("%s(): syntax error at line %s:%zu, invalid find_package()", __func__, line, line_n);
                 fclose(fp);

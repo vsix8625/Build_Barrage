@@ -6,21 +6,21 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Fix: find_package order flow and removing duplicates in the process
-- Custom build: hash + dependency track + cache systems (core systems implemented) 
-- Garbage collector (Battle tested 1GB allocations all free on exit)
-- Custom DSL`(Olmos)` with a C-like syntax
-- Optimize build process. 
+- Multi target builds support.   
+- `depend("project")` function for `Barrfile`. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
-- Project sessions and possibly `live-build` daemon.  
-- Create compile_commands.json 
-- More CLI commands (`barr run`, `barr clean`, etc) with more options.
-- Logging system
+- Build process to create compile_commands.json. 
 - Valgrind and gdb support via `barr tool <tool_name>` 
     - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
                `barr tool --gdb run <args>` maybe can be added.  
 - Windows support  
+### Added
+- Custom build: hash + dependency track + cache systems (core systems implemented) 
+- Garbage collector (Battle tested 1GB allocations all free on exit)
+- Custom DSL`(Olmos)` with a C-like syntax
+- Project sessions and possibly `live-build` daemon.  
+- More CLI commands (`barr run`, `barr clean`, etc) with more options.
 
 ---
 

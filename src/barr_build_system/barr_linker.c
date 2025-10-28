@@ -50,17 +50,26 @@ void BARR_link_args_add(BARR_LinkArgs *la, const char *arg)
 
     if (la->count >= la->capacity)
     {
-        la->capacity *= 2;
-        la->args = BARR_gc_realloc(la->args, la->capacity);
+        size_t new_capacity = (la->capacity == 0) ? 16 : la->capacity * 2;
+        char **new_args = BARR_gc_realloc(la->args, new_capacity * sizeof(char *));
+        if (new_args == NULL)
+        {
+            BARR_errlog("%s(): failed to realloc linker args", __func__);
+            return;
+        }
+
+        la->args = new_args;
+        la->capacity = new_capacity;
     }
 
-    la->args[la->count++] = (char *) arg;
+    la->args[la->count] = BARR_gc_strdup(arg);
+    la->count++;
     la->args[la->count] = NULL;
 }
 
 char **BARR_link_args_finalize(BARR_LinkArgs *la)
 {
-    if (!la)
+    if (la == NULL)
     {
         return NULL;
     }

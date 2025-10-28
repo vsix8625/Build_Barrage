@@ -36,6 +36,5 @@ typedef struct BARR_CompileJob
 
 barr_i32 BARR_compile_pch(BARR_CompileInfoCTX *ctx);
 void BARR_compile_job(barr_ptr arg);
-void BARR_destroy_compile_ctx(BARR_CompileInfoCTX *ctx);
 
 #endif  // BARR_BUILD_CTX_H_

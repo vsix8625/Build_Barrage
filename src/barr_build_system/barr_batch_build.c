@@ -149,7 +149,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
         if (!batch_fp)
         {
-            snprintf(batch_path, sizeof(batch_path), "build/batch/tmp_batch_%u.c", current_batch_count++);
+            snprintf(batch_path, sizeof(batch_path), "build/batch/batch_%u.c", current_batch_count++);
             batch_fp = fopen(batch_path, "w");
             if (!batch_fp)
             {

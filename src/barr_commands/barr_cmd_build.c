@@ -3,7 +3,6 @@
 #include "barr_batch_build.h"
 #include "barr_build_ctx.h"
 #include "barr_cmd_clean.h"
-#include "barr_cmd_mode.h"
 #include "barr_cpu.h"
 #include "barr_debug.h"
 #include "barr_env.h"
@@ -31,8 +30,11 @@
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    struct timespec build_start, build_end;
+    struct timespec compile_start, compile_end;
+    struct timespec arch_start, arch_end;
+    struct timespec link_start, link_end;
+    clock_gettime(CLOCK_MONOTONIC, &build_start);
 
     if (!BARR_is_initialized())
     {
@@ -258,10 +260,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (sources.count == 0)
         {
             BARR_warnlog("Nothing to compile, found 0 source files!");
+            goto exit;
         }
         else
         {
             BARR_log("\033[35;1mNothing to compile, all files are up-to-date!");
+            goto exit;
         }
     }
 
@@ -277,8 +281,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         if (node->type == OLM_NODE_FN_CALL && BARR_strmatch(node->name, "find_package"))
         {
-            BARR_dbglog("pre tokenize string ====  %s", node->args[0]);
-
             char **pkgs = BARR_tokenize_string(node->args[0]);
             for (char **p = pkgs; p && *p; ++p)
             {
@@ -394,7 +396,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             char *buf = BARR_gc_alloc(BARR_PATH_MAX + 3);  // "-I" + path + '\0'
             snprintf(buf, BARR_PATH_MAX + 3, "-I%s", inc_dir_list.entries[i]);
             includes_combined[orig_count + i] = buf;
-            BARR_dbglog("BUF _-`-_ = %s", buf);
         }
         includes_combined[total - 1] = NULL;
         includes = includes_combined;
@@ -435,12 +436,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     char **defines = BARR_tokenize_string(olm_defines);
 
-    BARR_dbglog("------ dedup includes start ------");
     for (const char **p = includes; p && *p; ++p)
     {
-        BARR_dbglog("include[%zu]: '%s'", (size_t) (p - includes), *p);
+        BARR_log("[%zu]: %s", (size_t) (p - includes), *p);
     }
-    BARR_dbglog("------ dedup includes end ------");
 
     // TODO: need to add std flag
     BARR_CompileInfoCTX compile_ctx = {.compiler = resolved_compiler,
@@ -473,6 +472,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_Arena producer_arena;
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
 
+    clock_gettime(CLOCK_MONOTONIC, &compile_start);
     // job producer
     for (size_t i = 0; i < compile_list.count; i++)
     {
@@ -485,12 +485,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             continue;
         }
 
-        job->src = BARR_arena_strdup(&producer_arena, strdup(src));
+        job->src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         job->ctx = &compile_ctx;
         job->progress_ctx = &progress_ctx;
         job->dry_run = dry_run_compile;
 
-        char *tmp_src = BARR_arena_strdup(&producer_arena, strdup(src));
+        char *tmp_src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         char *base_with_ext = basename(tmp_src);
         snprintf(job->out_file, sizeof(job->out_file), "build/obj/%s.o", base_with_ext);
 
@@ -526,6 +526,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_thread_pool_wait(pool);
     printf("\n");
     BARR_destroy_arena(&producer_arena);
+    clock_gettime(CLOCK_MONOTONIC, &compile_end);
 
     if (!progress_ctx.failed && !dry_run_compile)
     {
@@ -585,12 +586,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             project_name = "barr_default";
         }
 
+        clock_gettime(CLOCK_MONOTONIC, &arch_start);
         // archive stage
         barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
         if (archive_ret != 0)
         {
             BARR_errlog("Archive stage failed");
         }
+        clock_gettime(CLOCK_MONOTONIC, &arch_end);
 
         const char *target_type = OLM_get_var("target_type");
         if (!target_type || !target_type[0])
@@ -608,6 +611,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             // ----------------------------------------------------------------------------------------------------
             // STATIC & SHARED LIB
             // ----------------------------------------------------------------------------------------------------
+
+            // TODO: we will possibly need to pass pkg_paths here also
 
             char dest_static[BARR_PATH_MAX * 2];
             snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, project_name);
@@ -647,6 +652,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         else
         {
             BARR_log("Building executable target: %s", project_name);
+            clock_gettime(CLOCK_MONOTONIC, &link_start);
             // base linker args
             char *base_link_args[] = {resolved_compiler,
                                       "build/obj/main.c.o",  // main object
@@ -706,7 +712,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
 
             BARR_link_args_add(la, "-lbarr");
-            BARR_link_args_add(la, "-pthread");
 
             const char *lib_paths_raw = OLM_get_var("lib_paths");
             if (lib_paths_raw && lib_paths_raw[0])
@@ -758,44 +763,56 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             {
                 BARR_errlog("Link stage failed");
             }
+            clock_gettime(CLOCK_MONOTONIC, &link_end);
             BARR_file_write(".barr/data/last_bin", "%s", output_path);
         }  // executable
     }
 
+exit:
+{
     //----------------------------------------------------------------------------------------------------
-    // CLOCK
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    barr_i64 sec = (barr_i64) (end.tv_sec - start.tv_sec);
-    barr_i64 nsec = (barr_i64) (end.tv_nsec - start.tv_nsec);
-    if (nsec < 0)
+    // performance
+    barr_i64 compile_sec = (barr_i64) (compile_end.tv_sec - compile_start.tv_sec);
+    barr_i64 compile_nsec = (barr_i64) (compile_end.tv_nsec - compile_start.tv_nsec);
+    if (compile_nsec < 0)
     {
-        --sec;
-        nsec += 1000000000LL;
+        --compile_sec;
+        compile_nsec += 1000000000LL;
     }
-    double elapsed = (double) sec + (double) nsec / 1e9;
-    BARR_log("Build completed! | Time: \033[34;1m %.6fs", elapsed);
+    double compile_elapsed = (double) compile_sec + (double) compile_nsec / 1e9;
 
-    //----------------------------------------------------------------------------------------------------
-    // will probably remove this stupidity
-    // MODES
-
-    if (BARR_is_mode_active("war"))
+    barr_i64 arch_sec = (barr_i64) (arch_end.tv_sec - arch_start.tv_sec);
+    barr_i64 arch_nsec = (barr_i64) (arch_end.tv_nsec - arch_start.tv_nsec);
+    if (arch_nsec < 0)
     {
-        BARR_ConfigEntry *root_dir_entry = BARR_config_table_get(rc_table, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
-        if (!root_dir_entry)
-        {
-            BARR_errlog("%s(): failed to get config entry for %s", __func__, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
-        }
-        const char *barr_install_dir_path = root_dir_entry->value.str_val ? root_dir_entry->value.str_val : "N/A";
-
-        char victory_sound_path[BARR_PATH_MAX];
-        snprintf(victory_sound_path, sizeof(victory_sound_path), "%s/%s", barr_install_dir_path,
-                 "assets/sounds/machine-gun.mp3");
-
-        char *placeholder_sound_args[] = {"paplay", victory_sound_path, NULL};
-        BARR_run_process_BG(placeholder_sound_args[0], placeholder_sound_args);
+        --arch_sec;
+        arch_nsec += 1000000000LL;
     }
+    double arch_elapsed = (double) arch_sec + (double) arch_nsec / 1e9;
 
+    barr_i64 link_sec = (barr_i64) (link_end.tv_sec - link_start.tv_sec);
+    barr_i64 link_nsec = (barr_i64) (link_end.tv_nsec - link_start.tv_nsec);
+    if (link_nsec < 0)
+    {
+        --link_sec;
+        link_nsec += 1000000000LL;
+    }
+    double link_elapsed = (double) link_sec + (double) link_nsec / 1e9;
+
+    clock_gettime(CLOCK_MONOTONIC, &build_end);
+    barr_i64 build_sec = (barr_i64) (build_end.tv_sec - build_start.tv_sec);
+    barr_i64 build_nsec = (barr_i64) (build_end.tv_nsec - build_start.tv_nsec);
+    if (build_nsec < 0)
+    {
+        --build_sec;
+        build_nsec += 1000000000LL;
+    }
+    double elapsed = (double) build_sec + (double) build_nsec / 1e9;
+
+    BARR_log("Time to compile sources: \033[34;1m %.6fs", compile_elapsed);
+    BARR_log("Time to archive: \033[34;1m %.6fs", arch_elapsed);
+    BARR_log("Time to link: \033[34;1m %.6fs", link_elapsed);
+    BARR_log("Time to build: \033[34;1m %.6fs", elapsed);
     //----------------------------------------------------------------------------------------------------
 
     // cleanup
@@ -813,4 +830,5 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_destroy_hashmap(current_map);
     rc_table->destroy(rc_table);
     return 0;
+}
 }

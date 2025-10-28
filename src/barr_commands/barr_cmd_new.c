@@ -103,7 +103,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                                           "build_type = \"debug\";\n"
                                           "target_type = \"executable\";\n"
                                           "# find_package(\"xxhash\");\n"
-                                          "# user_libs = \"\";\n"
+                                          "# user_libs = \"-lpthread\";\n"
                                           "# lib_paths = \"\";\n"
                                           "# out_dir = \"build\";\n"
                                           "print(\"Build script ends!\");\n";
