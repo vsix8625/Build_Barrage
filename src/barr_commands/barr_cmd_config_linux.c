@@ -442,7 +442,7 @@ barr_i32 BARR_cmd_config(barr_i32 argc, char **argv)
         }
         if (BARR_strmatch(argv[i], "--local"))
         {
-            BARR_log("Opening: %s/Barrfile", BARR_getcwd());
+            BARR_log("%s: %s/Barrfile", BARR_get_config("editor"), BARR_getcwd());
             return barr_config_local_edit(argc, argv);
         }
     }

@@ -8,7 +8,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Planned
 - Fix: find_package order flow and removing duplicates in the process
 - Custom build: hash + dependency track + cache systems (core systems implemented) 
-- Garbage collector (initial system implemented)
+- Garbage collector (Battle tested 1GB allocations all free on exit)
 - Custom DSL`(Olmos)` with a C-like syntax
 - Optimize build process. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
@@ -26,13 +26,18 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [0.14.2] – 2025-10-27
 ### Added
+- `barr build --batch`: Merge multiple source files into batches and push them to source list.  
+   - Significantly reduces compiler calls (e.g., 1k files → ~200 calls depending on batch variables).  
+   - Fully compatible with incremental builds and other `barr` build features.
+   - Added support for per-file batching control:`// barr-no-batch` and `// barr-batch-skip`.  
+   - Experimental: may have edge cases with includes and dependency tracking.
 ### Changed
 ### Fixed 
-- Usage of `BARR_gc` heap allocations tracked on most systems.  
-- Fix source list reallocation corruption on large projects
-    - Correctly grow path buffer and entries array when capacity is zero
-    - Prevent buffer shrink that caused crashes for large number of source files
-    - Ensures all src_path pointers remain valid after realloc
+- Corrected usage of `BARR_gc` heap allocations across most systems. 
+- Fixed source list reallocation issues on large projects;
+    - Properly grow path buffer and entries array when capacity is zero.  
+    - Prevent buffer shrink that caused crashes for large number of source files.  
+    - Ensures all `src_path` pointers remain valid after realloc.  
 ### Removed
 
 ---

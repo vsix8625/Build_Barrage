@@ -9,8 +9,12 @@
 static barr_ptr barr_worker_loop(barr_ptr arg)
 {
     BARR_ThreadPool *pool = (BARR_ThreadPool *) arg;
+    BARR_Job *batch[BARR_JOB_BATCH_SIZE];
+
     for (;;)
     {
+        size_t count = 0;
+
         pthread_mutex_lock(&pool->lock);
 
         while (!pool->jobs && !pool->stop)
@@ -24,19 +28,24 @@ static barr_ptr barr_worker_loop(barr_ptr arg)
             break;
         }
 
-        BARR_Job *job = pool->jobs;
-        pool->jobs = job->next;
+        while (pool->jobs && count < BARR_JOB_BATCH_SIZE)
+        {
+            batch[count++] = pool->jobs;
+            pool->jobs = pool->jobs->next;
+        }
 
-        pool->pending--;
         pool->active++;
         pthread_mutex_unlock(&pool->lock);
 
-        job->fn(job->arg);
-        free(job);
+        for (size_t i = 0; i < count; ++i)
+        {
+            batch[i]->fn(batch[i]->arg);
+            free(batch[i]);
+        }
 
         pthread_mutex_lock(&pool->lock);
         pool->active--;
-        if (!pool->pending && !pool->jobs && !pool->active)
+        if (!pool->jobs && !pool->active)
         {
             pthread_cond_signal(&pool->empty);
         }
@@ -48,7 +57,7 @@ static barr_ptr barr_worker_loop(barr_ptr arg)
 BARR_ThreadPool *BARR_thread_pool_create(barr_i32 num_threads)
 {
     BARR_ThreadPool *p = calloc(1, sizeof(BARR_ThreadPool));
-    if (!p)
+    if (p == NULL)
     {
         BARR_errlog("%s(): failed to allocate memory for thread pool", __func__);
         return NULL;
@@ -74,13 +83,12 @@ BARR_ThreadPool *BARR_thread_pool_create(barr_i32 num_threads)
         }
     }
 
-    BARR_printf("\n");
     return p;
 }
 
 bool BARR_thread_pool_add(BARR_ThreadPool *p, barr_jobfn fn, barr_ptr arg)
 {
-    if (!p || !arg)
+    if (p == NULL || arg == NULL)
     {
         return false;
     }
@@ -104,22 +112,22 @@ bool BARR_thread_pool_add(BARR_ThreadPool *p, barr_jobfn fn, barr_ptr arg)
         tail = &(*tail)->next;
     }
     *tail = job;
-    p->pending++;
 
-    pthread_cond_signal(&p->cond);
     pthread_mutex_unlock(&p->lock);
+    pthread_cond_signal(&p->cond);
+
     return true;
 }
 
 bool BARR_thread_pool_wait(BARR_ThreadPool *p)
 {
-    if (!p)
+    if (p == NULL)
     {
         return false;
     }
 
     pthread_mutex_lock(&p->lock);
-    while (p->jobs || p->pending > 0 || p->active > 0)
+    while (p->jobs || p->active > 0)
     {
         pthread_cond_wait(&p->empty, &p->lock);
     }

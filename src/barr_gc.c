@@ -9,7 +9,7 @@ static BARR_GC_List g_barr_gc_list = {0};
 
 static bool barr_gc_grow(void)
 {
-    size_t new_capacity = g_barr_gc_list.capacity ? g_barr_gc_list.capacity * 2 : BARR_BUF_SIZE_64;
+    size_t new_capacity = g_barr_gc_list.capacity ? g_barr_gc_list.capacity * 2 : BARR_BUF_SIZE_2048;
     BARR_GC_Info *new_items = realloc(g_barr_gc_list.items, new_capacity * sizeof(BARR_GC_Info));
     if (!new_items)
     {
@@ -19,6 +19,8 @@ static bool barr_gc_grow(void)
 
     g_barr_gc_list.items = new_items;
     g_barr_gc_list.capacity = new_capacity;
+
+    //    BARR_dbglog("g_barr_gc_list new cap = %zu", new_capacity);
     return true;
 }
 

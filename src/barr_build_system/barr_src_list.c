@@ -43,7 +43,7 @@ bool BARR_source_list_init(BARR_SourceList *list, size_t initial_file_cap)
     list->count = 0;
     list->capacity = initial_file_cap;
     list->path_buffer_used = 0;
-    BARR_dbglog("%s(): List capacity = %zu, path_buffer = %zu", __func__, initial_file_cap, list->path_buffer_size);
+    // BARR_dbglog("%s(): List capacity = %zu, path_buffer = %zu", __func__, initial_file_cap, list->path_buffer_size);
 
     return true;
 }
@@ -89,7 +89,7 @@ bool BARR_source_list_push(BARR_SourceList *list, const char *path)
         list->entries = new_entries;
         list->capacity = new_capacity;
 
-        BARR_dbglog("%s(): realloc to: %zu", __func__, new_capacity);
+        // BARR_dbglog("%s(): realloc to: %zu", __func__, new_capacity);
     }
     char *copy = list->path_buffer + list->path_buffer_used;
     memcpy(copy, path, len);
@@ -220,5 +220,4 @@ void BARR_destroy_source_list(BARR_SourceList *list)
     list->capacity = 0;
     list->path_buffer_size = 0;
     list->path_buffer_used = 0;
-    BARR_dbglog("%s(): destroyed source list", __func__);
 }

@@ -1,1 +1,0 @@
-[BARR_GC]: No active allocations

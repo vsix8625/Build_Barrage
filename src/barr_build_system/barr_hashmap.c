@@ -42,9 +42,13 @@ BARR_HashMap *BARR_hashmap_create(size_t capacity)
 
 bool BARR_destroy_hashmap(BARR_HashMap *map)
 {
-    if (!map)
+    if (map == NULL)
     {
         return false;
+    }
+    for (size_t i = 0; i < map->capacity; i++)
+    {
+        map->nodes[i] = NULL;
     }
     pthread_mutex_destroy(&map->lock);
     return true;

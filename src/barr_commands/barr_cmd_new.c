@@ -44,7 +44,6 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                 BARR_errlog("Failed to create %s project directory", argv[i + 1]);
                 return 1;
             }
-            i++;
         }
         else if (BARR_strmatch(arg, "--file"))
         {
@@ -82,6 +81,70 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
             }
 
             i++;
+        }
+        else if (BARR_strmatch(arg, "--barrfile"))
+        {
+            if (!BARR_is_initialized())
+            {
+                return 1;
+            }
+
+            if (!BARR_isfile("Barrfile"))
+            {
+                char *barrfile_contents = "# Default Barrfile\n"
+                                          "print(\"Build script starts!\");\n"
+                                          "project = \"barr_default\";\n"
+                                          "compiler = \"/usr/bin/gcc\";\n"
+                                          "cflags = \"-Wall -Werror -Wextra -g\";\n"
+                                          "cflags_release = \"-Wall -O3\";\n"
+                                          "# Setting includes in Barrfile will turn off auto dir detection\n"
+                                          "# includes = \"-Iinc\";\n"
+                                          "defines = \"-DDEBUG\";\n"
+                                          "build_type = \"debug\";\n"
+                                          "target_type = \"executable\";\n"
+                                          "# find_package(\"xxhash\");\n"
+                                          "# user_libs = \"\";\n"
+                                          "# lib_paths = \"\";\n"
+                                          "# out_dir = \"build\";\n"
+                                          "print(\"Build script ends!\");\n";
+                BARR_file_write("Barrfile", "%s", barrfile_contents);
+                BARR_log("Barrfile created, you can run 'barr config --local' to open it with you $EDITOR");
+            }
+            else
+            {
+                BARR_warnlog("Barrfile already exists in '%s'", BARR_getcwd());
+            }
+            break;
+        }
+        else if (BARR_strmatch(arg, "--main"))
+        {
+            if (!BARR_is_initialized())
+            {
+                return 1;
+            }
+            if (!BARR_isdir("src"))
+            {
+                barr_mkdir("src");
+            }
+
+            if (!BARR_isfile("src/main.c"))
+            {
+                char *main_contents = "// Created by Build Barrage\n"
+                                      "#include <stdio.h>\n\n"
+                                      "int main(int argc,char **argv){\n"
+                                      "  (void)argc;\n"
+                                      "  (void)argv;\n"
+                                      "  printf(\"Hello, from barr\");\n"
+                                      "  return 0;\n"
+                                      "}\n";
+                BARR_file_write("src/main.c", "%s", main_contents);
+                BARR_log("Created src/main.c");
+            }
+            else
+            {
+                BARR_warnlog("main.c already exists");
+            }
+            break;
         }
         else
         {

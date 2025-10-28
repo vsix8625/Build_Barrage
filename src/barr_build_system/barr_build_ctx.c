@@ -70,8 +70,6 @@ void BARR_compile_job(barr_ptr arg)
     if (!args)
     {
         BARR_errlog("%s(): failed to allocate memory for args", __func__);
-        free(job->src);
-        free(job);
         return;
     }
 
@@ -138,6 +136,4 @@ void BARR_compile_job(barr_ptr arg)
     }
 
     free(args);
-    free(job->src);
-    free(job);
 }

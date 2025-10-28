@@ -51,7 +51,7 @@ typedef void (*barr_func_ptr)(void);
 
 #define BARR_NFTW_SOFT_CAP (512)
 #define BARR_SCAN_MAX_DIRS (256)
-#define BARR_SOURCE_LIST_INITIAL_FILES (0x1000)
+#define BARR_SOURCE_LIST_INITIAL_FILES (0x2000)
 #define BARR_AVG_PATH_LEN (256)
 
 // cache

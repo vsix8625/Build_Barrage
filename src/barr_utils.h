@@ -31,6 +31,7 @@ bool BARR_isfile(const char *path);
 barr_i32 BARR_setperm(const char *path, const char *perm);
 
 bool BARR_is_installed(const char *app);
+char *BARR_which(const char *app);
 bool BARR_isdir_empty(const char *path);
 
 const char **BARR_dedup_flags_array(const char **src_arr);

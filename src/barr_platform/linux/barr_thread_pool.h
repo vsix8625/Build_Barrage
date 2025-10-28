@@ -6,6 +6,8 @@
 
 typedef void (*barr_jobfn)(void *);
 
+#define BARR_JOB_BATCH_SIZE (4)
+
 typedef struct BARR_Job
 {
     barr_jobfn fn;
@@ -24,7 +26,6 @@ typedef struct BARR_ThreadPool
     barr_i32 num_threads;
     pthread_t *threads;
 
-    size_t pending;
     size_t active;
 } BARR_ThreadPool;
 

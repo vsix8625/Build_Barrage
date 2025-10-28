@@ -170,6 +170,40 @@ barr_i32 BARR_setperm(const char *path, const char *perm)
 
 //----------------------------------------------------------------------------------------------------
 
+char *BARR_which(const char *app)
+{
+    const char *env_path = getenv("PATH");
+    if (env_path == NULL)
+    {
+        BARR_errlog("%s() failed to get $PATH env", __func__);
+        return NULL;
+    }
+
+    char *path = strdup(env_path);
+    if (!path)
+    {
+        return NULL;
+    }
+
+    char *saveptr = NULL;
+    char *dir = strtok_r(path, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
+
+    while (dir)
+    {
+        char fullpath[BARR_BUF_SIZE_1024];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, app);
+        if (barr_access(fullpath, X_OK) == 0)
+        {
+            free(path);
+            return strdup(fullpath);  // caller owns the memory
+        }
+        dir = strtok_r(NULL, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
+    }
+
+    free(path);
+    return NULL;
+}
+
 bool BARR_is_installed(const char *app)
 {
     const char *env_path = getenv("PATH");

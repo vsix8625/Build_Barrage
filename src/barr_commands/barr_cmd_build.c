@@ -1,8 +1,10 @@
 #include "barr_cmd_build.h"
+#include "barr_arena.h"
 #include "barr_batch_build.h"
 #include "barr_build_ctx.h"
 #include "barr_cmd_clean.h"
 #include "barr_cmd_mode.h"
+#include "barr_cpu.h"
 #include "barr_debug.h"
 #include "barr_env.h"
 #include "barr_find_package.h"
@@ -57,12 +59,23 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     bool dry_run_compile = false;
+    bool is_batch_build = false;
+
     for (barr_i32 i = 1; i < argc; ++i)
     {
         char *cmd = argv[i];
         if (BARR_strmatch(cmd, "--dry-run"))
         {
             dry_run_compile = true;
+        }
+        if (BARR_strmatch(cmd, "--turbo"))
+        {
+            BARR_log("Turbo mode initialized");
+            is_batch_build = true;
+        }
+        else
+        {
+            BARR_warnlog("Invalid option for build command: %s", cmd);
         }
     }
 
@@ -178,24 +191,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_source_list_scan_dir(&sources, scan_dir);
     BARR_header_list_scan_dir(&headers, scan_dir, &inc_dir_list);
 
-    bool is_batch_build = false;
-    if (argc > 1)
-    {
-        for (barr_i32 i = 1; i < argc; i++)
-        {
-            const char *args = argv[i];
-            if (BARR_strmatch(args, "--batch"))
-            {
-                BARR_log("Batch mode initialized");
-                is_batch_build = true;
-            }
-            else
-            {
-                BARR_warnlog("Invalid option for build command: %s", args);
-            }
-        }
-    }
-
     BARR_SourceList batch_list = {0};
     if (is_batch_build)
     {
@@ -215,11 +210,16 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     BARR_HashMap *current_map = BARR_hashmap_create(sources.count + (sources.count >> 2));
-    BARR_dbglog("%s() current map created", __func__);
+
+    BARR_InfoCPU cpu = {0};
+    BARR_get_cpu_info(&cpu);
+    BARR_log("[cpu]: model='%s', cores=%d, threads=%d, freq=%.2f MHz, cache=%.2f MB",
+             cpu.model[0] ? cpu.model : "unknown", cpu.cores, cpu.threads, cpu.mhz,
+             (double) cpu.cache_size / (1024.0 * 1024.0));
 
     // Create thread pool
-    barr_i32 cores = BARR_OS_GET_CORES();
-    BARR_ThreadPool *pool = BARR_thread_pool_create(cores);
+    barr_i32 n_threads = cpu.threads;
+    BARR_ThreadPool *pool = BARR_thread_pool_create(n_threads);
 
     const char *olmos_cflags_cp = BARR_gc_strdup(olmos_cflags);
     BARR_source_list_hash_mt(&sources, &headers, current_map, olmos_cflags_cp, pool);
@@ -298,10 +298,20 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // compile stage
 
     const char *compiler = OLM_get_var("compiler");
-    if (!compiler)
+    char *resolved_compiler = NULL;
+    if (compiler == NULL)
     {
-        compiler = "gcc";
+        resolved_compiler = BARR_which("gcc");
+        if (!resolved_compiler)
+        {
+            BARR_errlog("Could not find compiler");
+        }
     }
+    else if (compiler && compiler[0] != '\0')
+    {
+        resolved_compiler = BARR_gc_strdup(compiler);
+    }
+    BARR_log("Compiler: %s", resolved_compiler);
 
     const char *out_dir = OLM_get_var("out_dir");
     if (!out_dir)
@@ -426,7 +436,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_dbglog("------ dedup includes end ------");
 
     // TODO: need to add std flag
-    BARR_CompileInfoCTX compile_ctx = {.compiler = compiler,
+    BARR_CompileInfoCTX compile_ctx = {.compiler = resolved_compiler,
                                        .flags = (const char **) flags,
                                        .out_dir = out_dir,
                                        .includes = includes,
@@ -452,22 +462,28 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
+    size_t producer_arena_size = compile_list.count * BARR_BUF_SIZE_4096;
+    BARR_Arena producer_arena;
+    BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
+
+    // job producer
     for (size_t i = 0; i < compile_list.count; i++)
     {
         const char *src = compile_list.entries[i];
-        BARR_CompileJob *job = malloc(sizeof(BARR_CompileJob));
-        if (!job)
+
+        BARR_CompileJob *job = (BARR_CompileJob *) BARR_arena_alloc(&producer_arena, sizeof(BARR_CompileJob));
+        if (job == NULL)
         {
-            BARR_errlog("%s(): failed to allocate compile job", __func__);
+            BARR_errlog("%s(): failed to allocate memory for compile job", __func__);
             continue;
         }
 
-        job->src = strdup(src);
+        job->src = BARR_arena_strdup(&producer_arena, strdup(src));
         job->ctx = &compile_ctx;
         job->progress_ctx = &progress_ctx;
         job->dry_run = dry_run_compile;
 
-        char *tmp_src = strdup(src);
+        char *tmp_src = BARR_arena_strdup(&producer_arena, strdup(src));
         char *base_with_ext = basename(tmp_src);
         snprintf(job->out_file, sizeof(job->out_file), "build/obj/%s.o", base_with_ext);
 
@@ -475,10 +491,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
         {
             BARR_errlog("%s() failed to add to thread pool", __func__);
-            free(job->src);
-            free(job);
 
             // cleanup
+            BARR_destroy_arena(&producer_arena);
             BARR_destroy_thread_pool(pool);
             OLM_close();
             BARR_destroy_source_list(&sources);
@@ -500,10 +515,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             (void) BARR_source_list_push(&object_list, job->out_file);
         }
-
-        free(tmp_src);
     }
     BARR_thread_pool_wait(pool);
+    printf("\n");
+    BARR_destroy_arena(&producer_arena);
 
     if (!progress_ctx.failed && !dry_run_compile)
     {
@@ -599,7 +614,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
             BARR_List so_args;
             BARR_list_init(&so_args, 16);
-            BARR_list_push(&so_args, (char *) compiler);
+            BARR_list_push(&so_args, (char *) resolved_compiler);
             BARR_list_push(&so_args, "-shared");
             BARR_list_push(&so_args, "-fPIC");
             BARR_list_push(&so_args, "-o");
@@ -626,7 +641,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             BARR_log("Building executable target: %s", project_name);
             // base linker args
-            char *base_link_args[] = {"gcc",
+            char *base_link_args[] = {resolved_compiler,
                                       "build/obj/main.c.o",  // main object
                                       "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
 
