@@ -88,11 +88,6 @@ barr_i32 BARR_run_process_BG(const char *name, char **args)
         BARR_errlog("Failed to execvp: %s", name);
         BARR_dumb_backtrace();
         _exit(EXIT_FAILURE);
-
-        execvp(name, args);
-        BARR_errlog("Failed to execvp: %s", name);
-        BARR_dumb_backtrace();
-        _exit(EXIT_FAILURE);
     }
     else if (pid > 0)
     {

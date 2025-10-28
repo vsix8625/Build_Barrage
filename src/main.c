@@ -218,6 +218,10 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *mode_aliases[] = {"-md", NULL};
     barr_register_command("mode", BARR_command_mode, "Modes", mode_aliases, NULL);
 
+    // play
+    static const char *play_aliases[] = {"-pl", NULL};
+    barr_register_command("play", BARR_command_play, "Play music", play_aliases, NULL);
+
     //----------------------------------------------------------------------------------------------------
     // Dispatch
 
