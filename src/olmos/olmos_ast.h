@@ -1,7 +1,11 @@
 #ifndef OLMOS_AST_H_
 #define OLMOS_AST_H_
 
+#include "barr_arena.h"
 #include <stddef.h>
+
+#define OLM_EXPAND_BUF_SIZE (1024)
+#define OLM_INITIAL_VARS (1024)
 
 typedef enum
 {
@@ -27,8 +31,12 @@ typedef struct OLM_Var
     const char *value;
 } OLM_Var;
 
-void OLM_eval_node(OLM_AST_Node *node);
+size_t BARR_count_nodes(OLM_AST_Node *node);
+void OLM_eval_node(OLM_AST_Node *node, BARR_Arena *arena);
 OLM_AST_Node *OLM_parse_file(const char *file_path);
 const char *OLM_get_var(const char *key);
+
+bool OLM_init(void);
+bool OLM_close(void);
 
 #endif  // OLMOS_AST_H_

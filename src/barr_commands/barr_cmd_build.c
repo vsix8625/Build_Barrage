@@ -17,7 +17,6 @@
 #include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
-#include "olmos.h"
 #include "olmos_ast.h"
 
 #include <inttypes.h>
@@ -114,7 +113,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         rc_table->destroy(rc_table);
         return 1;
     }
-    OLM_eval_node(olmos_ast);
+
+    BARR_Arena olm_eval_arena;
+    size_t total_nodes = BARR_count_nodes(olmos_ast);
+    size_t olm_eval_arena_size = (total_nodes * 2) * sizeof(OLM_AST_Node *);
+    BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
+
+    OLM_eval_node(olmos_ast, &olm_eval_arena);
+    BARR_destroy_arena(&olm_eval_arena);
 
     // example retrieving variables from Barrfile
     const char *olmos_cflags = OLM_get_var("cflags");
@@ -580,10 +586,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // out name
-        const char *project_name = OLM_get_var("project");
-        if (!project_name)
+        const char *target_name = OLM_get_var("target");
+        if (!target_name)
         {
-            project_name = "barr_default";
+            target_name = "barr_target";
         }
 
         clock_gettime(CLOCK_MONOTONIC, &arch_start);
@@ -615,12 +621,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             // TODO: we will possibly need to pass pkg_paths here also
 
             char dest_static[BARR_PATH_MAX * 2];
-            snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, project_name);
+            snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, target_name);
 
             BARR_mv("build/libbarr.a", dest_static);
 
             char dest_shared[BARR_PATH_MAX * 2];
-            snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, project_name);
+            snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, target_name);
 
             BARR_log("Building shared library: %s", dest_shared);
 
@@ -651,7 +657,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
         else
         {
-            BARR_log("Building executable target: %s", project_name);
+            BARR_log("Building executable target: %s", target_name);
             clock_gettime(CLOCK_MONOTONIC, &link_start);
             // base linker args
             char *base_link_args[] = {resolved_compiler,
@@ -743,7 +749,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
             char output_path[BARR_PATH_MAX];
             snprintf(output_path, sizeof(output_path), "%s/bin/%s/%s", "build", debug_build ? "debug" : "release",
-                     project_name);
+                     target_name);
 
             BARR_link_args_add(la, "-o");
             BARR_link_args_add(la, output_path);

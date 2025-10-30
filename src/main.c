@@ -132,6 +132,26 @@ barr_i32 main(barr_i32 argc, char **argv)
         return 1;
     }
 
+    bool do_gc_dump = false;
+    barr_i32 new_argc = 1;
+
+    for (barr_i32 i = 1; i < argc; i++)
+    {
+        if (BARR_strmatch(argv[i], "--gc-dump"))
+        {
+            do_gc_dump = true;
+        }
+        else
+        {
+            if (new_argc != i)
+            {
+                argv[new_argc] = argv[i];
+            }
+            new_argc++;
+        }
+    }
+    argc = new_argc;
+
     // init commands arena
     BARR_arena_init(&g_barr_cmds_arena, sizeof(BARR_Command) * BARR_MAX_COMMANDS, "commands_arena", 8);
     g_barr_cmds_list = (BARR_Command *) BARR_arena_alloc(&g_barr_cmds_arena, sizeof(BARR_Command) * BARR_MAX_COMMANDS);
@@ -227,13 +247,30 @@ barr_i32 main(barr_i32 argc, char **argv)
 
     barr_i32 dispatch_ret = barr_dispatch_commands(argc, argv);
 
-    //----------------------------------------------------------------------------------------------------
+    // -------------------------------------------------------
+    // Cleanup perf
+    struct timespec gc_cleanup_start, gc_cleanup_end;
+    clock_gettime(CLOCK_MONOTONIC, &gc_cleanup_start);
 
-    // Cleanup
-    // BARR_gc_dump();
-    // BARR_gc_file_dump();
-    // TODO: add a flag for dump file()
+    if (do_gc_dump)
+    {
+        BARR_gc_file_dump();
+    }
     BARR_gc_shutdown();
+
+    clock_gettime(CLOCK_MONOTONIC, &gc_cleanup_end);
+    barr_i64 sec = (barr_i64) (gc_cleanup_end.tv_sec - gc_cleanup_start.tv_sec);
+    barr_i64 nsec = (barr_i64) (gc_cleanup_end.tv_nsec - gc_cleanup_start.tv_nsec);
+    if (nsec < 0)
+    {
+        --sec;
+        nsec += 1000000000LL;
+    }
+    double elapsed = (double) sec + (double) nsec / 1e9;
+    BARR_log("BARR_gc cleanup time:\033[34;1m %.6fs", elapsed);
+
+    // -------------------------------------------------------
+
     BARR_destroy_arena(&g_barr_cmds_arena);
 
     //----------------------------------------------------------------------------------------------------

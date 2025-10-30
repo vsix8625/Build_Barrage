@@ -134,7 +134,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                                       "int main(int argc,char **argv){\n"
                                       "  (void)argc;\n"
                                       "  (void)argv;\n"
-                                      "  printf(\"Hello, from barr\");\n"
+                                      "  printf(\"Hello, from barr\\n\");\n"
                                       "  return 0;\n"
                                       "}\n";
                 BARR_file_write("src/main.c", "%s", main_contents);

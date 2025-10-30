@@ -83,6 +83,9 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
     BARR_HashMap *includes_map = BARR_hashmap_create(BARR_BUF_SIZE_128);
 
+    bool skip_batch = false;
+    // bool force_batch = false; into the void
+
     for (size_t i = 0; i < sources->count; i++)
     {
         const char *src = sources->entries[i];
@@ -96,7 +99,6 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
         if (fp_check)
         {
             char line[BARR_BUF_SIZE_512];
-            bool skip_batch = false;
 
             for (size_t l = 0; l < 10 && fgets(line, sizeof(line), fp_check); l++)
             {
@@ -105,6 +107,13 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
                     skip_batch = true;
                     break;
                 }
+
+                /* skipped for now or ever
+                if (strstr(line, "// barr-batch-force"))
+                {
+                    force_batch = true;
+                }
+                */
             }
 
             fclose(fp_check);
