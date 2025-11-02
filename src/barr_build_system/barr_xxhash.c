@@ -44,8 +44,7 @@ static bool barr_resolve_include_from_list(const BARR_SourceList *headers, const
     snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, include_file);
     if (barr_access(fullpath, F_OK) == 0)
     {
-        strncpy(out_path, fullpath, BARR_PATH_MAX - 1);
-        out_path[BARR_PATH_MAX - 1] = '\0';
+        strlcpy(out_path, fullpath, BARR_PATH_MAX);
         return true;
     }
 

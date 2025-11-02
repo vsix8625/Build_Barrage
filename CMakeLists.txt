@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 get_filename_component(ROOT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
-project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.14.3)
+project(${ROOT_DIR_NAME} LANGUAGES C VERSION 0.14.5)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -46,7 +46,7 @@ target_include_directories(${APP_NAME} PRIVATE
 )
 
 set(DEBUG_FLAGS -fuse-ld=lld -Wall -Wextra -Werror -MMD -MF -fsanitize=address,undefined -pedantic -ggdb -DDEBUG -DBARR_DEBUG -pthread)
-set(RELEASE_FLAGS -Wall -Wextra -Werror -Ofast -march=native -flto -ffp-contract=fast -DNDEBUG -pthread)
+set(RELEASE_FLAGS -Wall -O3 -march=native -DNDEBUG -pthread)
 target_compile_options(${APP_NAME} PRIVATE
     $<$<CONFIG:Debug>:${DEBUG_FLAGS}>
     $<$<CONFIG:Release>:${RELEASE_FLAGS}>

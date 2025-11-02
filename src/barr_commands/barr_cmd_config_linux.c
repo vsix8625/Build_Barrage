@@ -273,9 +273,7 @@ barr_i32 barr_config_install(barr_i32 argc, char **argv)
         BARR_file_append(config_file, "%s:str=\"%s\";\n", BARR_GLOB_CONFIG_KEY_COMPILER, compiler);
 
         // linker
-        const char *linker = BARR_is_installed("ld.lld")    ? "-fuse-ld=lld"
-                             : BARR_is_installed("ld.gold") ? "-fuse-ld=gold"
-                                                            : "N/A";
+        const char *linker = BARR_is_installed("ld.lld") ? "lld" : BARR_is_installed("ld.gold") ? "gold.ld" : "ld";
         BARR_file_append(config_file, "%s:str=\"%s\";\n", BARR_GLOB_CONFIG_KEY_LINKER, linker);
 
         // cflag

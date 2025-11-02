@@ -97,7 +97,7 @@ void BARR_gc_shutdown(void)
 {
     if (g_barr_gc_list.count)
     {
-        BARR_log("Garbage collector will free (%zu) allocations", g_barr_gc_list.count);
+        BARR_log("Garbage collector cleared (%zu) allocations", g_barr_gc_list.count);
     }
     pthread_mutex_lock(&g_barr_gc_list.lock);
 
@@ -166,11 +166,29 @@ void *BARR_gc_calloc_tracked(size_t n, size_t size, const char *fn, const char *
     return p;
 }
 
+size_t barr_gc_get_size(void *ptr)
+{
+    if (ptr == NULL)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&g_barr_gc_list.lock);
+
+    for (size_t i = g_barr_gc_list.count; i-- > 0;)
+    {
+        if (g_barr_gc_list.items[i].ptr == ptr)
+        {
+            size_t sz = g_barr_gc_list.items[i].size;
+            pthread_mutex_unlock(&g_barr_gc_list.lock);
+            return sz;
+        }
+    }
+    pthread_mutex_unlock(&g_barr_gc_list.lock);
+    return 0;
+}
+
 void *BARR_gc_realloc_tracked(void *ptr, size_t size, const char *fn, const char *file, barr_i32 line)
 {
-    uintptr_t old_addr = (uintptr_t) ptr;
-    void *p;
-
     fn = fn ? fn : "N/A";
     file = file ? file : "N/A";
 
@@ -179,21 +197,23 @@ void *BARR_gc_realloc_tracked(void *ptr, size_t size, const char *fn, const char
         size = 1;
     }
 
-    p = realloc(ptr, size);
-
-    if (p == NULL)
+    void *new_ptr = malloc(size);
+    if (new_ptr == NULL)
     {
-        BARR_errlog("%s(): realloc failed (%zu bytes) at %s:%d", fn, size, file, line);
+        BARR_errlog("%s(): malloc failed (%zu bytes) at %s:%d", fn, size, file, line);
         return NULL;
     }
 
-    if ((uintptr_t) p != old_addr)
+    if (new_ptr)
     {
-        barr_gc_pop((void *) old_addr);
-        barr_gc_push(p, size, fn, file, line);
+        size_t old_size = barr_gc_get_size(ptr);
+        memcpy(new_ptr, ptr, old_size < size ? old_size : size);
+
+        BARR_gc_free_tracked(ptr);
     }
 
-    return p;
+    barr_gc_push(new_ptr, size, fn, file, line);
+    return new_ptr;
 }
 
 char *BARR_gc_strdup_tracked(const char *src, const char *fn, const char *file, barr_i32 line)

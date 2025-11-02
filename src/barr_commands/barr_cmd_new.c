@@ -93,8 +93,10 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
             {
                 char *barrfile_contents = "print(\"Build script starts!\");\n\n"
                                           "target = \"barr_default\";\n"
+                                          "# version = \"0.0.1\";\n"
                                           "target_type = \"executable\";\n\n"
                                           "compiler = \"/usr/bin/gcc\";\n"
+                                          "# linker = \"lld\";\n"
                                           "# If build type is not specified it, defaults to debug\n"
                                           "build_type = \"debug\";\n"
                                           "# out_dir = \"build/${build_type}/obj\";\n"
@@ -109,7 +111,8 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                                           "# also turn off auto_include_discovery\n"
                                           "# includes = \"-Iinc\";\n"
                                           "defines = \"-DDEBUG\";\n\n"
-                                          "# find_package(\"xxhash\");\n"
+                                          "# pkgs = \"xxhash\";\n"
+                                          "# find_package(\"${pkgs}\");\n"
                                           "# user_libs = \"-lpthread\";\n"
                                           "# lib_paths = \"\";\n"
                                           "print(\"Build script ends!\");\n";

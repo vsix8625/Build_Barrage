@@ -51,7 +51,7 @@ typedef struct _stat barr_stat_t
 
 #define barr_mkdir(dir) _mkdir((dir))
 
-#define ALT_DEVNULL "nul"
+#define BARR_DEVNULL "nul"
 #define BARR_PATH_SEPARATOR_STR "\\"
 #define BARR_PATH_SEPARATOR_CHAR '\\'
 #define BARR_PATH_DELIMITER ';'

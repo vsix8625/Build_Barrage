@@ -4,6 +4,7 @@
 #include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
+#include "barr_os_layer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,9 @@
 static BARR_Arena g_barr_cmds_arena;
 static BARR_Command *g_barr_cmds_list = NULL;
 static size_t g_barr_cmds_count = 0;
+
+// from barr_env.h
+bool g_barr_silent_logs = false;
 
 barr_i32 BARR_command_help(barr_i32 argc, char **argv);
 
@@ -103,7 +107,6 @@ static barr_i32 barr_dispatch_commands(barr_i32 argc, char **argv)
                     return 1;
                 }
 
-                BARR_dbglog("Executing command (%d:%s)", chain_idx, argv[start]);
                 ret = barr_dispatch_single(sub_argc, &argv[start]);
                 if (ret != 0)
                 {
@@ -141,6 +144,10 @@ barr_i32 main(barr_i32 argc, char **argv)
         {
             do_gc_dump = true;
         }
+        else if (BARR_strmatch(argv[i], "--silent"))
+        {
+            g_barr_silent_logs = true;
+        }
         else
         {
             if (new_argc != i)
@@ -151,6 +158,19 @@ barr_i32 main(barr_i32 argc, char **argv)
         }
     }
     argc = new_argc;
+
+    if (g_barr_silent_logs)
+    {
+        FILE *null_out = fopen(BARR_DEVNULL, "w");
+        if (null_out)
+        {
+            fflush(stdout);
+            fflush(stderr);
+            dup2(fileno(null_out), STDOUT_FILENO);
+            dup2(fileno(null_out), STDERR_FILENO);
+            fclose(null_out);
+        }
+    }
 
     // init commands arena
     BARR_arena_init(&g_barr_cmds_arena, sizeof(BARR_Command) * BARR_MAX_COMMANDS, "commands_arena", 8);
@@ -267,7 +287,7 @@ barr_i32 main(barr_i32 argc, char **argv)
         nsec += 1000000000LL;
     }
     double elapsed = (double) sec + (double) nsec / 1e9;
-    BARR_log("BARR_gc cleanup time:\033[34;1m %.6fs", elapsed);
+    BARR_dbglog("BARR_gc cleanup time:\033[34;1m %.6fs", elapsed);
 
     // -------------------------------------------------------
 

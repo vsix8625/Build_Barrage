@@ -574,8 +574,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         snprintf(tmp_main_co, BARR_PATH_MAX, "%s/main.c.o", out_dir);
         if (!BARR_strmatch(job->out_file, tmp_main_co))
         {
-            BARR_log("Skipping main.c for archive");
             (void) BARR_source_list_push(&object_list, job->out_file);
+        }
+        else
+        {
+            BARR_log("Skipping %s from archive", job->out_file);
         }
     }
     BARR_thread_pool_wait(pool);
@@ -720,17 +723,25 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             char main_co_buf[BARR_PATH_MAX];
             snprintf(main_co_buf, BARR_PATH_MAX, "%s/main.c.o", out_dir);
 
-            char *base_link_args[] = {resolved_compiler,
-                                      main_co_buf,  // main object
-                                      "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
+            const char *linker_fuse = OLM_get_var("linker");
+            char linker_fuse_buf[BARR_BUF_SIZE_32];
+            char lld_threads[BARR_BUF_SIZE_32];
 
             BARR_LinkArgs *la = BARR_link_args_create();
 
-            // push base link args
-            size_t base_la_count = sizeof(base_link_args) / sizeof(base_link_args[0]);
-            for (size_t i = 0; i < base_la_count; ++i)
+            BARR_link_args_add(la, resolved_compiler);
+            BARR_link_args_add(la, main_co_buf);
+            BARR_link_args_add(la, "-Lbuild");  // TODO: change this to out_dir
+
+            if (linker_fuse != NULL && !BARR_strmatch(linker_fuse, "ld"))
             {
-                BARR_link_args_add(la, base_link_args[i]);
+                snprintf(linker_fuse_buf, sizeof(linker_fuse_buf), "-fuse-ld=%s", linker_fuse);
+                BARR_link_args_add(la, linker_fuse_buf);
+                if (BARR_strmatch(linker_fuse, "lld"))
+                {
+                    snprintf(lld_threads, sizeof(lld_threads), "-Wl,--threads=%d", n_threads);
+                    BARR_link_args_add(la, lld_threads);
+                }
             }
 
             size_t lib_count = 0;

@@ -2,6 +2,7 @@
 #include "barr_cmd_version.h"
 #include "barr_gc.h"
 #include "barr_io.h"
+#include "olmos_ast.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -62,24 +63,52 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     }
     exec_args[argc] = NULL;
 
+    // -------------------------------------------------------------------------------
+    // Barrfile read
+
+    OLM_AST_Node *olmos_ast = OLM_parse_file(BARR_OLMOS_FILE);
+    if (!olmos_ast)
+    {
+        BARR_errlog("Fatal: failed to parse %s", BARR_OLMOS_FILE);
+        return 1;
+    }
+    BARR_Arena olm_eval_arena;
+    size_t total_nodes = BARR_count_nodes(olmos_ast);
+    size_t olm_eval_arena_size = (total_nodes * 2) * sizeof(OLM_AST_Node *);
+    BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
+
+    OLM_eval_node(olmos_ast, &olm_eval_arena);
+
+    BARR_destroy_arena(&olm_eval_arena);
+    const char *vers = OLM_get_var("version");
+    if (vers == NULL)
+    {
+        vers = "0.0.1";
+        BARR_log("Version not set in 'Barrfile' default %s will be used", vers);
+    }
+
+    // -------------------------------------------------------------------------------
+
     BARR_printf("================================================================================\n");
-    BARR_log("Running: %s", exec_args[0]);
+    BARR_log("Running: %s-v%s", exec_args[0], vers);
     BARR_printf("\n\n");
     barr_i32 ret = BARR_run_process(last_bin_path, exec_args, false);
 
     //----------------------------------------------------------------------------------------------------
     // CLOCK
     clock_gettime(CLOCK_MONOTONIC, &end);
-    barr_i64 sec = (barr_i64) (end.tv_sec - start.tv_sec);
-    barr_i64 nsec = (barr_i64) (end.tv_nsec - start.tv_nsec);
-    if (nsec < 0)
-    {
-        --sec;
-        nsec += 1000000000LL;
-    }
-    double elapsed = (double) sec + (double) nsec / 1e9;
     BARR_printf("\n\n");
-    BARR_log("Run %s exited with (%d) code: \033[34;1m %.6fs", exec_args[0], ret, elapsed);
+    char ret_color_buf[BARR_BUF_SIZE_32];
+    if (ret)
+    {
+        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[31;1m%d\033[32;1m", ret);
+    }
+    else
+    {
+        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[34;1m%d\033[32;1m", ret);
+    }
+    BARR_log("Run %s exited with (%s) code: \033[34;1m %s", exec_args[0], ret_color_buf,
+             BARR_fmt_time_elapsed(&start, &end));
     BARR_printf("================================================================================\n");
     return ret;
 }

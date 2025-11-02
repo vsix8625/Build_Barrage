@@ -113,7 +113,8 @@ static char *olm_expand_vars(const char *input)
                 if (val)
                 {
                     size_t len = strlen(val);
-                    if ((out - buffer) + len < OLM_EXPAND_BUF_SIZE - 1)
+                    size_t remaining = OLM_EXPAND_BUF_SIZE - (out - buffer);
+                    if (len < remaining)
                     {
                         memcpy(out, val, len);
                         out += len;
@@ -121,9 +122,18 @@ static char *olm_expand_vars(const char *input)
                 }
                 else
                 {
-                    *out++ = '$';
-                    strcpy(out, var_name);
-                    out += strlen(var_name);
+                    size_t var_len = strlen(var_name);
+                    size_t remaining = OLM_EXPAND_BUF_SIZE - (out - buffer);
+                    if (remaining >= 1)
+                    {
+                        *out++ = '$';
+                        remaining--;
+                    }
+                    if (var_len <= remaining)
+                    {
+                        memcpy(out, var_name, var_len);
+                        out += var_len;
+                    }
                 }
             }
             else
