@@ -3,7 +3,31 @@
 #include <string.h>
 #include <unistd.h>
 
-static size_t barr_get_L3_cache_size_sys(void)
+static size_t barr_parse_cache_size(const char *buf)
+{
+    size_t size = 0;
+    char unit = 0;
+
+    if (sscanf(buf, "%zu%c", &size, &unit) == 2)
+    {
+        if (unit == 'K' || unit == 'k')
+        {
+            size *= 1024;
+        }
+        else if (unit == 'M' || unit == 'm')
+        {
+            size *= 1024UL * 1024UL;
+        }
+        else if (unit == 'G' || unit == 'g')
+        {
+            size *= 1024UL * 1024UL * 1024UL;
+        }
+    }
+
+    return size;
+}
+
+static size_t barr_get_cache_size_sys(const char *wanted_type)
 {
     char path[BARR_BUF_SIZE_128];
     char buf[BARR_BUF_SIZE_64];
@@ -12,7 +36,6 @@ static size_t barr_get_L3_cache_size_sys(void)
     for (int i = 0; i < 8; i++)
     {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu0/cache/index%d/type", i);
-
         FILE *type_fp = fopen(path, "r");
         if (!type_fp)
         {
@@ -20,16 +43,19 @@ static size_t barr_get_L3_cache_size_sys(void)
         }
 
         char type[BARR_BUF_SIZE_32] = {0};
-        fgets(type, sizeof(type), type_fp);
+        if (!fgets(type, sizeof(type), type_fp))
+        {
+            fclose(type_fp);
+            continue;
+        }
         fclose(type_fp);
 
-        if (!strstr(type, "Unified"))
+        if (!strstr(type, wanted_type))
         {
             continue;
         }
 
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu0/cache/index%d/size", i);
-
         FILE *fp = fopen(path, "r");
         if (!fp)
         {
@@ -38,18 +64,7 @@ static size_t barr_get_L3_cache_size_sys(void)
 
         if (fgets(buf, sizeof(buf), fp))
         {
-            char unit = 0;
-            if (sscanf(buf, "%zu%c", &size, &unit) == 2)
-            {
-                if (unit == 'K' || unit == 'k')
-                {
-                    size *= 1024;
-                }
-                else if (unit == 'M' || unit == 'm')
-                {
-                    size *= 1024 * 1024;
-                }
-            }
+            size = barr_parse_cache_size(buf);
         }
 
         fclose(fp);
@@ -106,21 +121,35 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
                 size_t size_kb = 0;
                 if (sscanf(line, "cache size\t: %zu KB", &size_kb) == 1)
                 {
-                    info->cache_size = size_kb * 1024;
+                    info->cache_size = size_kb * 1024UL;
                 }
             }
         }
-
         fclose(fp);
     }
 
     if (info->cache_size == 0)
     {
-        info->cache_size = barr_get_L3_cache_size_sys();
+        info->cache_size = barr_get_cache_size_sys("Unified");
     }
 
     if (info->cache_size == 0)
     {
-        info->cache_size = 8UL * 1024UL * 1024UL;  // 8MB fallback
+        info->cache_size = barr_get_cache_size_sys("Data");
+    }
+
+    if (info->cache_size == 0)
+    {
+        size_t threads = (size_t) (info->threads > 0 ? info->threads : 4);
+        info->cache_size = threads * 2UL * 1024UL * 1024UL;
+    }
+
+    if (info->cache_size < (1UL << 20))  // <1MB
+    {
+        info->cache_size = 1UL << 20;
+    }
+    else if (info->cache_size > (256UL << 20))  // >256MB
+    {
+        info->cache_size = 256UL << 20;
     }
 }

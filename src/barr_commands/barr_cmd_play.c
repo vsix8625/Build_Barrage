@@ -12,12 +12,17 @@ barr_i32 BARR_command_play(barr_i32 argc, char **argv)
 
     const char *dirpath = argv[1];
     bool shuffle = false;
+    bool video = false;
 
     for (barr_i32 i = 2; i < argc; ++i)
     {
         if (BARR_strmatch(argv[i], "--shuffle"))
         {
             shuffle = true;
+        }
+        if (BARR_strmatch(argv[i], "--video"))
+        {
+            video = true;
         }
     }
 
@@ -47,7 +52,10 @@ barr_i32 BARR_command_play(barr_i32 argc, char **argv)
     }
 
     exec_args[idx++] = (char *) dirpath;
-    exec_args[idx++] = "--no-video";
+    if (!video)
+    {
+        exec_args[idx++] = "--no-video";
+    }
     exec_args[idx++] = "--really-quiet";
     exec_args[idx++] = NULL;
 

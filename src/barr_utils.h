@@ -3,7 +3,6 @@
 #define BARR_UTILS_H_
 
 #include "barr_cmd_version.h"
-#include "barr_defs.h"
 #include "barr_os_layer.h"
 
 #define BARR_NULL_TERM_CHAR '\0'
@@ -37,5 +36,9 @@ bool BARR_isdir_empty(const char *path);
 const char **BARR_dedup_flags_array(const char **src_arr);
 
 char **BARR_tokenize_string(const char *str);
+
+const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct timespec *end);
+
+barr_i32 BARR_mkdir_p(const char *path);
 
 #endif  // BARR_UTILS_H_

@@ -24,7 +24,7 @@ static char *olm_strip_quotes(const char *s);
 
 //--------------------------------------------------------------------------------------------------
 
-static void olm_store_var(const char *key, const char *value)
+void OLM_store_var(const char *key, const char *value)
 {
     if (g_olm_var_count >= g_olm_var_capacity)
     {
@@ -396,7 +396,7 @@ void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
         {
             case OLM_NODE_ASSIGNMENT:
                 char *expandend = olm_expand_vars(node->args[0]);
-                olm_store_var(node->name, expandend);
+                OLM_store_var(node->name, expandend);
                 break;
             case OLM_NODE_FN_CALL:
 
@@ -485,8 +485,7 @@ bool OLM_init(void)
 
 bool OLM_close(void)
 {
-    BARR_log("Olmos system shutdown");
-    BARR_log("GC sweeping %zu variables into the void...", g_olm_var_count);
+    BARR_log("Olmos system shutdown, sweeping %zu variables into the void...", g_olm_var_count);
     olm_reset_vars();
     return true;
 }

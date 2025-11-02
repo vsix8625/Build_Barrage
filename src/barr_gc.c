@@ -95,6 +95,10 @@ bool BARR_gc_init(void)
 
 void BARR_gc_shutdown(void)
 {
+    if (g_barr_gc_list.count)
+    {
+        BARR_log("Garbage collector will free (%zu) allocations", g_barr_gc_list.count);
+    }
     pthread_mutex_lock(&g_barr_gc_list.lock);
 
     for (size_t i = g_barr_gc_list.count; i-- > 0;)
@@ -106,8 +110,6 @@ void BARR_gc_shutdown(void)
     g_barr_gc_list.items = NULL;
     g_barr_gc_list.count = 0;
     g_barr_gc_list.capacity = 0;
-
-    BARR_dbglog("Garbage collector shutdown");
 
     pthread_mutex_unlock(&g_barr_gc_list.lock);
     pthread_mutex_destroy(&g_barr_gc_list.lock);

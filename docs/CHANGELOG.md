@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Build artifacts and objects recovery system.   
 - Multi target builds support.   
 - `depend("project")` function for `Barrfile`. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
@@ -70,6 +71,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
     - `barr mode OFF` will turn off any active modes.   
 - Add `barr_thread_pool.c/.h` basic thread pool created that runs based on amount of physical cores found by `sysconf`.  
 ### Changed
+- Moved from `SHA-256` hashing to `xxhash` for faster hashing.  
 ### Fixed 
 ### Removed
 

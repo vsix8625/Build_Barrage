@@ -34,6 +34,8 @@ typedef struct OLM_Var
 size_t BARR_count_nodes(OLM_AST_Node *node);
 void OLM_eval_node(OLM_AST_Node *node, BARR_Arena *arena);
 OLM_AST_Node *OLM_parse_file(const char *file_path);
+
+void OLM_store_var(const char *key, const char *value);
 const char *OLM_get_var(const char *key);
 
 bool OLM_init(void);

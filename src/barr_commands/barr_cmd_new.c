@@ -91,23 +91,31 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
 
             if (!BARR_isfile("Barrfile"))
             {
-                char *barrfile_contents = "# Default Barrfile\n"
-                                          "print(\"Build script starts!\");\n"
-                                          "project = \"barr_default\";\n"
+                char *barrfile_contents = "print(\"Build script starts!\");\n\n"
+                                          "target = \"barr_default\";\n"
+                                          "target_type = \"executable\";\n\n"
                                           "compiler = \"/usr/bin/gcc\";\n"
-                                          "cflags = \"-Wall -Werror -Wextra -g\";\n"
-                                          "cflags_release = \"-Wall -O3\";\n"
-                                          "# Setting includes in Barrfile will turn off auto dir detection\n"
-                                          "# includes = \"-Iinc\";\n"
-                                          "defines = \"-DDEBUG\";\n"
+                                          "# If build type is not specified it, defaults to debug\n"
                                           "build_type = \"debug\";\n"
-                                          "target_type = \"executable\";\n"
+                                          "# out_dir = \"build/${build_type}/obj\";\n"
+                                          "# You can expand variables \n"
+                                          "std = \"-std=c23\";\n"
+                                          "cflags = \"${std} -Wall -Werror -Wextra -g\";\n"
+                                          "cflags_release = \"${std} -Wall -O3\";\n"
+                                          "# Include dirs discovery is turned on by default\n"
+                                          "# Other modes are: \"append\", \"off\"\n"
+                                          "# auto_include_discovery = \"on\";\n"
+                                          "# Manually adding the includes without specifying mode will,\n"
+                                          "# also turn off auto_include_discovery\n"
+                                          "# includes = \"-Iinc\";\n"
+                                          "defines = \"-DDEBUG\";\n\n"
                                           "# find_package(\"xxhash\");\n"
                                           "# user_libs = \"-lpthread\";\n"
                                           "# lib_paths = \"\";\n"
-                                          "# out_dir = \"build\";\n"
                                           "print(\"Build script ends!\");\n";
-                BARR_file_write("Barrfile", "%s", barrfile_contents);
+                BARR_file_write("Barrfile", "# Default Barrfile - Build Barrage v%d.%d.%d\n# Update: %s\n\n",
+                                BARR_VERSION_MAJOR, BARR_VERSION_MINOR, BARR_VERSION_PATCH, BARR_VERSION_DATE);
+                BARR_file_append("Barrfile", "%s", barrfile_contents);
                 BARR_log("Barrfile created, you can run 'barr config --local' to open it with you $EDITOR");
             }
             else

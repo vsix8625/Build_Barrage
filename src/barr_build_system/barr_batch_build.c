@@ -52,39 +52,58 @@ static bool barr_is_merge_safe(const char *filepath, size_t max_lines)
     return safe;
 }
 
-void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_list)
+void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_list, const char *out_dir)
 {
-    if (sources == NULL || batch_list == NULL)
+    if (sources == NULL || batch_list == NULL || out_dir == NULL)
     {
         BARR_errlog("%s(): null list provided", __func__);
         return;
     }
 
-    if (!BARR_isdir("build"))
+    if (!BARR_isdir(out_dir))
     {
-        barr_mkdir("build");
+        BARR_mkdir_p(out_dir);
     }
-    barr_mkdir("build/batch");
-    barr_mkdir("build/obj");
 
     // perf
     BARR_InfoCPU cpu = {0};
     BARR_get_cpu_info(&cpu);
 
-    const size_t max_batch_size = cpu.cache_size;
-    const size_t max_file_lines = 10000;
+    size_t max_batch_size = cpu.cache_size << 1;
+    if (max_batch_size < (1UL << 20))
+    {
+        max_batch_size = 1UL << 20;
+    }
+    if (max_batch_size > (64UL << 20))
+    {
+        max_batch_size = 64UL << 20;
+    }
+
+    size_t avg_line_bytes = 64;
+    size_t max_file_lines = max_batch_size / avg_line_bytes;
+    if (max_file_lines < 2000)
+    {
+        max_file_lines = 2000;
+    }
+    if (max_file_lines > 20000)
+    {
+        max_file_lines = 20000;
+    }
+
     const size_t max_file_per_batch = (size_t) (cpu.threads * 256) <= 1024 ? (size_t) (cpu.threads * 256) : 1024;
 
     size_t files_in_current_batch = 0;
     barr_u32 current_batch_count = 0;
 
     FILE *batch_fp = NULL;
-    char batch_path[BARR_PATH_MAX];
+    char batch_path[BARR_PATH_MAX * 2];
 
     BARR_HashMap *includes_map = BARR_hashmap_create(BARR_BUF_SIZE_128);
 
     bool skip_batch = false;
     // bool force_batch = false; into the void
+
+    size_t batch_bytes = 0;
 
     for (size_t i = 0; i < sources->count; i++)
     {
@@ -115,7 +134,6 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
                 }
                 */
             }
-
             fclose(fp_check);
 
             if (skip_batch)
@@ -158,13 +176,15 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
         if (!batch_fp)
         {
-            snprintf(batch_path, sizeof(batch_path), "build/batch/batch_%u.c", current_batch_count++);
+            snprintf(batch_path, sizeof(batch_path), "%s/batch_%u.c", out_dir, current_batch_count++);
             batch_fp = fopen(batch_path, "w");
             if (!batch_fp)
             {
                 BARR_errlog("%s(): failed to create batch file", __func__);
                 continue;
             }
+
+            batch_bytes = 0;
 
             // reset includes for new batch
             if (includes_map)
@@ -194,7 +214,6 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
         fprintf(batch_fp, "// BEGIN FILE: %s\n", src);
 
         char buf[BARR_BUF_SIZE_4096];
-        size_t total_bytes = 0;
 
         while (fgets(buf, sizeof(buf), fp))
         {
@@ -217,9 +236,10 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
             }
 
             fputs(buf, batch_fp);
-            total_bytes += strlen(buf);
+            size_t len = strlen(buf);
+            batch_bytes += len;
 
-            if (total_bytes > max_batch_size)
+            if (batch_bytes > max_batch_size)
             {
                 fclose(fp);
 
@@ -236,6 +256,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
                 BARR_source_list_push(batch_list, batch_path);
                 batch_fp = NULL;
                 files_in_current_batch = 0;
+                batch_bytes = 0;
                 goto next_src_file;
             }
         }
@@ -266,6 +287,4 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
         BARR_destroy_hashmap(includes_map);
     }
-
-    BARR_dbglog("%s(): initial batch list built with %zu files", __func__, batch_list->count);
 }

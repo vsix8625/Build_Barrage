@@ -52,11 +52,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Failed to create bin directory");
             return 1;
         }
-        if (barr_mkdir("build/obj"))
-        {
-            BARR_errlog("Failed to create obj directory");
-            return 1;
-        }
     }
 
     bool dry_run_compile = false;
@@ -199,6 +194,25 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_source_list_scan_dir(&sources, scan_dir);
     BARR_header_list_scan_dir(&headers, scan_dir, &inc_dir_list);
 
+    const char *build_type = OLM_get_var("build_type");
+    if (!build_type)
+    {
+        OLM_store_var("build_type", "debug");
+        build_type = "debug";
+    }
+    bool debug_build = (build_type && BARR_strmatch(build_type, "debug"));
+
+    // get the out dir from Barrfile
+    const char *out_dir = OLM_get_var("out_dir");
+    if (out_dir == NULL)
+    {
+        out_dir = "build/debug/obj";
+    }
+    if (!BARR_isdir(out_dir))
+    {
+        BARR_mkdir_p(out_dir);
+    }
+
     BARR_SourceList batch_list = {0};
     if (is_batch_build)
     {
@@ -209,7 +223,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
         else
         {
-            BARR_create_batches(&sources, &batch_list);
+            char batch_dir[BARR_PATH_MAX];
+            snprintf(batch_dir, BARR_PATH_MAX, "build/%s/batch", build_type);
+
+            BARR_create_batches(&sources, &batch_list, batch_dir);
             sources = batch_list;
 
             BARR_destroy_source_list(&batch_list);
@@ -328,19 +345,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_log("Compiler: %s", resolved_compiler);
 
-    const char *out_dir = OLM_get_var("out_dir");
-    if (!out_dir)
-    {
-        out_dir = "build/obj";
-    }
-
-    const char *build_type = OLM_get_var("build_type");
-    if (!build_type)
-    {
-        build_type = "debug";
-    }
-    bool debug_build = (build_type && BARR_strmatch(build_type, "debug"));
-
     char build_dir_path[BARR_BUF_SIZE_1024];
     snprintf(build_dir_path, sizeof(build_dir_path), "build/bin/%s", build_type);
 
@@ -373,47 +377,89 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     // prepare includes
+    BARR_List merged_includes;
+    BARR_list_init(&merged_includes, 8);
+
     const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
     const char **includes = NULL;
 
     const char *olmos_includes_raw = OLM_get_var("includes");
-    if (olmos_includes_raw && olmos_includes_raw[0] != '\0')
+    const char *auto_inc_mode = OLM_get_var("auto_include_discovery");
+    bool has_manual_includes = olmos_includes_raw && olmos_includes_raw[0] != '\0';
+
+    enum
     {
-        includes = (const char **) BARR_tokenize_string(olmos_includes_raw);
-    }
-    else
+        BARR_AUTO_INC_MODE_ON = 0,
+        BARR_AUTO_INC_MODE_OFF,
+        BARR_AUTO_INC_MODE_APPEND,
+    } mode = BARR_AUTO_INC_MODE_ON;
+
+    if (auto_inc_mode)
     {
-        size_t orig_count = 0;
-        while (includes_raw[orig_count])
+        if (BARR_strmatch(auto_inc_mode, "off"))
         {
-            orig_count++;
+            mode = BARR_AUTO_INC_MODE_OFF;
         }
-
-        size_t total = orig_count + inc_dir_list.count + 1;  // +1 for NULL terminator
-        const char **includes_combined = BARR_gc_calloc(total, sizeof(char *));
-
-        for (size_t i = 0; i < orig_count; ++i)
+        else if (BARR_strmatch(auto_inc_mode, "append"))
         {
-            includes_combined[i] = includes_raw[i];  // copy original flags
+            mode = BARR_AUTO_INC_MODE_APPEND;
+        }
+        else if (BARR_strmatch(auto_inc_mode, "on"))
+        {
+            mode = BARR_AUTO_INC_MODE_ON;
+        }
+        else
+        {
+            BARR_warnlog("Unknown auto_include_discovery value '%s', using default (on)", auto_inc_mode);
+        }
+    }
+    else if (has_manual_includes)
+    {
+        mode = BARR_AUTO_INC_MODE_OFF;
+        BARR_log("auto_include_discovery not set, disabling auto-scan (manual includes detected)");
+    }
+
+    if (has_manual_includes && (mode == BARR_AUTO_INC_MODE_OFF || mode == BARR_AUTO_INC_MODE_APPEND))
+    {
+        const char **manual = (const char **) BARR_tokenize_string(olmos_includes_raw);
+        for (const char **p = manual; p && *p; ++p)
+        {
+            BARR_list_push(&merged_includes, BARR_gc_strdup(*p));
+        }
+    }
+
+    if (mode == BARR_AUTO_INC_MODE_ON || mode == BARR_AUTO_INC_MODE_APPEND)
+    {
+        for (const char **p = includes_raw; p && *p; ++p)
+        {
+            BARR_list_push(&merged_includes, BARR_gc_strdup(*p));
         }
 
         for (size_t i = 0; i < inc_dir_list.count; ++i)
         {
-            char *buf = BARR_gc_alloc(BARR_PATH_MAX + 3);  // "-I" + path + '\0'
-            snprintf(buf, BARR_PATH_MAX + 3, "-I%s", inc_dir_list.entries[i]);
-            includes_combined[orig_count + i] = buf;
+            char buf[BARR_PATH_MAX + 3];
+            snprintf(buf, sizeof(buf), "-I%s", inc_dir_list.entries[i]);
+            BARR_list_push(&merged_includes, BARR_gc_strdup(buf));
         }
-        includes_combined[total - 1] = NULL;
-        includes = includes_combined;
     }
+    BARR_list_push(&merged_includes, NULL);
 
-    BARR_List merged_includes;
-    BARR_list_init(&merged_includes, 8);
+    includes = (const char **) merged_includes.items;
 
-    for (const char **p = includes; p && *p; ++p)
+    switch (mode)
     {
-        BARR_list_push(&merged_includes, BARR_gc_strdup(*p));
+        case BARR_AUTO_INC_MODE_OFF:
+            BARR_log("include discovery: manual only (auto-scan disabled)");
+            break;
+        case BARR_AUTO_INC_MODE_APPEND:
+            BARR_log("include discovery: append mode (manual + auto)");
+            break;
+        case BARR_AUTO_INC_MODE_ON:
+            BARR_log("include discovery: auto mode");
+            break;
     }
+
+    //----------------------------------------
 
     for (size_t i = 0; i < pkg_list.count; ++i)
     {
@@ -498,7 +544,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         char *tmp_src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         char *base_with_ext = basename(tmp_src);
-        snprintf(job->out_file, sizeof(job->out_file), "build/obj/%s.o", base_with_ext);
+        snprintf(job->out_file, sizeof(job->out_file), "%s/%s.o", out_dir, base_with_ext);
 
         // add to pool for compilation stage
         if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
@@ -524,8 +570,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // keep the main.c.o out of the archive
-        if (!BARR_strmatch(job->out_file, "build/obj/main.c.o"))
+        char tmp_main_co[BARR_PATH_MAX];
+        snprintf(tmp_main_co, BARR_PATH_MAX, "%s/main.c.o", out_dir);
+        if (!BARR_strmatch(job->out_file, tmp_main_co))
         {
+            BARR_log("Skipping main.c for archive");
             (void) BARR_source_list_push(&object_list, job->out_file);
         }
     }
@@ -542,7 +591,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             printf("\n");
             BARR_errlog("%s(): failed to write cache", __func__);
         }
-        BARR_rmrf("build/batch");
+
+        char batch_dir[BARR_PATH_MAX];
+        snprintf(batch_dir, BARR_PATH_MAX, "build/%s/batch", build_type);
+        if (BARR_isdir(batch_dir))
+        {
+            BARR_rmrf(batch_dir);
+        }
     }
     else
     {
@@ -638,10 +693,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_list_push(&so_args, "-o");
             BARR_list_push(&so_args, dest_shared);
 
+            char main_co_buf[BARR_PATH_MAX];
+            snprintf(main_co_buf, BARR_PATH_MAX, "%s/main.c.o", out_dir);
             for (size_t i = 0; i < object_list.count; ++i)
             {
                 const char *obj = object_list.entries[i];
-                if (!BARR_strmatch(obj, "build/obj/main.c.o"))
+                if (!BARR_strmatch(obj, main_co_buf))
                 {
                     BARR_list_push(&so_args, (char *) obj);
                 }
@@ -660,8 +717,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_log("Building executable target: %s", target_name);
             clock_gettime(CLOCK_MONOTONIC, &link_start);
             // base linker args
+            char main_co_buf[BARR_PATH_MAX];
+            snprintf(main_co_buf, BARR_PATH_MAX, "%s/main.c.o", out_dir);
+
             char *base_link_args[] = {resolved_compiler,
-                                      "build/obj/main.c.o",  // main object
+                                      main_co_buf,  // main object
                                       "-fuse-ld=lld", "-Wl,--threads=4", "-Lbuild"};
 
             BARR_LinkArgs *la = BARR_link_args_create();
@@ -703,7 +763,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
                     if (pkg_info->libs && pkg_info->libs[0])
                     {
-                        BARR_dbglog("[pkg] libs for package: %s -> %s", pkg_info->name, pkg_info->libs);
                         libs_raw[idx++] = pkg_info->libs;
                     }
                 }
@@ -712,11 +771,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
                 BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
             }
-            else
-            {
-                BARR_dbglog("No package libs to link — skipping pkg libs stage.");
-            }
-
             BARR_link_args_add(la, "-lbarr");
 
             const char *lib_paths_raw = OLM_get_var("lib_paths");
@@ -778,47 +832,12 @@ exit:
 {
     //----------------------------------------------------------------------------------------------------
     // performance
-    barr_i64 compile_sec = (barr_i64) (compile_end.tv_sec - compile_start.tv_sec);
-    barr_i64 compile_nsec = (barr_i64) (compile_end.tv_nsec - compile_start.tv_nsec);
-    if (compile_nsec < 0)
-    {
-        --compile_sec;
-        compile_nsec += 1000000000LL;
-    }
-    double compile_elapsed = (double) compile_sec + (double) compile_nsec / 1e9;
-
-    barr_i64 arch_sec = (barr_i64) (arch_end.tv_sec - arch_start.tv_sec);
-    barr_i64 arch_nsec = (barr_i64) (arch_end.tv_nsec - arch_start.tv_nsec);
-    if (arch_nsec < 0)
-    {
-        --arch_sec;
-        arch_nsec += 1000000000LL;
-    }
-    double arch_elapsed = (double) arch_sec + (double) arch_nsec / 1e9;
-
-    barr_i64 link_sec = (barr_i64) (link_end.tv_sec - link_start.tv_sec);
-    barr_i64 link_nsec = (barr_i64) (link_end.tv_nsec - link_start.tv_nsec);
-    if (link_nsec < 0)
-    {
-        --link_sec;
-        link_nsec += 1000000000LL;
-    }
-    double link_elapsed = (double) link_sec + (double) link_nsec / 1e9;
+    BARR_log("Time to compile sources: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
+    BARR_log("Time to archive: \033[34;1m %s", BARR_fmt_time_elapsed(&arch_start, &arch_end));
+    BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
 
     clock_gettime(CLOCK_MONOTONIC, &build_end);
-    barr_i64 build_sec = (barr_i64) (build_end.tv_sec - build_start.tv_sec);
-    barr_i64 build_nsec = (barr_i64) (build_end.tv_nsec - build_start.tv_nsec);
-    if (build_nsec < 0)
-    {
-        --build_sec;
-        build_nsec += 1000000000LL;
-    }
-    double elapsed = (double) build_sec + (double) build_nsec / 1e9;
-
-    BARR_log("Time to compile sources: \033[34;1m %.6fs", compile_elapsed);
-    BARR_log("Time to archive: \033[34;1m %.6fs", arch_elapsed);
-    BARR_log("Time to link: \033[34;1m %.6fs", link_elapsed);
-    BARR_log("Time to build: \033[34;1m %.6fs", elapsed);
+    BARR_log("Time to build: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
     //----------------------------------------------------------------------------------------------------
 
     // cleanup

@@ -11,10 +11,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <xxh3.h>
+
+barr_u64 BARR_hashstr(const char *s)
+{
+    if (s == NULL)
+    {
+        return 0;
+    }
+    return XXH64(s, strlen(s), 0);
+}
+
+bool BARR_hashcmp(barr_u64 h1, barr_u64 h2)
+{
+    return h1 == h2;
+}
 
 bool BARR_strmatch(const char *s1, const char *s2)
 {
-    return strcmp(s1, s2) == 0 ? true : false;
+    return strcmp(s1, s2) == 0;
 }
 
 void BARR_safecpy(char *dst, const char *src, size_t dst_size)
@@ -378,6 +393,31 @@ static void barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_
     }
 }
 
+const char *barr_normalize_include_flag(const char *flag)
+{
+    if (flag == NULL)
+    {
+        return NULL;
+    }
+
+    if (strncmp(flag, "-I", 2) != 0)
+    {
+        return BARR_gc_strdup(flag);
+    }
+
+    const char *path = flag + 2;
+    char real[BARR_PATH_MAX];
+    if (realpath(path, real) != NULL)
+    {
+        char buf[BARR_PATH_MAX + 3];
+        snprintf(buf, sizeof(buf), "-I%s", real);
+        return BARR_gc_strdup(buf);
+    }
+
+    // fallback: keep original if realpath fails
+    return BARR_gc_strdup(flag);
+}
+
 const char **BARR_dedup_flags_array(const char **src_arr)
 {
     if (!src_arr)
@@ -408,7 +448,8 @@ const char **BARR_dedup_flags_array(const char **src_arr)
 
     for (size_t i = 0; src_arr[i] != NULL; ++i)
     {
-        barr_tokenize_and_append_unique(out, total_tokens, &out_count, src_arr[i]);
+        const char *normalized = barr_normalize_include_flag(src_arr[i]);
+        barr_tokenize_and_append_unique(out, total_tokens, &out_count, normalized);
     }
 
     out[out_count] = NULL;
@@ -491,4 +532,97 @@ char **BARR_tokenize_string(const char *str)
 
     arr[idx] = NULL;
     return arr;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+static double barr_time_elapsed(const struct timespec *start, const struct timespec *end)
+{
+    if (start == NULL || end == NULL)
+    {
+        return 0.0;
+    }
+
+    barr_i64 sec = end->tv_sec - start->tv_sec;
+    barr_i64 nsec = end->tv_nsec - start->tv_nsec;
+    if (nsec < 0)
+    {
+        nsec += 1000000000L;
+    }
+    return (double) sec + (double) nsec * 1e-9;
+}
+
+const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct timespec *end)
+{
+    if (start == NULL || end == NULL)
+    {
+        return NULL;
+    }
+
+    static char buf[BARR_BUF_SIZE_32];
+    double s = barr_time_elapsed(start, end);
+
+    if (s < 1e-3)
+    {
+        snprintf(buf, sizeof(buf), "%.0f µs", s * 1e6);
+    }
+    else if (s < 1.0)
+    {
+        snprintf(buf, sizeof(buf), "%.1f ms", s * 1e3);
+    }
+    else if (s < 60.0)
+    {
+        snprintf(buf, sizeof(buf), "%.2f s", s);
+    }
+    else
+    {
+        double m = s / 60.0;
+        snprintf(buf, sizeof(buf), "%.2f min", m);
+    }
+
+    return buf;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+barr_i32 BARR_mkdir_p(const char *path)
+{
+    char tmp[BARR_PATH_MAX];
+    size_t len = strlen(path);
+
+    if (len == 0 || len >= sizeof(tmp))
+    {
+        return -1;
+    }
+
+    strncpy(tmp, path, sizeof(tmp));
+    tmp[len] = '\0';
+
+    for (char *p = tmp + 1; *p; ++p)
+    {
+        if (*p == BARR_PATH_SEPARATOR_CHAR)
+        {
+            *p = '\0';
+            if (barr_mkdir(tmp) != 0)
+            {
+                if (errno != EEXIST)
+                {
+                    BARR_errlog("%s(): mkdir failed", __func__);
+                    return -1;
+                }
+            }
+            *p = BARR_PATH_SEPARATOR_CHAR;
+        }
+    }
+
+    if (barr_mkdir(tmp) != 0)
+    {
+        if (errno != EEXIST)
+        {
+            BARR_errlog("%s(): mkdir failed", __func__);
+            return -1;
+        }
+    }
+
+    return 0;
 }

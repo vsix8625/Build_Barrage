@@ -7,7 +7,7 @@
 barr_i32 BARR_command_version(barr_i32 argc, char **argv)
 {
     BARR_printf("Build Barrage (barr) version: %d.%d.%d\n", BARR_VERSION_MAJOR, BARR_VERSION_MINOR, BARR_VERSION_PATCH);
-    BARR_printf("Date: %s\n", BARR_VERSION_DATE);
+    BARR_printf("Update: %s\n", BARR_VERSION_DATE);
 
     BARR_VOID(argc);
     BARR_VOID(argv);
