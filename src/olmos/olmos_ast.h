@@ -2,6 +2,8 @@
 #define OLMOS_AST_H_
 
 #include "barr_arena.h"
+#include "barr_hashmap.h"
+
 #include <stddef.h>
 
 #define OLM_EXPAND_BUF_SIZE (1024)
@@ -33,6 +35,7 @@ typedef struct OLM_Var
 
 size_t BARR_count_nodes(OLM_AST_Node *node);
 void OLM_eval_node(OLM_AST_Node *node, BARR_Arena *arena);
+void OLM_parse_vars(OLM_AST_Node *root);
 OLM_AST_Node *OLM_parse_file(const char *file_path);
 
 void OLM_store_var(const char *key, const char *value);

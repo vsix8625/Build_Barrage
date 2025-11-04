@@ -223,7 +223,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    // object list to use in LINK STAGE
+    // object list to use in
     BARR_SourceList object_list;
     if (!BARR_source_list_init(&object_list, BARR_SOURCE_LIST_INITIAL_FILES))
     {
@@ -308,23 +308,22 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     if (!BARR_isdir(out_dir))
     {
-        BARR_mkdir_p(out_dir);
+        if (BARR_mkdir_p(out_dir))
+        {
+            BARR_errlog("Failed to create out directory");
+            OLM_close();
+            BARR_destroy_source_list(&sources);
+            BARR_destroy_source_list(&headers);
+            BARR_destroy_source_list(&inc_dir_list);
+            BARR_destroy_source_list(&compile_list);
+            rc_table->destroy(rc_table);
+            return 1;
+        }
+    }
 
-        char obj_dir_buf[BARR_PATH_MAX + 32];
-        snprintf(obj_dir_buf, sizeof(obj_dir_buf), "%s/obj", out_dir);
-        BARR_mkdir_p(obj_dir_buf);
-    }
-    if (BARR_mkdir_p(out_dir))
-    {
-        BARR_errlog("Failed to create out directory");
-        OLM_close();
-        BARR_destroy_source_list(&sources);
-        BARR_destroy_source_list(&headers);
-        BARR_destroy_source_list(&inc_dir_list);
-        BARR_destroy_source_list(&compile_list);
-        rc_table->destroy(rc_table);
-        return 1;
-    }
+    char obj_dir_buf[BARR_PATH_MAX + 32];
+    snprintf(obj_dir_buf, sizeof(obj_dir_buf), "%s/obj", out_dir);
+    BARR_mkdir_p(obj_dir_buf);
 
     BARR_SourceList batch_list = {0};
     if (is_batch_build)
@@ -658,7 +657,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         char *tmp_src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         char *base_with_ext = basename(tmp_src);
         // root_dir + out_dir
-        snprintf(job->out_file, sizeof(job->out_file), "%s/obj/%s.o", out_dir, base_with_ext);
+        snprintf(job->out_file, sizeof(job->out_file), "%s/%s.o", obj_dir_buf, base_with_ext);
 
         // add to pool for compilation stage
         if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
@@ -709,8 +708,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("%s(): failed to write cache", __func__);
         }
 
-        char batch_dir[BARR_PATH_MAX];
-        snprintf(batch_dir, BARR_PATH_MAX, "%s/build/%s/batch", root_dir, build_type);
+        char batch_dir[BARR_PATH_MAX * 2];
+        snprintf(batch_dir, sizeof(batch_dir), "%s/batch", out_dir);
         if (BARR_isdir(batch_dir))
         {
             BARR_rmrf(batch_dir);
@@ -839,8 +838,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
         else
         {
+            // Link stage
             BARR_log("Building executable target: %s", target_name);
             clock_gettime(CLOCK_MONOTONIC, &link_start);
+
             // base linker args
             char main_co_buf[BARR_PATH_MAX * 2];
             snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);

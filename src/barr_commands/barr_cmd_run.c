@@ -65,28 +65,24 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     exec_args[argc] = NULL;
 
     // -------------------------------------------------------------------------------
-    // Barrfile read
 
-    OLM_AST_Node *olmos_ast = OLM_parse_file(BARR_OLMOS_FILE);
-    if (!olmos_ast)
+    OLM_init();
+    OLM_AST_Node *root = OLM_parse_file("Barrfile");
+    if (root == NULL)
     {
-        BARR_errlog("Fatal: failed to parse %s", BARR_OLMOS_FILE);
+        BARR_errlog("%s(): failed to parse Barrfile", __func__);
         return 1;
     }
-    BARR_Arena olm_eval_arena;
-    size_t total_nodes = BARR_count_nodes(olmos_ast);
-    size_t olm_eval_arena_size = (total_nodes * 2) * sizeof(OLM_AST_Node *);
-    BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
 
-    OLM_eval_node(olmos_ast, &olm_eval_arena);
+    OLM_parse_vars(root);
 
-    BARR_destroy_arena(&olm_eval_arena);
     const char *vers = OLM_get_var(OLM_VAR_VERSION);
     if (vers == NULL)
     {
         vers = "0.0.1";
         BARR_log("Version not set in 'Barrfile' default %s will be used", vers);
     }
+    OLM_close();
 
     // -------------------------------------------------------------------------------
 

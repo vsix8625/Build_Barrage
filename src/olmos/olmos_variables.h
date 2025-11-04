@@ -19,5 +19,6 @@
 #define OLM_VAR_BIN_OUT_PATH "binary_out_path"
 #define OLM_VAR_EXCLUDE_PATTERNS "exclude_patterns"
 #define OLM_VAR_VERSION "version"
+#define OLM_VAR_CLEAN_TARGETS "clean_targets"
 
 #endif  // OLMOS_VARIABLES_H_

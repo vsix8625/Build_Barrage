@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <xxhash.h>
 
 static OLM_Var *g_olm_vars = NULL;
 static size_t g_olm_var_capacity = 0;
@@ -154,6 +155,29 @@ static char *olm_expand_vars(const char *input)
 }
 
 //--------------------------------------------------------------------------------------------------
+
+void OLM_parse_vars(OLM_AST_Node *root)
+{
+    if (root == NULL)
+    {
+        return;
+    }
+
+    for (size_t i = 0; i < root->child_count; i++)
+    {
+        OLM_AST_Node *node = root->children[i];
+        if (!node)
+        {
+            continue;
+        }
+
+        if (node->type == OLM_NODE_ASSIGNMENT && node->arg_count > 0 && node->args[0])
+        {
+            char *expanded = olm_expand_vars(node->args[0]);
+            OLM_store_var(node->name, expanded);
+        }
+    }
+}
 
 OLM_AST_Node *OLM_parse_file(const char *file_path)
 {

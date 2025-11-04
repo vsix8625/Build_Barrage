@@ -6,7 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Fix `build --dir dir/path/` to actually build in specified directory instead of cwd
+- Add build_info in .barr/data for libraries for barr to automatically link them
 - Build artifacts and objects recovery system.   
 - Multi target builds support.   
 - `depend("project")` function for `Barrfile`. 
