@@ -279,15 +279,7 @@ barr_i32 main(barr_i32 argc, char **argv)
     BARR_gc_shutdown();
 
     clock_gettime(CLOCK_MONOTONIC, &gc_cleanup_end);
-    barr_i64 sec = (barr_i64) (gc_cleanup_end.tv_sec - gc_cleanup_start.tv_sec);
-    barr_i64 nsec = (barr_i64) (gc_cleanup_end.tv_nsec - gc_cleanup_start.tv_nsec);
-    if (nsec < 0)
-    {
-        --sec;
-        nsec += 1000000000LL;
-    }
-    double elapsed = (double) sec + (double) nsec / 1e9;
-    BARR_dbglog("BARR_gc cleanup time:\033[34;1m %.6fs", elapsed);
+    BARR_dbglog("BARR_gc cleanup time:\033[34;1m %s", BARR_fmt_time_elapsed(&gc_cleanup_start, &gc_cleanup_end));
 
     // -------------------------------------------------------
 

@@ -3,6 +3,7 @@
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "olmos_ast.h"
+#include "olmos_variables.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -80,7 +81,7 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     OLM_eval_node(olmos_ast, &olm_eval_arena);
 
     BARR_destroy_arena(&olm_eval_arena);
-    const char *vers = OLM_get_var("version");
+    const char *vers = OLM_get_var(OLM_VAR_VERSION);
     if (vers == NULL)
     {
         vers = "0.0.1";

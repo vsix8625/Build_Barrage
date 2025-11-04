@@ -55,9 +55,10 @@ target_compile_options(${APP_NAME} PRIVATE
 # Link xxHash library
 target_link_libraries(${APP_NAME} PRIVATE ${XXHASH_LIBRARY})
 
-if(DEFINED CMAKE_FLAGS_EXTRA)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_FLAGS_EXTRA}")
-endif()
+target_compile_definitions(${APP_NAME} PRIVATE
+	$<$<CONFIG:Debug>:BARR_DEBUG_BUILD>
+	$<$<CONFIG:Release>:BARR_RELEASE_BUILD>
+)
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_LOWER)
 set(OUTPUT_BIN_DIR "${CMAKE_BINARY_DIR}/bin/${BUILD_TYPE_LOWER}")

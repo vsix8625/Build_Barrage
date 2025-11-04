@@ -48,13 +48,13 @@ static inline bool barr_is_project_root(const char *dirpath)
         "Cargo.toml",    "meson.build", "SConstruct",     "go.md",          ".csproj",  "WORKSPACE",
         "WORSPACE.baze", "BUILD",       "BUILD.bazel",    "configure.ac",   NULL};
 
-    char config_path[BARR_PATH_MAX];
+    char config_path[BARR_PATH_MAX + 32];
     for (const char **filename = project_files; *filename; ++filename)
     {
         snprintf(config_path, sizeof(config_path), "%s/%s", dirpath, *filename);
         if (BARR_isfile(config_path))
         {
-            BARR_log("Skipped: %s, Contains: %s", dirpath, *filename);
+            BARR_dbglog("Excluding directory '%s' contains '%s'", config_path, *filename);
             return true;
         }
     }
@@ -62,7 +62,7 @@ static inline bool barr_is_project_root(const char *dirpath)
     return false;
 }
 
-static inline bool barr_skip_dir(const char *path)
+static inline bool barr_exclude(const char *path, const char **exclude_patterns)
 {
     static const char *skip_names[] = {"build",   "bin",        "obj",     ".git",    "cache",   ".vs",  ".idea",
                                        "test",    "CMakeFiles", "Debug",   "Release", ".barr",   "docs", "assets",
@@ -89,6 +89,23 @@ static inline bool barr_skip_dir(const char *path)
         }
     }
 
+    if (exclude_patterns)
+    {
+        for (const char **p = exclude_patterns; *p; ++p)
+        {
+            const char *found = strstr(path, *p);
+            if (found)
+            {
+                char before = (found == path) ? '/' : *(found - 1);
+                char after = *(found + strlen(*p));
+                if ((before == '/' || before == '\0') && (after == '/' || after == '\0'))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
     /* last segment guard */
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
@@ -101,7 +118,7 @@ static inline bool barr_skip_dir(const char *path)
     return false;
 }
 
-void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
+void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const char **exclude_tokens)
 {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -114,7 +131,7 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
     }
 
     char **queue = malloc(64 * sizeof(char *));
-    if (!queue)
+    if (queue == NULL)
     {
         BARR_errlog("%s(): failed to allocate memory for queue", __func__);
         return;
@@ -127,15 +144,27 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
     size_t que_cap = BARR_SCAN_QUEUE_CAP;
 
     queue[que_size++] = strdup(dirpath);
+    if (queue[0] == NULL)
+    {
+        BARR_errlog("%s(): failed to strdup initial dirpath", __func__);
+        free(queue);
+        return;
+    }
 
     for (size_t i = 0; i < que_size; ++i)
     {
         char *current = queue[i];
+        if (current == NULL)
+        {
+            BARR_warnlog("%s(): skipping null path in queue", __func__);
+            continue;
+        }
+
         dir_count++;
         DIR *dir = opendir(current);
-        if (!dir)
+        if (dir == NULL)
         {
-            free(current);
+            BARR_warnlog("%s(): cannot open dir '%s'", __func__, current);
             continue;
         }
 
@@ -160,13 +189,14 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
 
             if (dent->d_type == DT_DIR)
             {
-                if (barr_skip_dir(dent->d_name))
+                if (barr_exclude(dent->d_name, exclude_tokens))
                 {
                     continue;
                 }
 
                 if (barr_is_project_root(fullpath))
                 {
+                    BARR_dbglog("%s(): skipped '%s'", __func__, fullpath);
                     continue;
                 }
 
@@ -238,7 +268,8 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath)
     BARR_log("Found: %zu source files", list->count);
 }
 
-void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list)
+void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list,
+                               const char **exclude_tokens)
 {
     if (!list || !dirpath)
     {
@@ -247,7 +278,7 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
     }
 
     char **queue = BARR_gc_alloc(64 * sizeof(char *));
-    if (!queue)
+    if (queue == NULL)
     {
         BARR_errlog("%s(): failed to allocate memory for queue", __func__);
         return;
@@ -257,12 +288,18 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
     size_t que_cap = BARR_SCAN_QUEUE_CAP;
 
     queue[que_size++] = BARR_gc_strdup(dirpath);
+    if (queue[0] == NULL)
+    {
+        BARR_errlog("%s(): failed to strdup initial dirpath", __func__);
+        free(queue);
+        return;
+    }
 
     for (size_t i = 0; i < que_size; ++i)
     {
         char *current = queue[i];
         DIR *dir = opendir(current);
-        if (!dir)
+        if (dir == NULL)
         {
             continue;
         }
@@ -280,8 +317,14 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
 
             if (dent->d_type == DT_DIR)
             {
-                if (!barr_skip_dir(dent->d_name))
+                if (!barr_exclude(dent->d_name, exclude_tokens))
                 {
+                    if (barr_is_project_root(fullpath))
+                    {
+                        BARR_dbglog("%s(): skipped '%s'", __func__, fullpath);
+                        continue;
+                    }
+
                     BARR_source_list_push(inc_dir_list, fullpath);
                     if (que_size >= que_cap)
                     {

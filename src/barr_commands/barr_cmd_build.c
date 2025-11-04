@@ -18,6 +18,7 @@
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
 #include "olmos_ast.h"
+#include "olmos_variables.h"
 
 #include <inttypes.h>
 #include <libgen.h>
@@ -47,15 +48,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Failed to create build directory");
             return 1;
         }
-        if (barr_mkdir("build/bin"))
-        {
-            BARR_errlog("Failed to create bin directory");
-            return 1;
-        }
     }
 
     bool dry_run_compile = false;
     bool is_batch_build = false;
+    bool select_dir = false;
+    char *select_dir_path = NULL;
 
     for (barr_i32 i = 1; i < argc; ++i)
     {
@@ -69,10 +67,58 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_log("Turbo mode initialized");
             is_batch_build = true;
         }
+        if (BARR_strmatch(cmd, "--dir"))
+        {
+            select_dir = true;
+            if (argv[i + 1])
+            {
+                select_dir_path = BARR_gc_strdup(argv[i + 1]);
+                size_t len = strlen(select_dir_path);
+                if (len > 0 && select_dir_path[len - 1] == '/')
+                {
+                    select_dir_path[len - 1] = '\0';
+                }
+                break;
+            }
+            else
+            {
+                BARR_errlog("%s(): --dir options reuires directory path: '%s' is invalid", __func__, argv[i + 1]);
+                select_dir = false;
+                break;
+            }
+        }
         else
         {
             BARR_warnlog("Invalid option for build command: %s", cmd);
+            break;
         }
+    }
+
+    if (select_dir)
+    {
+        const char *old_dir = BARR_getcwd();
+        BARR_log("Switching build context to directory: %s", select_dir_path);
+
+        if (chdir(select_dir_path) != 0)
+        {
+            BARR_errlog("%s(): failed to change directory to %s", __func__, select_dir_path);
+            return 1;
+        }
+
+        barr_i32 status = BARR_command_build(0, NULL);
+        if (status != 0)
+        {
+            BARR_errlog("Sub-build failed for '%s'", select_dir_path);
+        }
+
+        BARR_log("Switching build context to directory: %s", old_dir);
+        if (chdir(old_dir) != 0)
+        {
+            BARR_errlog("%s(): failed to restore working directory to %s", __func__, old_dir);
+            return 1;
+        }
+
+        return status;
     }
 
     bool has_cache = false;
@@ -118,12 +164,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_destroy_arena(&olm_eval_arena);
 
     // example retrieving variables from Barrfile
-    const char *olmos_cflags = OLM_get_var("cflags");
+    const char *olmos_cflags = OLM_get_var(OLM_VAR_CFLAGS);
     if (!olmos_cflags)
     {
         olmos_cflags = "-Wall -Wextra -Werror -g";
     }
-    const char *olmos_defines = OLM_get_var("defines");
+    const char *olmos_defines = OLM_get_var(OLM_VAR_DEFINES);
     if (!olmos_defines)
     {
         olmos_defines = "-DDEBUG";
@@ -132,7 +178,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
     // Begin build
 
-    const char *scan_dir = BARR_getcwd();
+    const char *root_dir = BARR_getcwd();
 
     // generic list for full scan
     BARR_SourceList sources;
@@ -191,26 +237,93 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    BARR_source_list_scan_dir(&sources, scan_dir);
-    BARR_header_list_scan_dir(&headers, scan_dir, &inc_dir_list);
+    //----------------------------------------------------------------------------------------------------
+    // scan exclude
 
-    const char *build_type = OLM_get_var("build_type");
+    const char *exclude_raw = OLM_get_var(OLM_VAR_EXCLUDE_PATTERNS);
+    const char **exclude_tokens = NULL;
+    if (exclude_raw && exclude_raw[0] != '\0')
+    {
+        exclude_tokens = (const char **) BARR_tokenize_string(exclude_raw);
+    }
+    else
+    {
+        exclude_tokens = NULL;
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // prepare source files
+
+    const char *sources_glob_raw = OLM_get_var(OLM_VAR_GLOB_SOURCES);
+    const char *sources_raw = OLM_get_var(OLM_VAR_SOURCES);
+
+    bool has_manual_sources = sources_raw && sources_raw[0] != '\0';
+    bool has_manual_sources_glob = sources_glob_raw && sources_glob_raw[0] != '\0';
+
+    if (has_manual_sources_glob)
+    {
+        const char **sources_tokens = (const char **) BARR_tokenize_string(sources_glob_raw);
+        for (const char **p = sources_tokens; p && *p; ++p)
+        {
+            BARR_source_list_scan_dir(&sources, *p, exclude_tokens);
+        }
+    }
+    else
+    {
+        BARR_source_list_scan_dir(&sources, root_dir, exclude_tokens);
+    }
+
+    if (has_manual_sources)
+    {
+        const char **src_files = (const char **) BARR_tokenize_string(sources_raw);
+        for (const char **f = src_files; f && *f; ++f)
+        {
+            if (!BARR_source_list_push(&sources, *f))
+            {
+                BARR_warnlog("Failed to push source file '%s'", *f);
+            }
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------------
+
+    BARR_header_list_scan_dir(&headers, root_dir, &inc_dir_list, exclude_tokens);
+
+    const char *build_type = OLM_get_var(OLM_VAR_BUILD_TYPE);
     if (!build_type)
     {
-        OLM_store_var("build_type", "debug");
+        OLM_store_var(OLM_VAR_BUILD_TYPE, "debug");
         build_type = "debug";
     }
     bool debug_build = (build_type && BARR_strmatch(build_type, "debug"));
 
     // get the out dir from Barrfile
-    const char *out_dir = OLM_get_var("out_dir");
+    const char *out_dir = OLM_get_var(OLM_VAR_OUT_DIR);
     if (out_dir == NULL)
     {
-        out_dir = "build/debug/obj";
+        char tmp_out_dir[BARR_PATH_MAX];
+        snprintf(tmp_out_dir, BARR_PATH_MAX, "%s/build/debug", root_dir);
+        out_dir = tmp_out_dir;
     }
+
     if (!BARR_isdir(out_dir))
     {
         BARR_mkdir_p(out_dir);
+
+        char obj_dir_buf[BARR_PATH_MAX + 32];
+        snprintf(obj_dir_buf, sizeof(obj_dir_buf), "%s/obj", out_dir);
+        BARR_mkdir_p(obj_dir_buf);
+    }
+    if (BARR_mkdir_p(out_dir))
+    {
+        BARR_errlog("Failed to create out directory");
+        OLM_close();
+        BARR_destroy_source_list(&sources);
+        BARR_destroy_source_list(&headers);
+        BARR_destroy_source_list(&inc_dir_list);
+        BARR_destroy_source_list(&compile_list);
+        rc_table->destroy(rc_table);
+        return 1;
     }
 
     BARR_SourceList batch_list = {0};
@@ -224,7 +337,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         else
         {
             char batch_dir[BARR_PATH_MAX];
-            snprintf(batch_dir, BARR_PATH_MAX, "build/%s/batch", build_type);
+            snprintf(batch_dir, BARR_PATH_MAX, "%s/build/%s/batch", root_dir, build_type);
 
             BARR_create_batches(&sources, &batch_list, batch_dir);
             sources = batch_list;
@@ -329,7 +442,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
     // compile stage
 
-    const char *compiler = OLM_get_var("compiler");
+    const char *compiler = OLM_get_var(OLM_VAR_COMPILER);
     char *resolved_compiler = NULL;
     if (compiler == NULL)
     {
@@ -345,12 +458,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_log("Compiler: %s", resolved_compiler);
 
-    char build_dir_path[BARR_BUF_SIZE_1024];
-    snprintf(build_dir_path, sizeof(build_dir_path), "build/bin/%s", build_type);
+    char build_dir_path[BARR_BUF_SIZE_4096 * 2];
+    snprintf(build_dir_path, sizeof(build_dir_path), "%s/bin", out_dir);
 
     if (!BARR_isdir(build_dir_path))
     {
-        if (barr_mkdir(build_dir_path))
+        if (BARR_mkdir_p(build_dir_path))
         {
             BARR_warnlog("%s(): failed to create %s", __func__, build_dir_path);
         }
@@ -359,7 +472,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     char **flags = NULL;
     if (debug_build)
     {
-        const char *cflags = OLM_get_var("cflags");
+        const char *cflags = OLM_get_var(OLM_VAR_CFLAGS);
         if (!cflags || !cflags[0])
         {
             cflags = "-Wall -Wextra -Werror -g";
@@ -368,7 +481,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     else
     {
-        const char *cflags_release = OLM_get_var("cflags_release");
+        const char *cflags_release = OLM_get_var(OLM_VAR_CFLAGS_RELEASE);
         if (!cflags_release || !cflags_release[0])
         {
             cflags_release = "-O3 -Wall";
@@ -383,8 +496,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
     const char **includes = NULL;
 
-    const char *olmos_includes_raw = OLM_get_var("includes");
-    const char *auto_inc_mode = OLM_get_var("auto_include_discovery");
+    const char *olmos_includes_raw = OLM_get_var(OLM_VAR_INCLUDES);
+    const char *auto_inc_mode = OLM_get_var(OLM_VAR_AUTO_INC_DISCOVERY);
     bool has_manual_includes = olmos_includes_raw && olmos_includes_raw[0] != '\0';
 
     enum
@@ -481,7 +594,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     includes = BARR_dedup_flags_array((const char **) merged_includes.items);
     // --------------------------------------------------------------------------------------------
-    const char *olm_defines = OLM_get_var("defines");
+    const char *olm_defines = OLM_get_var(OLM_VAR_DEFINES);
     if (!olm_defines)
     {
         olm_defines = "-DDEBUG";
@@ -520,7 +633,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
-    size_t producer_arena_size = compile_list.count * BARR_BUF_SIZE_4096;
+    size_t producer_arena_size = compile_list.count * (BARR_BUF_SIZE_8192 + BARR_BUF_SIZE_1024);
     BARR_Arena producer_arena;
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
 
@@ -544,7 +657,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         char *tmp_src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         char *base_with_ext = basename(tmp_src);
-        snprintf(job->out_file, sizeof(job->out_file), "%s/%s.o", out_dir, base_with_ext);
+        // root_dir + out_dir
+        snprintf(job->out_file, sizeof(job->out_file), "%s/obj/%s.o", out_dir, base_with_ext);
 
         // add to pool for compilation stage
         if (!BARR_thread_pool_add(pool, BARR_compile_job, job))
@@ -570,8 +684,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         // keep the main.c.o out of the archive
-        char tmp_main_co[BARR_PATH_MAX];
-        snprintf(tmp_main_co, BARR_PATH_MAX, "%s/main.c.o", out_dir);
+        char tmp_main_co[BARR_PATH_MAX * 2];
+        snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/main.c.o", out_dir);
         if (!BARR_strmatch(job->out_file, tmp_main_co))
         {
             (void) BARR_source_list_push(&object_list, job->out_file);
@@ -596,7 +710,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         char batch_dir[BARR_PATH_MAX];
-        snprintf(batch_dir, BARR_PATH_MAX, "build/%s/batch", build_type);
+        snprintf(batch_dir, BARR_PATH_MAX, "%s/build/%s/batch", root_dir, build_type);
         if (BARR_isdir(batch_dir))
         {
             BARR_rmrf(batch_dir);
@@ -626,49 +740,56 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     //----------------------------------------------------------------------------------------------------
 
-    if (!dry_run_compile)
+    // out name
+    const char *target_name = OLM_get_var(OLM_VAR_TARGET);
+    if (target_name == NULL)
     {
-        if (!BARR_isdir("build/bin"))
-        {
-            if (barr_mkdir("build/bin"))
-            {
-                BARR_errlog("Failed to create bin directory");
-                return 1;
-            }
-            // TODO: need to change this with config build type from olmos
-            if (barr_mkdir("build/bin/debug"))
-            {
-                BARR_errlog("Failed to create debug directory");
-                return 1;
-            }
-        }
+        target_name = "barr_target";
+    }
 
-        // out name
-        const char *target_name = OLM_get_var("target");
-        if (!target_name)
+    char output_path[BARR_PATH_MAX * 2];
+    const char *bin_out_path = OLM_get_var(OLM_VAR_BIN_OUT_PATH);
+    if (bin_out_path)
+    {
+        snprintf(output_path, sizeof(output_path), "%s/%s", root_dir, bin_out_path);
+    }
+    else
+    {
+        snprintf(output_path, sizeof(output_path), "%s/bin/%s", out_dir, target_name);
+    }
+
+    if (!progress_ctx.failed && !dry_run_compile)
+    {
+        if (!BARR_isdir("build"))
         {
-            target_name = "barr_target";
+            if (BARR_mkdir_p(out_dir))
+            {
+                BARR_errlog("Failed to create out_dir directory");
+                return 1;
+            }
         }
 
         clock_gettime(CLOCK_MONOTONIC, &arch_start);
         // archive stage
-        barr_i32 archive_ret = BARR_archive_stage(&object_list, "build/libbarr.a");
+        char archive_out_path[BARR_PATH_MAX * 2];
+        snprintf(archive_out_path, sizeof(archive_out_path), "%s/libbarr.a", out_dir);
+        BARR_dbglog("ARCHIVE_PATH: %s", archive_out_path);
+        barr_i32 archive_ret = BARR_archive_stage(&object_list, archive_out_path);
         if (archive_ret != 0)
         {
             BARR_errlog("Archive stage failed");
         }
         clock_gettime(CLOCK_MONOTONIC, &arch_end);
 
-        const char *target_type = OLM_get_var("target_type");
+        const char *target_type = OLM_get_var(OLM_VAR_TARGET_TYPE);
         if (!target_type || !target_type[0])
         {
             target_type = "executable";
         }
 
-        char lib_dir[BARR_PATH_MAX];
-        snprintf(lib_dir, sizeof(lib_dir), "build/lib/%s", debug_build ? "debug" : "release");
-        barr_mkdir("build/lib");
-        barr_mkdir(lib_dir);
+        char lib_dir[BARR_PATH_MAX + 256];
+        snprintf(lib_dir, sizeof(lib_dir), "%s/lib", out_dir);
+        BARR_mkdir_p(lib_dir);
 
         if (BARR_strmatch(target_type, "library"))
         {
@@ -676,28 +797,28 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             // STATIC & SHARED LIB
             // ----------------------------------------------------------------------------------------------------
 
-            // TODO: we will possibly need to pass pkg_paths here also
+            clock_gettime(CLOCK_MONOTONIC, &link_start);
 
             char dest_static[BARR_PATH_MAX * 2];
-            snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, target_name);
-
-            BARR_mv("build/libbarr.a", dest_static);
+            snprintf(dest_static, sizeof(dest_static), "%s/%s.a", lib_dir, target_name);
+            BARR_mv(archive_out_path, dest_static);
 
             char dest_shared[BARR_PATH_MAX * 2];
-            snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, target_name);
+            snprintf(dest_shared, sizeof(dest_shared), "%s/%s.so", lib_dir, target_name);
 
             BARR_log("Building shared library: %s", dest_shared);
 
             BARR_List so_args;
             BARR_list_init(&so_args, 16);
             BARR_list_push(&so_args, (char *) resolved_compiler);
+            BARR_list_push(&so_args, "-fuse-ld=lld");
             BARR_list_push(&so_args, "-shared");
             BARR_list_push(&so_args, "-fPIC");
             BARR_list_push(&so_args, "-o");
             BARR_list_push(&so_args, dest_shared);
 
-            char main_co_buf[BARR_PATH_MAX];
-            snprintf(main_co_buf, BARR_PATH_MAX, "%s/main.c.o", out_dir);
+            char main_co_buf[BARR_PATH_MAX * 2];
+            snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
             for (size_t i = 0; i < object_list.count; ++i)
             {
                 const char *obj = object_list.entries[i];
@@ -714,16 +835,17 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             {
                 BARR_errlog("Shared lib creation failed");
             }
+            clock_gettime(CLOCK_MONOTONIC, &link_end);
         }
         else
         {
             BARR_log("Building executable target: %s", target_name);
             clock_gettime(CLOCK_MONOTONIC, &link_start);
             // base linker args
-            char main_co_buf[BARR_PATH_MAX];
-            snprintf(main_co_buf, BARR_PATH_MAX, "%s/main.c.o", out_dir);
+            char main_co_buf[BARR_PATH_MAX * 2];
+            snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
 
-            const char *linker_fuse = OLM_get_var("linker");
+            const char *linker_fuse = OLM_get_var(OLM_VAR_LINKER);
             char linker_fuse_buf[BARR_BUF_SIZE_32];
             char lld_threads[BARR_BUF_SIZE_32];
 
@@ -731,7 +853,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
             BARR_link_args_add(la, resolved_compiler);
             BARR_link_args_add(la, main_co_buf);
-            BARR_link_args_add(la, "-Lbuild");  // TODO: change this to out_dir
+
+            char archive_lib_dirpath[BARR_PATH_MAX * 2];
+            snprintf(archive_lib_dirpath, sizeof(archive_lib_dirpath), "-L%s", out_dir);
+            BARR_link_args_add(la, archive_lib_dirpath);
 
             if (linker_fuse != NULL && !BARR_strmatch(linker_fuse, "ld"))
             {
@@ -784,7 +909,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
             BARR_link_args_add(la, "-lbarr");
 
-            const char *lib_paths_raw = OLM_get_var("lib_paths");
+            const char *lib_paths_raw = OLM_get_var(OLM_VAR_LIB_PATHS);
             if (lib_paths_raw && lib_paths_raw[0])
             {
                 char **lib_paths = BARR_tokenize_string(lib_paths_raw);
@@ -798,26 +923,23 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 lib_paths_raw = "";
             }
 
-            const char *user_libs_raw = OLM_get_var("user_libs");
-            if (user_libs_raw && user_libs_raw[0])
+            const char *linker_flags_raw = OLM_get_var(OLM_VAR_LINKER_FLAGS);
+            if (linker_flags_raw && linker_flags_raw[0])
             {
-                char **user_libs = BARR_tokenize_string(user_libs_raw);
-                for (char **p = user_libs; p && *p; ++p)
+                char **user_linker_flags = BARR_tokenize_string(linker_flags_raw);
+                for (char **p = user_linker_flags; p && *p; ++p)
                 {
                     BARR_link_args_add(la, *p);
                 }
             }
             else
             {
-                user_libs_raw = "";
+                linker_flags_raw = "";
             }
-
-            char output_path[BARR_PATH_MAX];
-            snprintf(output_path, sizeof(output_path), "%s/bin/%s/%s", "build", debug_build ? "debug" : "release",
-                     target_name);
 
             BARR_link_args_add(la, "-o");
             BARR_link_args_add(la, output_path);
+            BARR_dbglog("OUPUT_PATH: %s", output_path);
 
             // finalize link args
             char **link_args = BARR_link_args_finalize(la);

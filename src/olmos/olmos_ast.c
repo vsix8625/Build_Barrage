@@ -307,6 +307,40 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
 
             BARR_dbglog("Package: %s parsed", node->args[0]);
         }
+        else if (strncmp(line, "run_cmd", 7) == 0)
+        {
+            char *start = strchr(line, '(');
+            char *end = strchr(line, ')');
+
+            if (start == NULL || end == NULL || end <= start)
+            {
+                BARR_errlog("%s(): syntax error at line %s:%zu, invalid run_cmd()", __func__, line, line_n);
+                fclose(fp);
+                return NULL;
+            }
+
+            *end = '\0';
+            start++;
+
+            olm_trim(start);
+            size_t len = strlen(start);
+            if (len >= 2 && start[0] == '"' && start[len - 1] == '"')
+            {
+                start[len - 1] = '\0';
+                start++;
+            }
+
+            node->type = OLM_NODE_FN_CALL;
+            node->name = BARR_gc_strdup("run_cmd");
+            node->arg_count = 1;
+            node->args = BARR_gc_alloc(sizeof(char *));
+            if (node->args == NULL)
+            {
+                fclose(fp);
+                return NULL;
+            }
+            node->args[0] = BARR_gc_strdup(start);
+        }
         // NOTE: project node currently only just parse quoted strings
         else if (strncmp(line, "project", 7) == 0)
         {
@@ -421,6 +455,12 @@ void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
                 if (BARR_strmatch(node->name, "print"))
                 {
                     printf("%s\n", node->args[0]);
+                }
+
+                if (BARR_strmatch(node->name, "run_cmd"))
+                {
+                    char **argv = BARR_tokenize_string(node->args[0]);
+                    BARR_run_process(argv[0], argv, false);
                 }
 
                 break;

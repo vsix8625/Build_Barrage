@@ -15,6 +15,14 @@
 #define BARR_VERSION_MINOR_DECODE(v) (((v) >> 12) & 0x3FF)
 #define BARR_VERSION_PATCH_DECODE(v) ((v) & 0xFFF)
 
+#if defined(BARR_DEBUG_BUILD)
+#define BARR_VERSION_BUILD_TYPE "debug"
+#elif defined(BARR_RELEASE_BUILD)
+#define BARR_VERSION_BUILD_TYPE "release"
+#else
+#define BARR_VERSION_BUILD_TYPE "unknown"
+#endif
+
 typedef enum
 {
     BARR_INIT_NOT_FOUND = -1,

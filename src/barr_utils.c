@@ -561,6 +561,10 @@ const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct tim
 
     static char buf[BARR_BUF_SIZE_32];
     double s = barr_time_elapsed(start, end);
+    if (s < 0)
+    {
+        s = 0;
+    }
 
     if (s < 1e-3)
     {
