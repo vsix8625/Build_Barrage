@@ -5,9 +5,9 @@
 
 #define BARR_VERSION_MAJOR 0
 #define BARR_VERSION_MINOR 15
-#define BARR_VERSION_PATCH 1
+#define BARR_VERSION_PATCH 2
 
-#define BARR_VERSION_DATE "2025-11-04"
+#define BARR_VERSION_DATE "2025-11-05"
 
 #define BARR_VERSION_ENCODE(maj, min, pat) (((maj) << 22) | (min) << 12 | (pat))
 
@@ -35,5 +35,10 @@ barr_i32 BARR_command_version(barr_i32 argc, char **argv);
 barr_i32 BARR_read_version_code(const char *init_lock_file);
 BARR_InitStatus BARR_check_initialized(void);
 bool BARR_is_initialized(void);
+
+/* @brief: Returns version as a string.
+ * Utilizes BARR_gc_strdup, manual free is not required.
+ */
+const char *BARR_version_get_str(void);
 
 #endif  // BARR_CMD_VERSION_H_

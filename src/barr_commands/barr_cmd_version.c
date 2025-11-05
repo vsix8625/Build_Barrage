@@ -1,14 +1,21 @@
 #include "barr_cmd_version.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+const char *BARR_version_get_str(void)
+{
+    char buf[BARR_BUF_SIZE_32];
+    snprintf(buf, sizeof(buf), "%d.%d.%d", BARR_VERSION_MAJOR, BARR_VERSION_MINOR, BARR_VERSION_PATCH);
+    return BARR_gc_strdup(buf);
+}
+
 barr_i32 BARR_command_version(barr_i32 argc, char **argv)
 {
-    BARR_printf("Build Barrage (barr) version: %d.%d.%d-%s\n", BARR_VERSION_MAJOR, BARR_VERSION_MINOR,
-                BARR_VERSION_PATCH, BARR_VERSION_BUILD_TYPE);
+    BARR_printf("Build Barrage (barr) version: %s-%s\n", BARR_version_get_str(), BARR_VERSION_BUILD_TYPE);
     BARR_printf("Latest update: %s\n", BARR_VERSION_DATE);
 
     BARR_VOID(argc);

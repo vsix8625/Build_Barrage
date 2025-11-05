@@ -1,6 +1,8 @@
 #include "barr_gc.h"
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_io.h"
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,7 +97,7 @@ bool BARR_gc_init(void)
 
 void BARR_gc_shutdown(void)
 {
-    if (g_barr_gc_list.count)
+    if (g_barr_gc_list.count && g_barr_verbose)
     {
         BARR_log("Garbage collector cleared (%zu) allocations", g_barr_gc_list.count);
     }

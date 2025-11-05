@@ -16,6 +16,7 @@ static size_t g_barr_cmds_count = 0;
 
 // from barr_env.h
 bool g_barr_silent_logs = false;
+bool g_barr_verbose = false;
 
 barr_i32 BARR_command_help(barr_i32 argc, char **argv);
 
@@ -147,6 +148,10 @@ barr_i32 main(barr_i32 argc, char **argv)
         else if (BARR_strmatch(argv[i], "--silent"))
         {
             g_barr_silent_logs = true;
+        }
+        else if (BARR_strmatch(argv[i], "--verbose"))
+        {
+            g_barr_verbose = true;
         }
         else
         {

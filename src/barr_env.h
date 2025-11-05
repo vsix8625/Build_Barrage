@@ -4,5 +4,6 @@
 const char *BARR_get_config(const char *type);
 
 extern bool g_barr_silent_logs;
+extern bool g_barr_verbose;
 
 #endif  // BARR_ENV_H_

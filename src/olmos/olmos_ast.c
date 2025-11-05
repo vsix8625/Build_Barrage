@@ -365,7 +365,6 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             }
             node->args[0] = BARR_gc_strdup(start);
         }
-        // NOTE: project node currently only just parse quoted strings
         else if (strncmp(line, "project", 7) == 0)
         {
             node->type = OLM_NODE_PROJECT;

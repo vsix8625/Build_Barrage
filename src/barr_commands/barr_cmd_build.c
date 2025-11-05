@@ -944,7 +944,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
             // finalize link args
             char **link_args = BARR_link_args_finalize(la);
-            if (1)  // TODO: add verbose in future
+            if (g_barr_verbose)
             {
                 for (char **arg = link_args; *arg != NULL; ++arg)
                 {
