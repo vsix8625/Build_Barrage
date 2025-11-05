@@ -94,6 +94,8 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                 char *barrfile_contents =
                     "print(\"Barrfile starts!\");\n\n"
                     "# run_cmd(\"echo you can run a shell cmd\");\n"
+                    "# Extra clean targets for barr clean\n"
+                    "# clean_targets = \"\";\n"
                     "target = \"barr_default\";\n"
                     "version = \"0.0.1\";\n"
                     "target_type = \"executable\";\n\n"
