@@ -11,7 +11,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Multi target builds support.   
 - `depend("project")` function for `Barrfile`. 
 - A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
-- Build process to create compile_commands.json. 
+- Build process to create compile_commands.json(done). 
 - Valgrind and gdb support via `barr tool <tool_name>` 
     - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
     - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
@@ -23,6 +23,27 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Custom DSL`(Olmos)` with a C-like syntax
 - Project sessions and possibly `live-build` daemon.  
 - More CLI commands (`barr run`, `barr clean`, etc) with more options.
+
+---
+
+## [0.16.1] – 2025-11-06
+### Added
+- `barr build --dir <dirpath>`: recursive sub-build invocation with current working directory switch.  
+- Multi-target builds support in core(`Barrfile` aware). 
+- Compile commands generation from `Barrfile`(`compile_commands.json`). 
+- `barr play`: directory music playback with shuffle support.  
+- `verbose` and `silent` global option of CLI commands.  
+- Scanner improvements: skip project marker directories(`Barrfile`,`Makefile`,`CMakeLists.txt` and more).  
+- New Linux system info features (CPU info).  
+- `barr new` additional options for project creation. (`barr new --barrfile`). 
+- Global command option: `--gc-dump` dumps all `BARR_gc` tracked allocations to `barr_gc_dumb.txt`.  
+### Changed
+- `Olmos DSL` and `Barrfile` received multiple tweaks: new functions, variables and quality-of-life updates.  
+### Fixed 
+- Source list reallocation bug causing corruption on large projects.  
+### Removed
+- `mode` command (`WAR mode`)deprecated and removed.  
+- Batch comment `// barr-force-batch` removed.   
 
 ---
 
