@@ -1,5 +1,7 @@
 #include "barr_build_ctx.h"
 #include "barr_debug.h"
+#include "barr_env.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 
 #include <assert.h>
@@ -117,6 +119,21 @@ void BARR_compile_job(barr_ptr arg)
     args[idx] = NULL;
     assert(idx < argc_total && "args overflow");
 
+    if (g_barr_verbose)
+    {
+        pthread_mutex_lock(&job->progress_ctx->log_mutex);
+
+        printf("[VERBOSE] ");
+        for (size_t i = 0; args[i] != NULL; i++)
+        {
+            printf("%s ", args[i]);
+        }
+        printf("\n");
+        fflush(stdout);
+
+        pthread_mutex_unlock(&job->progress_ctx->log_mutex);
+    }
+
     if (BARR_run_process(args[0], args, false) != 0)
     {
         BARR_errlog("Compilation failed for: %s", job->src);
@@ -131,6 +148,23 @@ void BARR_compile_job(barr_ptr arg)
 
         printf("\r[%zu/%zu] >>>> %s\033[K", done, job->progress_ctx->total, job->src);
         fflush(stdout);
+
+        if (job->ctx->gen_compile_cmds)
+        {
+            BARR_CompileCmdEntry *ccmds_entry = BARR_gc_alloc(sizeof(BARR_CompileCmdEntry));
+
+            snprintf(ccmds_entry->directory, sizeof(ccmds_entry->directory), "%s", job->ctx->out_dir);
+            snprintf(ccmds_entry->file, sizeof(ccmds_entry->file), "%s", job->src);
+
+            size_t cmd_len = 0;
+            for (size_t i = 0; args[i] != NULL; i++)
+            {
+                cmd_len += snprintf(ccmds_entry->command + cmd_len, sizeof(ccmds_entry->command) - cmd_len, "%s%s",
+                                    args[i], args[i + 1] ? " " : "");
+            }
+
+            BARR_list_push(job->progress_ctx->ccmds_json_entries_list, ccmds_entry);
+        }
 
         pthread_mutex_unlock(&job->progress_ctx->log_mutex);
     }

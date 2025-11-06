@@ -14,46 +14,12 @@ barr_i32 BARR_command_test(barr_i32 argc, char **argv)
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
+    /*
     for (barr_i32 i = 1; i < argc; i++)
     {
-        if (BARR_strmatch(argv[i], "--kaboom"))
-        {
-            const char *glob_config_dir = BARR_get_config("dir");
-            char glob_config_file[BARR_PATH_MAX];
-            snprintf(glob_config_file, sizeof(glob_config_file), "%s/kaboom.lock", glob_config_dir);
-
-            if (BARR_isfile(glob_config_file))
-            {
-                BARR_log("You already discovered kaboom!");
-                return 1;
-            }
-            else
-            {
-                BARR_file_write(glob_config_file, "Discovered kaboom!");
-            }
-
-            const char *conf_file = BARR_get_config("file");
-            BARR_ConfigTable *conf_table = BARR_config_parse_file(conf_file);
-
-            BARR_ConfigEntry *root_dir_entry = BARR_config_table_get(conf_table, BARR_GLOB_CONFIG_KEY_ROOT_DIR);
-            if (!root_dir_entry)
-            {
-                conf_table->destroy(conf_table);
-                return 1;
-            }
-
-            const char *install_dir_path = root_dir_entry->value.str_val ? root_dir_entry->value.str_val : "N/A";
-
-            char sound_path[BARR_PATH_MAX];
-            snprintf(sound_path, sizeof(sound_path), "%s/%s", install_dir_path, "assets/sounds/boom1.mp3");
-
-            BARR_log("KABOOM!");
-            char *pargs[] = {"paplay", sound_path, NULL};
-            barr_i32 code = BARR_run_process(pargs[0], pargs, false);
-            conf_table->destroy(conf_table);
-            return code;
-        }
+        continue;
     }
+    */
 
     if (argc < 3 || !BARR_strmatch(argv[1], "--create"))
     {

@@ -9,9 +9,6 @@
 #include <string.h>
 
 //----------------------------------------------------------------------------------------------------
-// alloc wrappers
-
-//----------------------------------------------------------------------------------------------------
 
 static inline size_t barr_arena_free_space(const BARR_Arena *a)
 {
@@ -20,12 +17,16 @@ static inline size_t barr_arena_free_space(const BARR_Arena *a)
 
 size_t BARR_align_up(size_t size, size_t alignment)
 {
+    if (alignment == 0 || alignment < 8 || alignment > 64)
+    {
+        alignment = 8;
+    }
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
 void BARR_arena_init(BARR_Arena *a, size_t capacity, const char *name, size_t align)
 {
-    if (!a)
+    if (a == NULL)
     {
         return;
     }
@@ -75,7 +76,7 @@ void BARR_arena_init(BARR_Arena *a, size_t capacity, const char *name, size_t al
 
 barr_ptr BARR_arena_alloc(BARR_Arena *a, size_t size)
 {
-    if (!a || !a->buffer)
+    if (a == NULL || a->buffer == NULL)
     {
         return NULL;
     }
@@ -106,7 +107,7 @@ barr_ptr BARR_arena_alloc(BARR_Arena *a, size_t size)
 
 char *BARR_arena_strdup(BARR_Arena *a, const char *s)
 {
-    if (!a)
+    if (a == NULL)
     {
         return NULL;
     }
@@ -126,6 +127,10 @@ char *BARR_arena_strdup(BARR_Arena *a, const char *s)
 
 void BARR_arena_reset(BARR_Arena *a)
 {
+    if (a == NULL)
+    {
+        return;
+    }
     //  BARR_dbglog("%s(): arena %s-%p", __func__, a->name, a);
 #if defined(BARR_DEBUG)
     assert(a->magic_start == BARR_ARENA_MAGIC_START && a->magic_end == BARR_ARENA_MAGIC_END);
@@ -136,7 +141,7 @@ void BARR_arena_reset(BARR_Arena *a)
 
 void BARR_destroy_arena(BARR_Arena *a)
 {
-    if (!a)
+    if (a == NULL)
     {
         return;
     }
@@ -154,18 +159,26 @@ void BARR_destroy_arena(BARR_Arena *a)
 static void barr_print_human_size(const char *label, size_t bytes)
 {
     if (bytes < 1024)
+    {
         BARR_log("%s: %zub", label, bytes);
+    }
     else if (bytes < 1024 * 1024)
+    {
         BARR_log("%s: %.2fKB", label, (double) bytes / 1024.0);
+    }
     else if (bytes < 1024ull * 1024ull * 1024ull)
+    {
         BARR_log("%s: %.2fMB", label, (double) bytes / (1024.0 * 1024.0));
+    }
     else
+    {
         BARR_log("%s: %.2fGB", label, (double) bytes / (1024.0 * 1024.0 * 1024.0));
+    }
 }
 
 void BARR_arena_stats(const BARR_Arena *a)
 {
-    if (!a)
+    if (a == NULL)
     {
         return;
     }

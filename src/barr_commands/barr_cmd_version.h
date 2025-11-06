@@ -4,10 +4,10 @@
 #include "barr_defs.h"
 
 #define BARR_VERSION_MAJOR 0
-#define BARR_VERSION_MINOR 15
-#define BARR_VERSION_PATCH 2
+#define BARR_VERSION_MINOR 16
+#define BARR_VERSION_PATCH 1
 
-#define BARR_VERSION_DATE "2025-11-05"
+#define BARR_VERSION_DATE "2025-11-06"
 
 #define BARR_VERSION_ENCODE(maj, min, pat) (((maj) << 22) | (min) << 12 | (pat))
 

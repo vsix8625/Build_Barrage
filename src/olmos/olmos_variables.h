@@ -13,6 +13,7 @@
 #define OLM_VAR_INCLUDES "includes"
 #define OLM_VAR_AUTO_INC_DISCOVERY "auto_include_discovery"
 #define OLM_VAR_DEFINES "defines"
+#define OLM_VAR_GEN_CCMDS "gen_compile_commands"
 #define OLM_VAR_LIB_PATHS "lib_paths"
 #define OLM_VAR_LINKER_FLAGS "lflags"
 #define OLM_VAR_OUT_DIR "out_dir"

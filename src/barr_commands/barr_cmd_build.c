@@ -613,8 +613,22 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                                        .defines = (const char **) defines,
                                        .debug_build = debug_build};
 
-    BARR_BuildProgressCTX progress_ctx = {
-        .completed = 0, .total = compile_list.count, .log_mutex = PTHREAD_MUTEX_INITIALIZER};
+    BARR_BuildProgressCTX progress_ctx = {.completed = 0,
+                                          .total = compile_list.count,
+                                          .log_mutex = PTHREAD_MUTEX_INITIALIZER,
+                                          .ccmds_json_entries_list = NULL};
+
+    compile_ctx.gen_compile_cmds = false;
+    const char *olm_ccmds = OLM_get_var(OLM_VAR_GEN_CCMDS);
+    if (olm_ccmds != NULL)
+    {
+        if (BARR_strmatch(olm_ccmds, "yes"))
+        {
+            compile_ctx.gen_compile_cmds = true;
+            progress_ctx.ccmds_json_entries_list = BARR_gc_alloc(sizeof(BARR_List));
+            BARR_list_init(progress_ctx.ccmds_json_entries_list, compile_list.count);
+        }
+    }
 
     // get the precompile file from olmos
     const char *precompile_file = "src/common.h";
@@ -635,6 +649,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     size_t producer_arena_size = compile_list.count * (BARR_BUF_SIZE_8192 + BARR_BUF_SIZE_1024);
     BARR_Arena producer_arena;
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
+
+    snprintf(compile_ctx.ccmds_path, sizeof(compile_ctx.ccmds_path), "%s/compile_commands.json", out_dir);
+    BARR_dbglog("COMPILE_CMDS_PATH: %s", compile_ctx.ccmds_path);
 
     clock_gettime(CLOCK_MONOTONIC, &compile_start);
     // job producer
@@ -706,6 +723,27 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             printf("\n");
             BARR_errlog("%s(): failed to write cache", __func__);
+        }
+
+        if (progress_ctx.ccmds_json_entries_list)
+        {
+            FILE *f = fopen(compile_ctx.ccmds_path, "w");
+            if (f)
+            {
+                fprintf(f, "[\n");
+                for (size_t i = 0; i < progress_ctx.ccmds_json_entries_list->count; i++)
+                {
+                    BARR_CompileCmdEntry *entry = progress_ctx.ccmds_json_entries_list->items[i];
+                    fprintf(f, "  {\n");
+                    fprintf(f, "    \"directory\": \"%s\",\n", entry->directory);
+                    fprintf(f, "    \"command\": \"%s\",\n", entry->command);
+                    fprintf(f, "    \"file\": \"%s\"\n", entry->file);
+                    fprintf(f, "  }%s\n", (i + 1 < progress_ctx.ccmds_json_entries_list->count) ? "," : "");
+                }
+                fprintf(f, "]\n");
+                fclose(f);
+                BARR_mv(compile_ctx.ccmds_path, "build/compile_commands.json");
+            }
         }
 
         char batch_dir[BARR_PATH_MAX * 2];
