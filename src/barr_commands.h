@@ -22,6 +22,7 @@ typedef struct BARR_Command
 #include "barr_cmd_build.h"
 #include "barr_cmd_clean.h"
 #include "barr_cmd_init.h"
+#include "barr_cmd_install.h"
 #include "barr_cmd_new.h"
 #include "barr_cmd_play.h"
 #include "barr_cmd_rebuild.h"

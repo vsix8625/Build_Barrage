@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// TODO: idx count for args
 barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
 {
     if (argc < 2)

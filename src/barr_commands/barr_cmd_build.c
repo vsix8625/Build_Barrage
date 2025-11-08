@@ -28,6 +28,50 @@
 #include <string.h>
 #include <time.h>
 
+bool BARR_add_module(const char *name, const char *path, const char *required)
+{
+    if (path == NULL)
+    {
+        BARR_errlog("Module path is NULL");
+        return false;
+    }
+
+    if (name == NULL)
+    {
+        name = "barr_module";
+    }
+
+    bool is_required = false;
+    if (required != NULL)
+    {
+        if (BARR_strmatch(required, "true"))
+        {
+            is_required = true;
+        }
+        if (BARR_strmatch(required, "yes"))
+        {
+            is_required = true;
+        }
+        if (BARR_strmatch(required, "required"))
+        {
+            is_required = true;
+        }
+    }
+    // NOTE: when we install barr we should write the barr bin path to global barr config and use it here
+    const char *args[] = {"barr", "build", "--dir", path, NULL};
+    barr_i32 result = BARR_run_process(args[0], (char **) args, true);
+    if (result != 0)
+    {
+        BARR_errlog("%s(): failed to build %s", __func__, path);
+        if (is_required)
+        {
+            BARR_errlog("Module build is required");
+            return false;
+        }
+    }
+    return true;
+}
+
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
     struct timespec build_start, build_end;
@@ -41,6 +85,18 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
+    if (!BARR_isfile(BARRFILE))
+    {
+        BARR_errlog("Fatal: barr build command require 'Barrfile' in %s to run", BARR_getcwd());
+        return 1;
+    }
+
+    // TODO: fix this
+    if (BARR_is_src_newer(BARRFILE, BARRFILE_TIMESTAMP_PATH))
+    {
+        BARR_warnlog("Barrfile changed since last build! Rebuild advised");
+    }
+
     if (!BARR_isdir("build"))
     {
         if (barr_mkdir("build"))
@@ -49,6 +105,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             return 1;
         }
     }
+
+    BARR_BuildProgressCTX progress_ctx = {.failed = false};
 
     bool dry_run_compile = false;
     bool is_batch_build = false;
@@ -141,16 +199,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    if (!BARR_isfile(BARR_OLMOS_FILE))
-    {
-        BARR_errlog("Fatal: barr build command require 'Barrfile' in %s to run", BARR_getcwd());
-        rc_table->destroy(rc_table);
-        return 1;
-    }
-    OLM_AST_Node *olmos_ast = OLM_parse_file(BARR_OLMOS_FILE);
+    OLM_AST_Node *olmos_ast = OLM_parse_file(BARRFILE);
     if (!olmos_ast)
     {
-        BARR_errlog("Fatal: failed to parse %s", BARR_OLMOS_FILE);
+        BARR_errlog("Fatal: failed to parse %s", BARRFILE);
         rc_table->destroy(rc_table);
         return 1;
     }
@@ -160,7 +212,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     size_t olm_eval_arena_size = (total_nodes * 2) * sizeof(OLM_AST_Node *);
     BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
 
-    OLM_eval_node(olmos_ast, &olm_eval_arena);
+    barr_i32 eval_return = OLM_eval_node(olmos_ast, &olm_eval_arena);
+    if (eval_return != 0)
+    {
+        BARR_errlog("OLM_eval_node fatal error: %d", eval_return);
+        rc_table->destroy(rc_table);
+        BARR_destroy_arena(&olm_eval_arena);
+        return 1;
+    }
     BARR_destroy_arena(&olm_eval_arena);
 
     // example retrieving variables from Barrfile
@@ -454,6 +513,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     else if (compiler && compiler[0] != '\0')
     {
         resolved_compiler = BARR_gc_strdup(compiler);
+        BARR_printf("Checking tool: ");
+        if (!BARR_is_valid_tool(resolved_compiler))
+        {
+            BARR_warnlog("Invalid compiler: %s", resolved_compiler);
+            resolved_compiler = "/usr/bin/gcc";
+            BARR_log("Default compiler will be set");
+        }
     }
     BARR_log("Compiler: %s", resolved_compiler);
 
@@ -605,7 +671,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_log("[%zu]: %s", (size_t) (p - includes), *p);
     }
 
-    // TODO: need to add std flag
     BARR_CompileInfoCTX compile_ctx = {.compiler = resolved_compiler,
                                        .flags = (const char **) flags,
                                        .out_dir = out_dir,
@@ -613,10 +678,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                                        .defines = (const char **) defines,
                                        .debug_build = debug_build};
 
-    BARR_BuildProgressCTX progress_ctx = {.completed = 0,
-                                          .total = compile_list.count,
-                                          .log_mutex = PTHREAD_MUTEX_INITIALIZER,
-                                          .ccmds_json_entries_list = NULL};
+    progress_ctx.completed = 0;
+    progress_ctx.total = compile_list.count;
+    pthread_mutex_init(&progress_ctx.log_mutex, NULL);
+    progress_ctx.ccmds_json_entries_list = NULL;
 
     compile_ctx.gen_compile_cmds = false;
     const char *olm_ccmds = OLM_get_var(OLM_VAR_GEN_CCMDS);
@@ -682,6 +747,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("%s() failed to add to thread pool", __func__);
 
             // cleanup
+            pthread_mutex_destroy(&progress_ctx.log_mutex);
             BARR_destroy_arena(&producer_arena);
             BARR_destroy_thread_pool(pool);
             OLM_close();
@@ -714,6 +780,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_thread_pool_wait(pool);
     printf("\n");
     BARR_destroy_arena(&producer_arena);
+    pthread_mutex_destroy(&progress_ctx.log_mutex);
     clock_gettime(CLOCK_MONOTONIC, &compile_end);
 
     if (!progress_ctx.failed && !dry_run_compile)
@@ -746,6 +813,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
         }
 
+        // Barrfile timestamp
+        BARR_update_Barrfile_stamp();
+
         char batch_dir[BARR_PATH_MAX * 2];
         snprintf(batch_dir, sizeof(batch_dir), "%s/batch", out_dir);
         if (BARR_isdir(batch_dir))
@@ -771,6 +841,26 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                          "be skipped");
             BARR_warnlog("This check validates compilation only.");
         }
+    }
+
+    if (progress_ctx.failed)
+    {
+        pthread_mutex_destroy(&progress_ctx.log_mutex);
+        BARR_destroy_arena(&producer_arena);
+        BARR_destroy_thread_pool(pool);
+        OLM_close();
+        BARR_destroy_source_list(&sources);
+        BARR_destroy_source_list(&headers);
+        BARR_destroy_source_list(&inc_dir_list);
+        BARR_destroy_source_list(&compile_list);
+        BARR_destroy_source_list(&object_list);
+        if (cached_map)
+        {
+            BARR_destroy_hashmap(cached_map);
+        }
+        BARR_destroy_hashmap(current_map);
+        rc_table->destroy(rc_table);
+        return 1;
     }
 
     BARR_printf("\n");

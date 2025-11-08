@@ -51,10 +51,10 @@ and other build variables in a human-readable syntax.
    run_cmd("barr build --dir dir1");
    
    # Define extra clean targets from the sub-project
-   # NOTE: this is dangerous correct path is important
+   # NOTE: correct paths are important, wrong paths may delete unintended files
    dir1_clean_targets = "dir1/build dir1/.barr/cache/build.cache";
    clean_targets = "${dir1_clean_targets}";
-   # clean targets will used when barr clean is called   
+   # These targets will used when `barr clean` is called   
 ```
 - Useful for orchestrating multi-target builds, custom pre/post build steps, or invoking scripts.  
 - Any output or errors from the command are logged; by default, errors do not stop the main build. 
@@ -105,7 +105,7 @@ and other build variables in a human-readable syntax.
   print("Barrfile ended");
 ```
 
-- `project` is used to generate the output binary path. 
+- `target` is used to generate the output binary path. 
 - `cflags` and `cflags_release` are automatically selected based on the `build_type`.  
 - `defines` and `includes` override the defaults and passed to the compiler.  
 - `target_type` library creates both shared and static lib.  

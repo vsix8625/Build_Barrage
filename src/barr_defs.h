@@ -47,7 +47,7 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_MARKER_DATA_DIR "data"
 #define BARR_MARKER_CACHE_DIR "cache"
 
-#define BARR_OLMOS_FILE "Barrfile"
+#define BARRFILE "Barrfile"
 
 #define BARR_NFTW_SOFT_CAP (512)
 #define BARR_SCAN_MAX_DIRS (256)

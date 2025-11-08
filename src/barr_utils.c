@@ -124,18 +124,35 @@ static time_t barr_get_mtime(const char *path)
     return 0;
 }
 
-bool BARR_is_modified(const char *path1, const char *path2)
+bool BARR_is_modified(const char *path, const char *prev_stamp_file)
 {
-    time_t t1 = barr_get_mtime(path1);
-    time_t t2 = barr_get_mtime(path2);
-    return (t1 != t2) ? true : false;
+    time_t curr = barr_get_mtime(path);
+    time_t prev = barr_get_mtime(prev_stamp_file);
+
+    if (prev == 0)
+    {
+        return true;
+    }
+
+    return curr != prev;
+}
+
+void BARR_update_Barrfile_stamp(void)
+{
+    FILE *f = fopen(BARRFILE_TIMESTAMP_PATH, "w");
+    if (f)
+    {
+        time_t now = time(NULL);
+        fprintf(f, "%ld\n", (long) now);
+        fclose(f);
+    }
 }
 
 bool BARR_is_src_newer(const char *src, const char *target)
 {
     time_t src_t = barr_get_mtime(src);
     time_t target_t = barr_get_mtime(target);
-    return (src_t > target_t) ? true : false;
+    return src_t > target_t;
 }
 
 bool BARR_isdir(const char *dir)
@@ -264,10 +281,15 @@ bool BARR_isdir_empty(const char *path)
     {
         if (BARR_strmatch(entry->d_name, ".") || BARR_strmatch(entry->d_name, ".."))
         {
+            continue;
+        }
+        else
+        {
             closedir(d);
             return false;  // found something
         }
     }
+
     closedir(d);
     return true;  // empty only . and ..
 }
@@ -629,4 +651,22 @@ barr_i32 BARR_mkdir_p(const char *path)
     }
 
     return 0;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+bool BARR_is_valid_tool(const char *tool)
+{
+    if (tool == NULL)
+    {
+        return false;
+    }
+
+    const char *args[] = {tool, "--version", NULL};
+    barr_i32 res = BARR_run_process(args[0], (char **) args, false);
+    if (res != 0)
+    {
+        return false;
+    }
+    return true;
 }

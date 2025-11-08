@@ -6,6 +6,7 @@
 #include "barr_os_layer.h"
 
 #define BARR_NULL_TERM_CHAR '\0'
+#define BARRFILE_TIMESTAMP_PATH ".barr/data/Barrfile.stamp"
 
 static inline const char *BARR_getcwd(void)
 {
@@ -40,5 +41,8 @@ char **BARR_tokenize_string(const char *str);
 const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct timespec *end);
 
 barr_i32 BARR_mkdir_p(const char *path);
+bool BARR_is_valid_tool(const char *tool);
+
+void BARR_update_Barrfile_stamp(void);
 
 #endif  // BARR_UTILS_H_

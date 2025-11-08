@@ -82,7 +82,7 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         }
     }
 
-    BARR_log("Initialized Build Barrage for %s", cwd);
+    BARR_log("Initialized Build Barrage %s in: %s", BARR_version_get_str(), cwd);
     BARR_VOID(argc);
     BARR_VOID(argv);
     return 0;

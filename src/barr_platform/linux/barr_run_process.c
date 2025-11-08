@@ -86,7 +86,6 @@ barr_i32 BARR_run_process_BG(const char *name, char **args)
 
         execvp(name, args);
         BARR_errlog("Failed to execvp: %s", name);
-        BARR_dumb_backtrace();
         _exit(EXIT_FAILURE);
     }
     else if (pid > 0)
@@ -108,7 +107,6 @@ barr_i32 BARR_run_process(const char *name, char **args, bool verbose)
     {
         execvp(name, args);
         BARR_errlog("Failed to execvp: %s", name);
-        BARR_dumb_backtrace();
         _exit(EXIT_FAILURE);
     }
     else if (pid > 0)
@@ -119,7 +117,6 @@ barr_i32 BARR_run_process(const char *name, char **args, bool verbose)
             if (verbose)
             {
                 BARR_errlog("%s() waitpid failed for %s", __func__, name);
-                BARR_dumb_backtrace();
             }
             return -1;
         }

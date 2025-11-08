@@ -1,4 +1,5 @@
 #include "olmos_ast.h"
+#include "barr_commands/barr_cmd_build.h"
 #include "barr_debug.h"
 #include "barr_gc.h"
 #include "barr_io.h"
@@ -177,6 +178,146 @@ void OLM_parse_vars(OLM_AST_Node *root)
             OLM_store_var(node->name, expanded);
         }
     }
+}
+
+static bool olm_parse_string_args(const char *src, char ***out_args, size_t *out_count)
+{
+    if (src == NULL || out_args == NULL || out_count == NULL)
+    {
+        return false;
+    }
+
+    const char *p = src;
+    size_t cap = 4;
+    size_t count = 0;
+    char **args = BARR_gc_alloc(sizeof(char *) * cap);
+    if (args == NULL)
+    {
+        return false;
+    }
+
+    for (;;)
+    {
+        // skip leading whitespace
+        while (*p && isspace((unsigned char) *p))
+        {
+            p++;
+        }
+
+        // end of string -> done
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        // must start with a quote
+        if (*p != '"' && *p != '\'')
+        {
+            return false;
+        }
+
+        char quote = *p++;
+        const char *start = p;
+
+        // find matching closing quote
+        while (*p && *p != quote)
+        {
+            // allow escaped quotes: \" or \'
+            if (*p == '\\' && p[1] == quote)
+            {
+                p += 2;
+                continue;
+            }
+            p++;
+        }
+
+        // no matching quote -> syntax error
+        if (*p != quote)
+        {
+            return false;
+        }
+
+        size_t len = (size_t) (p - start);
+        char *s = BARR_gc_alloc(len + 1);
+        if (s == NULL)
+        {
+            return false;
+        }
+
+        // copy and unescape simple \" or \'
+        size_t di = 0;
+        for (const char *q = start; q < p; ++q)
+        {
+            if (*q == '\\' && (q + 1) < p && (*(q + 1) == '"' || *(q + 1) == '\''))
+            {
+                s[di++] = *(q + 1);
+                ++q;
+            }
+            else
+            {
+                s[di++] = *q;
+            }
+        }
+        s[di] = '\0';
+
+        // push arg (grow if needed)
+        if (count + 1 >= cap)
+        {
+            cap *= 2;
+            char **tmp = BARR_gc_realloc(args, sizeof(char *) * cap);
+            if (tmp == NULL)
+            {
+                return false;
+            }
+            args = tmp;
+        }
+
+        args[count++] = s;
+
+        p++;  // skip closing quote
+
+        // skip whitespace after arg
+        while (*p && isspace((unsigned char) *p))
+        {
+            p++;
+        }
+
+        // if comma, skip and continue to next arg
+        if (*p == ',')
+        {
+            p++;
+            continue;
+        }
+
+        // otherwise we should be at end
+        while (*p && isspace((unsigned char) *p))
+        {
+            p++;
+        }
+        if (*p == '\0')
+        {
+            break;
+        }
+
+        // stray characters -> syntax error
+        return false;
+    }
+
+    // null-terminate args list
+    if (count + 1 >= cap)
+    {
+        char **tmp = BARR_gc_realloc(args, sizeof(char *) * (count + 1));
+        if (tmp == NULL)
+        {
+            return false;
+        }
+        args = tmp;
+    }
+    args[count] = NULL;
+
+    *out_args = args;
+    *out_count = count;
+    return true;
 }
 
 OLM_AST_Node *OLM_parse_file(const char *file_path)
@@ -365,6 +506,50 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             }
             node->args[0] = BARR_gc_strdup(start);
         }
+        else if (strncmp(line, "add_module", 10) == 0)
+        {
+            char *start = strchr(line, '(');
+            char *end = strrchr(line, ')');
+
+            if (start == NULL || end == NULL || end <= start)
+            {
+                BARR_errlog("%s(): syntax error at line %s:%zu, invalid add_module()", __func__, line, line_n);
+                fclose(fp);
+                return NULL;
+            }
+
+            // temporarily terminate the substring
+            *end = '\0';
+            start++;
+
+            olm_trim(start);
+
+            // parse quoted args inside parentheses
+            char **args = NULL;
+            size_t argc = 0;
+            if (!olm_parse_string_args(start, &args, &argc))
+            {
+                BARR_errlog("%s(): invalid arguments to add_module() at line %s:%zu", __func__, line, line_n);
+                fclose(fp);
+                return NULL;
+            }
+
+            node->type = OLM_NODE_FN_CALL;
+            node->name = BARR_gc_strdup("add_module");
+            node->arg_count = argc;
+            node->args = BARR_gc_alloc(sizeof(char *) * argc);
+            if (node->args == NULL)
+            {
+                fclose(fp);
+                return NULL;
+            }
+            for (size_t i = 0; i < argc; ++i)
+            {
+                node->args[i] = BARR_gc_strdup(args[i]);
+            }
+
+            BARR_dbglog("add_module parsed: arg_count=%zu", argc);
+        }
         else if (strncmp(line, "project", 7) == 0)
         {
             node->type = OLM_NODE_PROJECT;
@@ -425,18 +610,18 @@ size_t BARR_count_nodes(OLM_AST_Node *node)
     return count;
 }
 
-void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
+barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
 {
     if (root == NULL || arena == NULL)
     {
-        return;
+        return 1;
     }
 
     size_t stack_capacity = BARR_count_nodes(root);
     OLM_AST_Node **stack = (OLM_AST_Node **) BARR_arena_alloc(arena, sizeof(OLM_AST_Node *) * stack_capacity);
     if (stack == NULL)
     {
-        return;
+        return 1;
     }
 
     size_t top = 0;
@@ -450,7 +635,7 @@ void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
         if (top >= stack_capacity)
         {
             BARR_errlog("Eval stack overflow: %zu >= %zu", top, stack_capacity);
-            return;
+            return 1;
         }
 
         OLM_AST_Node *node = stack[--top];
@@ -486,6 +671,31 @@ void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
                     BARR_run_process(argv[0], argv, false);
                 }
 
+                if (BARR_strmatch(node->name, "add_module"))
+                {
+                    if (node->arg_count < 2)
+                    {
+                        BARR_errlog("add_module() requires at least 2 args: name, path");
+                        return 1;
+                    }
+
+                    const char *name = node->args[0];
+                    const char *path = node->args[1];
+                    const char *required = NULL;
+
+                    if (node->arg_count >= 3)
+                    {
+                        required = node->args[2];
+                    }
+
+                    BARR_dbglog("Module args: name=%s, path=%s, required=%s", name, path, required);
+
+                    if (!BARR_add_module(name, path, required))
+                    {
+                        return 101;
+                    }
+                }
+
                 break;
             case OLM_NODE_PROJECT:
                 for (ssize_t i = node->child_count - 1; i >= 0; --i)
@@ -497,6 +707,7 @@ void OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
                 break;
         }
     }
+    return 0;
 }
 
 //--------------------------------------------------------------------------------------------------
