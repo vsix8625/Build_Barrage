@@ -25,7 +25,7 @@ bool BARR_mv(const char *src, const char *dst);
 bool BARR_is_blank(const char *s);
 
 bool BARR_is_modified(const char *path1, const char *path2);
-bool BARR_is_src_newer(const char *src, const char *target);
+bool BARR_is_newer(const char *src, const char *target);
 bool BARR_isdir(const char *dir);
 bool BARR_isfile(const char *path);
 barr_i32 BARR_setperm(const char *path, const char *perm);
@@ -37,6 +37,7 @@ bool BARR_isdir_empty(const char *path);
 const char **BARR_dedup_flags_array(const char **src_arr);
 
 char **BARR_tokenize_string(const char *str);
+size_t BARR_count_tokens_in_array(const char **arr);
 
 const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct timespec *end);
 
@@ -44,5 +45,10 @@ barr_i32 BARR_mkdir_p(const char *path);
 bool BARR_is_valid_tool(const char *tool);
 
 void BARR_update_Barrfile_stamp(void);
+
+void BARR_trim(char *s);
+char *BARR_get_build_info_key(const char *file_path, const char *key);
+void BARR_join_path(char *out, size_t out_size, const char *base, const char *rel);
+bool BARR_is_absolute(const char *p);
 
 #endif  // BARR_UTILS_H_

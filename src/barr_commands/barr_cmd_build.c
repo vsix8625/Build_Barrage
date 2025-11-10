@@ -28,6 +28,83 @@
 #include <string.h>
 #include <time.h>
 
+static BARR_Module g_barr_modules[BARR_MAX_MODULES];
+static size_t g_barr_module_count = 0;
+
+static bool barr_path_resolve(const char *base, const char *rel, char *out, size_t out_size)
+{
+    if (!base || !rel || !out)
+        return false;
+
+    if (BARR_is_absolute(rel))
+    {
+        strncpy(out, rel, out_size - 1);
+        out[out_size - 1] = '\0';
+        return true;
+    }
+
+    char temp[BARR_PATH_MAX];
+    BARR_join_path(temp, sizeof(temp), base, rel);
+
+    // Normalize the path (remove "./", "../" etc.)
+    char *resolved = realpath(temp, NULL);
+    if (resolved)
+    {
+        strncpy(out, resolved, out_size - 1);
+        out[out_size - 1] = '\0';
+        free(resolved);
+        return true;
+    }
+
+    // fallback to joined path if realpath fails
+    strncpy(out, temp, out_size - 1);
+    out[out_size - 1] = '\0';
+    return false;
+}
+
+static bool barr_add_module_to_registry(const char *name, const char *path)
+{
+    if (name == NULL || path == NULL)
+    {
+        BARR_errlog("Module name or path is NULL");
+        return false;
+    }
+
+    if (g_barr_module_count >= BARR_MAX_MODULES)
+    {
+        BARR_errlog("Maximum number of modules reached: %d", BARR_MAX_MODULES);
+        return false;
+    }
+
+    g_barr_modules[g_barr_module_count].name = BARR_gc_strdup(name);
+    g_barr_modules[g_barr_module_count].path = BARR_gc_strdup(path);
+    g_barr_module_count++;
+
+    return true;
+}
+
+BARR_Module *BARR_get_module(const char *name)
+{
+    for (size_t i = 0; i < g_barr_module_count; ++i)
+    {
+        if (BARR_strmatch(g_barr_modules[i].name, name))
+        {
+            return &g_barr_modules[i];
+        }
+    }
+
+    return NULL;
+}
+
+void BARR_print_modules(void)
+{
+    BARR_log("Total modules: %zu", g_barr_module_count);
+    for (size_t i = 0; i < g_barr_module_count; ++i)
+    {
+        BARR_log("\t%zu) %s at '%s/%s'", i + 1, g_barr_modules[i].name, BARR_getcwd(), g_barr_modules[i].path);
+    }
+}
+
 bool BARR_add_module(const char *name, const char *path, const char *required)
 {
     if (path == NULL)
@@ -44,22 +121,16 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
     bool is_required = false;
     if (required != NULL)
     {
-        if (BARR_strmatch(required, "true"))
-        {
-            is_required = true;
-        }
-        if (BARR_strmatch(required, "yes"))
-        {
-            is_required = true;
-        }
-        if (BARR_strmatch(required, "required"))
+        if (BARR_strmatch(required, "true") || BARR_strmatch(required, "yes") || BARR_strmatch(required, "required"))
         {
             is_required = true;
         }
     }
+
     // NOTE: when we install barr we should write the barr bin path to global barr config and use it here
     const char *args[] = {"barr", "build", "--dir", path, NULL};
     barr_i32 result = BARR_run_process(args[0], (char **) args, true);
+
     if (result != 0)
     {
         BARR_errlog("%s(): failed to build %s", __func__, path);
@@ -69,15 +140,19 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
             return false;
         }
     }
+
+    if (!barr_add_module_to_registry(name, path))
+    {
+        BARR_errlog("Failed to register module %s at %s", name, path);
+        return false;
+    }
+
     return true;
 }
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
-    struct timespec build_start, build_end;
-    struct timespec compile_start, compile_end;
-    struct timespec arch_start, arch_end;
-    struct timespec link_start, link_end;
+    struct timespec build_start, build_end, compile_start, compile_end, arch_start, arch_end, link_start, link_end;
     clock_gettime(CLOCK_MONOTONIC, &build_start);
 
     if (!BARR_is_initialized())
@@ -91,8 +166,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    // TODO: fix this
-    if (BARR_is_src_newer(BARRFILE, BARRFILE_TIMESTAMP_PATH))
+    if (BARR_is_newer(BARRFILE, BARRFILE_TIMESTAMP_PATH))
     {
         BARR_warnlog("Barrfile changed since last build! Rebuild advised");
     }
@@ -108,9 +182,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_BuildProgressCTX progress_ctx = {.failed = false};
 
-    bool dry_run_compile = false;
-    bool is_batch_build = false;
-    bool select_dir = false;
+    bool dry_run_compile, is_batch_build, select_dir = false;
     char *select_dir_path = NULL;
 
     for (barr_i32 i = 1; i < argc; ++i)
@@ -496,9 +568,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
         }
     }
+    const char *target_version = OLM_get_var(OLM_VAR_VERSION);
+    if (target_version == NULL)
+    {
+        target_version = "0.0.1";
+    }
 
     //----------------------------------------------------------------------------------------------------
-    // compile stage
+    // compile args stage
 
     const char *compiler = OLM_get_var(OLM_VAR_COMPILER);
     char *resolved_compiler = NULL;
@@ -556,10 +633,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // prepare includes
     BARR_List merged_includes;
-    BARR_list_init(&merged_includes, 8);
+    BARR_List modules_includes_list;
+    BARR_list_init(&merged_includes, 16);
 
     const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
-    const char **includes = NULL;
+    const char **project_includes = NULL;
 
     const char *olmos_includes_raw = OLM_get_var(OLM_VAR_INCLUDES);
     const char *auto_inc_mode = OLM_get_var(OLM_VAR_AUTO_INC_DISCOVERY);
@@ -622,7 +700,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     BARR_list_push(&merged_includes, NULL);
 
-    includes = (const char **) merged_includes.items;
+    project_includes = (const char **) merged_includes.items;
 
     switch (mode)
     {
@@ -635,6 +713,62 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         case BARR_AUTO_INC_MODE_ON:
             BARR_log("include discovery: auto mode");
             break;
+    }
+
+    //----------------------------------------
+    // MODULES
+
+    if (g_barr_module_count > 0)
+    {
+        BARR_list_init(&modules_includes_list, 16);
+        BARR_print_modules();
+
+        for (size_t i = 0; i < g_barr_module_count; ++i)
+        {
+            const char *mod_path = g_barr_modules[i].path;
+            char build_info_path[BARR_PATH_MAX];
+            snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod_path, BARR_DATA_BUILD_INFO_PATH);
+
+            if (!BARR_isfile(build_info_path))
+            {
+                BARR_warnlog("Module '%s' has no build.info, skipping", g_barr_modules[i].name);
+                continue;
+            }
+
+            char *module_cflags_val = BARR_get_build_info_key(build_info_path, "cflags");
+            if (module_cflags_val && module_cflags_val[0] != '\0')
+            {
+                const char **tokens = (const char **) BARR_tokenize_string(module_cflags_val);
+                for (const char **p = tokens; p && *p; ++p)
+                {
+                    const char *tok = *p;
+
+                    if (strncmp(tok, "-I", 2) == 0)
+                    {
+                        const char *raw_path = tok + 2;
+
+                        char resolved[BARR_PATH_MAX];
+
+                        if (!barr_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
+                        {
+                            BARR_warnlog("Failed to resolve module include path: %s/%s", mod_path, raw_path);
+                            continue;
+                        }
+
+                        char final[BARR_PATH_MAX + 3];
+                        snprintf(final, sizeof(final), "-I%s", resolved);
+
+                        BARR_log("PUSHING: ----------------> %s", final);
+                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(final));
+                    }
+                    else
+                    {
+                        BARR_log("PUSHING: ----------------> %s", tok);
+                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(tok));
+                    }
+                }
+            }
+        }
     }
 
     //----------------------------------------
@@ -657,8 +791,33 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_list_push(&merged_includes, NULL);
 
-    includes = BARR_dedup_flags_array((const char **) merged_includes.items);
-    // --------------------------------------------------------------------------------------------
+    project_includes = BARR_dedup_flags_array((const char **) merged_includes.items);
+
+    size_t project_count_inc = BARR_count_tokens_in_array(project_includes);
+    size_t module_count_inc = modules_includes_list.count;
+
+    char **includes_final = BARR_gc_alloc((project_count_inc + module_count_inc + 1) * sizeof(char *));
+    size_t includes_final_idx = 0;
+
+    for (size_t i = 0; i < module_count_inc; ++i)
+    {
+        includes_final[includes_final_idx++] = modules_includes_list.items[i];
+    }
+
+    for (size_t i = 0; i < project_count_inc; ++i)
+    {
+        includes_final[includes_final_idx++] = (char *) project_includes[i];
+    }
+
+    includes_final[includes_final_idx] = NULL;
+
+    for (size_t i = 0; i < module_count_inc + project_count_inc; ++i)
+    {
+        BARR_log("[%zu]: %s", i, includes_final[i]);
+    }
+
+    //--------------------------------------------------------------
+
     const char *olm_defines = OLM_get_var(OLM_VAR_DEFINES);
     if (!olm_defines)
     {
@@ -666,15 +825,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
     char **defines = BARR_tokenize_string(olm_defines);
 
-    for (const char **p = includes; p && *p; ++p)
-    {
-        BARR_log("[%zu]: %s", (size_t) (p - includes), *p);
-    }
+    //--------------------------------------------------------------
 
     BARR_CompileInfoCTX compile_ctx = {.compiler = resolved_compiler,
                                        .flags = (const char **) flags,
                                        .out_dir = out_dir,
-                                       .includes = includes,
+                                       .includes = (const char **) includes_final,
                                        .defines = (const char **) defines,
                                        .debug_build = debug_build};
 
@@ -918,51 +1074,92 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         snprintf(lib_dir, sizeof(lib_dir), "%s/lib", out_dir);
         BARR_mkdir_p(lib_dir);
 
-        if (BARR_strmatch(target_type, "library"))
+        if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "static") ||
+            BARR_strmatch(target_type, "shared"))
         {
-            // ----------------------------------------------------------------------------------------------------
-            // STATIC & SHARED LIB
-            // ----------------------------------------------------------------------------------------------------
-
             clock_gettime(CLOCK_MONOTONIC, &link_start);
 
+            // ----------------------------------------------------------------------------------------------------
+            // STATIC
+            // ----------------------------------------------------------------------------------------------------
+
             char dest_static[BARR_PATH_MAX * 2];
-            snprintf(dest_static, sizeof(dest_static), "%s/%s.a", lib_dir, target_name);
-            BARR_mv(archive_out_path, dest_static);
-
-            char dest_shared[BARR_PATH_MAX * 2];
-            snprintf(dest_shared, sizeof(dest_shared), "%s/%s.so", lib_dir, target_name);
-
-            BARR_log("Building shared library: %s", dest_shared);
-
-            BARR_List so_args;
-            BARR_list_init(&so_args, 16);
-            BARR_list_push(&so_args, (char *) resolved_compiler);
-            BARR_list_push(&so_args, "-fuse-ld=lld");
-            BARR_list_push(&so_args, "-shared");
-            BARR_list_push(&so_args, "-fPIC");
-            BARR_list_push(&so_args, "-o");
-            BARR_list_push(&so_args, dest_shared);
-
-            char main_co_buf[BARR_PATH_MAX * 2];
-            snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
-            for (size_t i = 0; i < object_list.count; ++i)
+            if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "static"))
             {
-                const char *obj = object_list.entries[i];
-                if (!BARR_strmatch(obj, main_co_buf))
+                snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, target_name);
+                BARR_mv(archive_out_path, dest_static);
+            }
+
+            // ----------------------------------------------------------------------------------------------------
+            // SHARED
+            // ----------------------------------------------------------------------------------------------------
+            char dest_shared[BARR_PATH_MAX * 2];
+            if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "shared"))
+            {
+                snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, target_name);
+
+                BARR_log("Building shared library: %s", dest_shared);
+
+                BARR_List so_args;
+                BARR_list_init(&so_args, 16);
+                BARR_list_push(&so_args, (char *) resolved_compiler);
+                BARR_list_push(&so_args, "-fuse-ld=lld");
+                BARR_list_push(&so_args, "-shared");
+                BARR_list_push(&so_args, "-fPIC");
+                BARR_list_push(&so_args, "-o");
+                BARR_list_push(&so_args, dest_shared);
+
+                char main_co_buf[BARR_PATH_MAX * 2];
+                snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
+                for (size_t i = 0; i < object_list.count; ++i)
                 {
-                    BARR_list_push(&so_args, (char *) obj);
+                    const char *obj = object_list.entries[i];
+                    if (!BARR_strmatch(obj, main_co_buf))
+                    {
+                        BARR_list_push(&so_args, (char *) obj);
+                    }
+                }
+                BARR_list_push(&so_args, NULL);
+
+                char **so_cmd = (char **) so_args.items;
+                barr_i32 so_ret = BARR_run_process(so_cmd[0], so_cmd, false);
+                if (so_ret != 0)
+                {
+                    BARR_errlog("Shared lib creation failed");
                 }
             }
-            BARR_list_push(&so_args, NULL);
-
-            char **so_cmd = (char **) so_args.items;
-            barr_i32 so_ret = BARR_run_process(so_cmd[0], so_cmd, false);
-            if (so_ret != 0)
-            {
-                BARR_errlog("Shared lib creation failed");
-            }
             clock_gettime(CLOCK_MONOTONIC, &link_end);
+
+            // ----------------------------------------------------------------------------------------------------
+            // BUILD INFO
+            // ----------------------------------------------------------------------------------------------------
+            const char *module_includes = OLM_get_var(OLM_VAR_MODULE_INCLUDES);
+            if (module_includes == NULL)
+            {
+                module_includes = "-Iinclude";
+            }
+
+            char build_info_contents[BARR_BUF_SIZE_8192 * 4];
+            const char *barr_ver = BARR_version_get_str();
+            snprintf(build_info_contents, sizeof(build_info_contents),
+                     "[common]\n"
+                     "name = %s\n"
+                     "type = %s\n"
+                     "version = %s\n"
+                     "barr_version = %s\n"
+                     "timestamp = %ld\n"
+                     "\n[paths]\n"
+                     "cflags = %s\n"
+                     "libpath = -L%s\n"
+                     "rpath = -Wl,-rpath,%s\n"
+                     "\n[artifacts]\n"
+                     "static = %s\n"
+                     "shared = %s\n",
+                     target_name, target_type, target_version, barr_ver, time(NULL), module_includes, lib_dir, lib_dir,
+                     BARR_strmatch(target_type, "shared") ? "" : dest_static,
+                     BARR_strmatch(target_type, "static") ? "" : dest_shared);
+
+            BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
         }
         else
         {
@@ -997,6 +1194,62 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                     BARR_link_args_add(la, lld_threads);
                 }
             }
+
+            //---------------
+            // MODULES
+            //---------------
+
+            for (size_t i = 0; i < g_barr_module_count; ++i)
+            {
+                BARR_Module *mod = &g_barr_modules[i];
+                char build_info_path[BARR_PATH_MAX];
+                snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod->path, BARR_DATA_BUILD_INFO_PATH);
+
+                if (!BARR_isfile(build_info_path))
+                {
+                    BARR_warnlog("Module '%s' has no build.info, skipping", mod->name);
+                    continue;
+                }
+
+                char *name = BARR_get_build_info_key(build_info_path, "name");
+                char *type = BARR_get_build_info_key(build_info_path, "type");
+                char *lib_path = BARR_get_build_info_key(build_info_path, "libpath");
+                char *runtime = BARR_get_build_info_key(build_info_path, "rpath");
+
+                if (type == NULL)
+                {
+                    type = "library";
+                }
+
+                if (BARR_strmatch(type, "static") || BARR_strmatch(type, "library"))
+                {
+                    if (lib_path && lib_path[0])
+                    {
+                        BARR_link_args_add(la, lib_path);
+                    }
+                    char name_arg[BARR_PATH_MAX];
+                    snprintf(name_arg, sizeof(name_arg), "-l%s", name);
+                    BARR_link_args_add(la, name_arg);
+                }
+
+                if (BARR_strmatch(type, "shared") || BARR_strmatch(type, "library"))
+                {
+                    if (lib_path && lib_path[0])
+                    {
+                        BARR_link_args_add(la, lib_path);
+                    }
+                    char name_arg[BARR_PATH_MAX];
+                    snprintf(name_arg, sizeof(name_arg), "-l%s", name);
+                    BARR_link_args_add(la, name_arg);
+
+                    if (runtime && runtime[0])
+                    {
+                        BARR_link_args_add(la, runtime);
+                    }
+                }
+            }
+
+            //---------------
 
             size_t lib_count = 0;
             for (size_t i = 0; i < pkg_list.count; ++i)

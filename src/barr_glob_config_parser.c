@@ -9,7 +9,6 @@
 
 //----------------------------------------------------------------------------------------------------
 
-void barr_trim(char *s);
 void barr_destroy_table(BARR_ConfigTable *t);
 
 //----------------------------------------------------------------------------------------------------
@@ -99,9 +98,9 @@ void barr_config_parse_line(const char *line, BARR_ConfigTable *t)
     char *type = colon + 1;
     char *value = equal + 1;
 
-    barr_trim(key);
-    barr_trim(type);
-    barr_trim(value);
+    BARR_trim(key);
+    BARR_trim(type);
+    BARR_trim(value);
 
     BARR_ConfigValueType val_type = barr_config_parse_type(type);
 
@@ -257,35 +256,6 @@ BARR_ConfigTable *BARR_config_parse_file(const char *filename)
 }
 
 //----------------------------------------------------------------------------------------------------
-
-void barr_trim(char *s)
-{
-    char *start = s;
-    char *end;
-
-    while (isspace((barr_u8) *start))
-    {
-        start++;
-    }
-
-    if (*start == 0)
-    {
-        *s = 0;
-        return;
-    }
-
-    end = start + strlen(start) - 1;
-    while (end > start && isspace((barr_u8) *end))
-    {
-        end--;
-    }
-    *(end + 1) = '\0';
-
-    if (start != s)
-    {
-        memmove(s, start, strlen(start) + 1);
-    }
-}
 
 void barr_destroy_table(BARR_ConfigTable *t)
 {

@@ -148,7 +148,7 @@ void BARR_update_Barrfile_stamp(void)
     }
 }
 
-bool BARR_is_src_newer(const char *src, const char *target)
+bool BARR_is_newer(const char *src, const char *target)
 {
     time_t src_t = barr_get_mtime(src);
     time_t target_t = barr_get_mtime(target);
@@ -329,7 +329,7 @@ static size_t barr_count_tokens_in_string(const char *s)
     return count;
 }
 
-static size_t barr_count_tokens_in_array(const char **arr)
+size_t BARR_count_tokens_in_array(const char **arr)
 {
     if (!arr)
     {
@@ -442,12 +442,12 @@ const char *barr_normalize_include_flag(const char *flag)
 
 const char **BARR_dedup_flags_array(const char **src_arr)
 {
-    if (!src_arr)
+    if (src_arr == NULL)
     {
         return NULL;
     }
 
-    size_t total_tokens = barr_count_tokens_in_array(src_arr);
+    size_t total_tokens = BARR_count_tokens_in_array(src_arr);
 
     if (total_tokens == 0)
     {
@@ -669,4 +669,113 @@ bool BARR_is_valid_tool(const char *tool)
         return false;
     }
     return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+void BARR_trim(char *s)
+{
+    char *start = s;
+    char *end;
+
+    while (isspace((barr_u8) *start))
+    {
+        start++;
+    }
+
+    if (*start == 0)
+    {
+        *s = 0;
+        return;
+    }
+
+    end = start + strlen(start) - 1;
+    while (end > start && isspace((barr_u8) *end))
+    {
+        end--;
+    }
+    *(end + 1) = '\0';
+
+    if (start != s)
+    {
+        memmove(s, start, strlen(start) + 1);
+    }
+}
+
+static char *barr_trim_s(char *str)
+{
+    while (isspace((unsigned char) *str))
+    {
+        str++;
+    }
+    if (*str == 0)
+    {
+        return str;
+    }
+    char *end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char) *end))
+    {
+        *end = 0;
+        end--;
+    }
+    return str;
+}
+
+char *BARR_get_build_info_key(const char *file_path, const char *key)
+{
+    FILE *fp = fopen(file_path, "r");
+    if (fp == NULL)
+    {
+        return NULL;
+    }
+
+    char line[BARR_BUF_SIZE_1024];
+    size_t key_len = strlen(key);
+
+    while (fgets(line, sizeof(line), fp))
+    {
+        char *eq = strchr(line, '=');
+        if (!eq)
+        {
+            continue;
+        }
+
+        *eq = 0;
+
+        char *line_key = barr_trim_s(line);
+        char *line_val = barr_trim_s(eq + 1);
+
+        if (strncmp(line_key, key, key_len) == 0 && strlen(line_key) == key_len)
+        {
+            fclose(fp);
+            return BARR_gc_strdup(line_val);
+        }
+    }
+
+    fclose(fp);
+    return NULL;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+bool BARR_is_absolute(const char *p)
+{
+    if (p == NULL)
+    {
+        return false;
+    }
+#ifdef BARR_OS_LINUX
+    return p && p[0] == '/';
+#endif
+    return false;
+}
+
+void BARR_join_path(char *out, size_t out_size, const char *base, const char *rel)
+{
+    if (base == NULL || rel == NULL)
+    {
+        return;
+    }
+
+    snprintf(out, out_size, "%s/%s", base, rel);
 }

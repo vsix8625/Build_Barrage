@@ -21,5 +21,6 @@
 #define OLM_VAR_EXCLUDE_PATTERNS "exclude_patterns"
 #define OLM_VAR_VERSION "version"
 #define OLM_VAR_CLEAN_TARGETS "clean_targets"
+#define OLM_VAR_MODULE_INCLUDES "module_includes"
 
 #endif  // OLMOS_VARIABLES_H_
