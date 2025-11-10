@@ -3,9 +3,6 @@
 
 #include "barr_defs.h"
 
-#define BARR_DATA_BUILD_INFO_PATH ".barr/data/build_info"
-#define BARR_MAX_MODULES 128
-
 barr_i32 BARR_command_build(barr_i32 argc, char **argv);
 
 typedef struct

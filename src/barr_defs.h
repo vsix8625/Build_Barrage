@@ -35,6 +35,8 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_BUF_SIZE_4096 0x1000
 #define BARR_BUF_SIZE_8192 0x2000
 #define BARR_BUF_SIZE_16K 0x4000
+#define BARR_BUF_SIZE_32K 0x8000
+#define BARR_BUF_SIZE_64K 0x10000
 
 #define BARR_PATH_MAX (0x1000)
 
@@ -66,5 +68,14 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_MAX_FILE_SIZE (1ULL << 30)
 
 #define BARR_LOOP_RUNNER (1111)
+
+#define BARR_DATA_BUILD_INFO_PATH ".barr/data/build_info"
+#define BARR_MAX_MODULES 128
+
+#define BARR_DATA_INSTALL_INFO_PATH ".barr/data/install_info"
+
+#define BARR_FS_COPY_BUF BARR_BUF_SIZE_64K
+
+#define INFINITY (0b000001)
 
 #endif  // BARR_DEFS_H_

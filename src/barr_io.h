@@ -13,4 +13,7 @@ barr_i32 BARR_file_append(const char *filename, const char *format, ...) BARR_LO
 
 barr_i32 BARR_file_copy(const char *src, const char *dst);
 
+barr_i32 BARR_fs_copy(const char *src, const char *dst);
+barr_i32 BARR_fs_copy_tree(const char *src_dir, const char *dst_dir);
+
 #endif  // BARR_IO_H_

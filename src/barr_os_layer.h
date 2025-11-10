@@ -62,6 +62,10 @@ typedef struct _stat barr_stat_t
 #define barr_getcwd _getcwd
 #define BARR_SYSTEM_CMD_CLEAR "cls"
 
+#elif defined(__APPLE__)
+
+#define BARR_OS_MACOS
+
 #endif
 
 #endif  // BARR_OS_LAYER_H_

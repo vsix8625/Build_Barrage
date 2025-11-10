@@ -51,4 +51,6 @@ char *BARR_get_build_info_key(const char *file_path, const char *key);
 void BARR_join_path(char *out, size_t out_size, const char *base, const char *rel);
 bool BARR_is_absolute(const char *p);
 
+bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_size);
+
 #endif  // BARR_UTILS_H_

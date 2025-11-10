@@ -30,6 +30,7 @@ typedef struct BARR_Command
 #include "barr_cmd_status.h"
 #include "barr_cmd_test.h"
 #include "barr_cmd_tool.h"
+#include "barr_cmd_uninstall.h"
 #include "barr_cmd_version.h"
 
 #if defined(BARR_OS_LINUX)

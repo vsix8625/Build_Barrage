@@ -262,6 +262,9 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *install_aliases[] = {"-i", NULL};
     barr_register_command("install", BARR_command_install, "System install", install_aliases, NULL);
 
+    static const char *uninstall_aliases[] = {"-uni", NULL};
+    barr_register_command("uninstall", BARR_command_uninstall, "System uninstall", uninstall_aliases, NULL);
+
     // play
     static const char *play_aliases[] = {"-pl", NULL};
     barr_register_command("play", BARR_command_play, "Play music", play_aliases, NULL);

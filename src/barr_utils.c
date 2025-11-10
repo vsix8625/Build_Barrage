@@ -60,6 +60,12 @@ static barr_i32 remove_cb(const char *fpath, const struct stat *sb, barr_i32 typ
 
 barr_i32 BARR_rmrf(const char *path)
 {
+    if (barr_access(path, F_OK) != 0)
+    {
+        // path does not exist, nothing to remove
+        return 0;
+    }
+
     // forbid bad raw strings immediately
     const char *forbidden_raw[] = {"/", ".", "..", "~", NULL};
     for (const char **p = forbidden_raw; *p; ++p)
@@ -778,4 +784,35 @@ void BARR_join_path(char *out, size_t out_size, const char *base, const char *re
     }
 
     snprintf(out, out_size, "%s/%s", base, rel);
+}
+
+bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_size)
+{
+    if (!base || !rel || !out)
+        return false;
+
+    if (BARR_is_absolute(rel))
+    {
+        strncpy(out, rel, out_size - 1);
+        out[out_size - 1] = '\0';
+        return true;
+    }
+
+    char temp[BARR_PATH_MAX];
+    BARR_join_path(temp, sizeof(temp), base, rel);
+
+    // Normalize the path (remove "./", "../" etc.)
+    char *resolved = realpath(temp, NULL);
+    if (resolved)
+    {
+        strncpy(out, resolved, out_size - 1);
+        out[out_size - 1] = '\0';
+        free(resolved);
+        return true;
+    }
+
+    // fallback to joined path if realpath fails
+    strncpy(out, temp, out_size - 1);
+    out[out_size - 1] = '\0';
+    return false;
 }

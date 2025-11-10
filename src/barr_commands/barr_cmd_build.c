@@ -31,37 +31,6 @@
 static BARR_Module g_barr_modules[BARR_MAX_MODULES];
 static size_t g_barr_module_count = 0;
 
-static bool barr_path_resolve(const char *base, const char *rel, char *out, size_t out_size)
-{
-    if (!base || !rel || !out)
-        return false;
-
-    if (BARR_is_absolute(rel))
-    {
-        strncpy(out, rel, out_size - 1);
-        out[out_size - 1] = '\0';
-        return true;
-    }
-
-    char temp[BARR_PATH_MAX];
-    BARR_join_path(temp, sizeof(temp), base, rel);
-
-    // Normalize the path (remove "./", "../" etc.)
-    char *resolved = realpath(temp, NULL);
-    if (resolved)
-    {
-        strncpy(out, resolved, out_size - 1);
-        out[out_size - 1] = '\0';
-        free(resolved);
-        return true;
-    }
-
-    // fallback to joined path if realpath fails
-    strncpy(out, temp, out_size - 1);
-    out[out_size - 1] = '\0';
-    return false;
-}
-
 static bool barr_add_module_to_registry(const char *name, const char *path)
 {
     if (name == NULL || path == NULL)
@@ -370,6 +339,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     //----------------------------------------------------------------------------------------------------
     // scan exclude
+    printf("\n----------------------------------------------------------------------------------------------------\n");
+    BARR_log("BUILD BEGINS: %s", root_dir);
+    printf("----------------------------------------------------------------------------------------------------\n\n");
 
     const char *exclude_raw = OLM_get_var(OLM_VAR_EXCLUDE_PATTERNS);
     const char **exclude_tokens = NULL;
@@ -749,7 +721,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
                         char resolved[BARR_PATH_MAX];
 
-                        if (!barr_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
+                        if (!BARR_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
                         {
                             BARR_warnlog("Failed to resolve module include path: %s/%s", mod_path, raw_path);
                             continue;
@@ -1340,6 +1312,25 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
             clock_gettime(CLOCK_MONOTONIC, &link_end);
             BARR_file_write(".barr/data/last_bin", "%s", output_path);
+
+            // ----------------------------------------------------------------------------------------------------
+            // BUILD INFO
+            // ----------------------------------------------------------------------------------------------------
+
+            char build_info_contents[BARR_BUF_SIZE_8192 * 4];
+            const char *barr_ver = BARR_version_get_str();
+            snprintf(build_info_contents, sizeof(build_info_contents),
+                     "[common]\n"
+                     "name = %s\n"
+                     "type = %s\n"
+                     "version = %s\n"
+                     "barr_version = %s\n"
+                     "timestamp = %ld\n"
+                     "\n[paths]\n"
+                     "build_dir = %s\n",
+                     target_name, target_type, target_version, barr_ver, time(NULL), out_dir);
+
+            BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
         }  // executable
     }
 
@@ -1354,6 +1345,10 @@ exit:
     clock_gettime(CLOCK_MONOTONIC, &build_end);
     BARR_log("Time to build: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
     //----------------------------------------------------------------------------------------------------
+
+    printf("\n----------------------------------------------------------------------------------------------------\n");
+    BARR_log("BUILD ENDS: %s", root_dir);
+    printf("----------------------------------------------------------------------------------------------------\n");
 
     // cleanup
     BARR_destroy_thread_pool(pool);
