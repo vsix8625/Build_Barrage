@@ -1,0 +1,30 @@
+# Default Barrfile - Build Barrage v0.17.1
+# Latest update: 2025-11-09
+
+gen_compile_commands = "yes";
+
+target = "barr";
+version = "0.18.1";
+target_type = "executable";
+
+print("Building ${target}-v${version} | Type: ${target_type}");
+
+compiler = "/usr/bin/gcc";
+linker = "lld";
+
+build_type = "release";
+out_dir = "build/${build_type}";
+
+std = "-std=c23";
+cflags = "${std} -Wall -Werror -Wextra -g -DBARR_DEBUG";
+cflags_release = "${std} -Wall -O3";
+
+defines = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
+
+pkgs = "xxhash";
+find_package("${pkgs}");
+lflags = "-lpthread";
+
+# run_cmd("sudo ./build/release/bin/barr install");
+
+print("Build script ends!");

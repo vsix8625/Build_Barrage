@@ -19,45 +19,14 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
         return 1;
     }
 
-    char last_bin_path[BARR_PATH_MAX] = {0};
-    char cache_file[BARR_PATH_MAX];
-    snprintf(cache_file, BARR_PATH_MAX, ".barr/data/last_bin");
+    char *target_name = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "name");
+    char *build_dir = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "build_dir");
 
-    if (!BARR_isfile(cache_file))
-    {
-        BARR_errlog("No build found. Run 'barr build` first");
-        return 1;
-    }
-
-    FILE *fp = fopen(cache_file, "r");
-    if (!fp)
-    {
-        BARR_errlog("%s(): failed to open %s file", __func__, cache_file);
-        return 1;
-    }
-
-    if (!fgets(last_bin_path, sizeof(last_bin_path), fp))
-    {
-        fclose(fp);
-        BARR_errlog("%s(): failed to read last build path from %s", __func__, cache_file);
-        return 1;
-    }
-    fclose(fp);
-
-    size_t len = strlen(last_bin_path);
-    if (len && last_bin_path[len - 1] == '\n')
-    {
-        last_bin_path[len - 1] = '\0';
-    }
-
-    if (!BARR_isfile(last_bin_path))
-    {
-        BARR_errlog("%s(): last build binary path does not exist: %s", __func__, last_bin_path);
-        return 1;
-    }
+    char exe_path[BARR_PATH_MAX];
+    snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", build_dir, target_name);
 
     char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
-    exec_args[0] = last_bin_path;
+    exec_args[0] = exe_path;
     for (barr_i32 i = 1; i < argc; ++i)
     {
         exec_args[i] = argv[i];
@@ -89,7 +58,7 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     BARR_printf("================================================================================\n");
     BARR_log("Running: %s-v%s", exec_args[0], vers);
     BARR_printf("\n\n");
-    barr_i32 ret = BARR_run_process(last_bin_path, exec_args, false);
+    barr_i32 ret = BARR_run_process(exec_args[0], exec_args, false);
 
     //----------------------------------------------------------------------------------------------------
     // CLOCK

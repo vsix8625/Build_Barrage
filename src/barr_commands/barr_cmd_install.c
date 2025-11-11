@@ -48,8 +48,8 @@ static void barr_install_target(const char *install_prefix)
         return;
     }
 
-    char src_path[BARR_PATH_MAX];
-    char dst_path[BARR_PATH_MAX];
+    char src_path[BARR_PATH_MAX * 2];
+    char dst_path[BARR_PATH_MAX * 2];
     BARR_file_write(BARR_DATA_INSTALL_INFO_PATH, "# %s installed paths\n", name);
 
     if (BARR_strmatch(type, "executable"))
@@ -133,9 +133,9 @@ static void barr_install_target(const char *install_prefix)
                     const char *raw_path = tok + 2;
                     char resolved[BARR_PATH_MAX];
 
-                    if (!BARR_path_resolve(BARR_getcwd(), raw_path, resolved, sizeof(resolved)))
+                    if (BARR_path_resolve(BARR_getcwd(), raw_path, resolved, sizeof(resolved)))
                     {
-                        char dst[BARR_PATH_MAX];
+                        char dst[BARR_PATH_MAX * 2];
                         snprintf(dst, sizeof(dst), "%s/include/%s/%s", install_prefix, name, raw_path);
                         if (BARR_isdir(raw_path))
                         {
@@ -154,6 +154,15 @@ static void barr_install_target(const char *install_prefix)
                         BARR_warnlog("Path does not exist, skipping: %s", raw_path);
                     }
                 }
+            }
+
+            char top_level_include[BARR_PATH_MAX * 2];
+            snprintf(top_level_include, sizeof(top_level_include), "%s/include/%s", install_prefix, name);
+
+            if (BARR_isdir(top_level_include))
+            {
+                BARR_file_append(BARR_DATA_INSTALL_INFO_PATH, "%s\n", top_level_include);
+                BARR_log("Added top-level include dir to manifest: %s", top_level_include);
             }
         }
     }

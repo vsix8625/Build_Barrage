@@ -31,6 +31,8 @@ typedef struct stat barr_stat_t;
 #define barr_getcwd getcwd
 #define BARR_SYSTEM_CMD_CLEAR "clear"
 
+#define BARR_DYNAMIC_LIB_EXT "so"
+
 barr_i32 BARR_run_process_BG(const char *name, char **args);
 barr_i32 BARR_run_process(const char *name, char **args, bool verbose);
 char *BARR_run_process_capture(char *const argv[]);
@@ -55,6 +57,8 @@ typedef struct _stat barr_stat_t
 #define BARR_PATH_SEPARATOR_STR "\\"
 #define BARR_PATH_SEPARATOR_CHAR '\\'
 #define BARR_PATH_DELIMITER ';'
+
+#define BARR_DYNAMIC_LIB_EXT "dll"
 
 #define barr_access _access
 #define X_OK 0

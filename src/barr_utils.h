@@ -52,5 +52,6 @@ void BARR_join_path(char *out, size_t out_size, const char *base, const char *re
 bool BARR_is_absolute(const char *p);
 
 bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_size);
+char *BARR_get_self_exe(void);
 
 #endif  // BARR_UTILS_H_

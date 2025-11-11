@@ -1,8 +1,8 @@
 #include "olmos_ast.h"
-#include "barr_commands/barr_cmd_build.h"
 #include "barr_debug.h"
 #include "barr_gc.h"
 #include "barr_io.h"
+#include "barr_modules.h"
 
 #include <ctype.h>
 #include <stdio.h>

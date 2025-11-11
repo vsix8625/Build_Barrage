@@ -25,6 +25,7 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_SIZE_MAX ((size_t) -1)
 
 // BUFFER SIZES
+#define BARR_BUF_SIZE_16 0x10
 #define BARR_BUF_SIZE_32 0x20
 #define BARR_BUF_SIZE_64 0x40
 #define BARR_BUF_SIZE_128 0x80

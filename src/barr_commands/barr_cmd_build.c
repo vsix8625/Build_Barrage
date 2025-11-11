@@ -14,6 +14,7 @@
 #include "barr_io.h"
 #include "barr_linker.h"
 #include "barr_list.h"
+#include "barr_modules.h"
 #include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
@@ -28,100 +29,15 @@
 #include <string.h>
 #include <time.h>
 
-static BARR_Module g_barr_modules[BARR_MAX_MODULES];
-static size_t g_barr_module_count = 0;
-
-static bool barr_add_module_to_registry(const char *name, const char *path)
-{
-    if (name == NULL || path == NULL)
-    {
-        BARR_errlog("Module name or path is NULL");
-        return false;
-    }
-
-    if (g_barr_module_count >= BARR_MAX_MODULES)
-    {
-        BARR_errlog("Maximum number of modules reached: %d", BARR_MAX_MODULES);
-        return false;
-    }
-
-    g_barr_modules[g_barr_module_count].name = BARR_gc_strdup(name);
-    g_barr_modules[g_barr_module_count].path = BARR_gc_strdup(path);
-    g_barr_module_count++;
-
-    return true;
-}
-
-BARR_Module *BARR_get_module(const char *name)
-{
-    for (size_t i = 0; i < g_barr_module_count; ++i)
-    {
-        if (BARR_strmatch(g_barr_modules[i].name, name))
-        {
-            return &g_barr_modules[i];
-        }
-    }
-
-    return NULL;
-}
-
-void BARR_print_modules(void)
-{
-    BARR_log("Total modules: %zu", g_barr_module_count);
-    for (size_t i = 0; i < g_barr_module_count; ++i)
-    {
-        BARR_log("\t%zu) %s at '%s/%s'", i + 1, g_barr_modules[i].name, BARR_getcwd(), g_barr_modules[i].path);
-    }
-}
-
-bool BARR_add_module(const char *name, const char *path, const char *required)
-{
-    if (path == NULL)
-    {
-        BARR_errlog("Module path is NULL");
-        return false;
-    }
-
-    if (name == NULL)
-    {
-        name = "barr_module";
-    }
-
-    bool is_required = false;
-    if (required != NULL)
-    {
-        if (BARR_strmatch(required, "true") || BARR_strmatch(required, "yes") || BARR_strmatch(required, "required"))
-        {
-            is_required = true;
-        }
-    }
-
-    // NOTE: when we install barr we should write the barr bin path to global barr config and use it here
-    const char *args[] = {"barr", "build", "--dir", path, NULL};
-    barr_i32 result = BARR_run_process(args[0], (char **) args, true);
-
-    if (result != 0)
-    {
-        BARR_errlog("%s(): failed to build %s", __func__, path);
-        if (is_required)
-        {
-            BARR_errlog("Module build is required");
-            return false;
-        }
-    }
-
-    if (!barr_add_module_to_registry(name, path))
-    {
-        BARR_errlog("Failed to register module %s at %s", name, path);
-        return false;
-    }
-
-    return true;
-}
+//----------------------------------------------------------------------------------------------------
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
-    struct timespec build_start, build_end, compile_start, compile_end, arch_start, arch_end, link_start, link_end;
+    bool internal_call = (argc == 0 || argv == NULL);
+
+    struct timespec build_start, build_end, compile_start, compile_end, link_start, link_end;
+    (void) link_start;
+    (void) link_end;
     clock_gettime(CLOCK_MONOTONIC, &build_start);
 
     if (!BARR_is_initialized())
@@ -151,53 +67,63 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_BuildProgressCTX progress_ctx = {.failed = false};
 
-    bool dry_run_compile, is_batch_build, select_dir = false;
+    bool dry_run_compile = false;
+    bool is_batch_build = false;
+    bool select_dir = false;
     char *select_dir_path = NULL;
 
-    for (barr_i32 i = 1; i < argc; ++i)
+    if (!internal_call)
     {
-        char *cmd = argv[i];
-        if (BARR_strmatch(cmd, "--dry-run"))
+        BARR_dbglog("Parsing args");
+        for (barr_i32 i = 1; i < argc; ++i)
         {
-            dry_run_compile = true;
-        }
-        if (BARR_strmatch(cmd, "--turbo"))
-        {
-            BARR_log("Turbo mode initialized");
-            is_batch_build = true;
-        }
-        if (BARR_strmatch(cmd, "--dir"))
-        {
-            select_dir = true;
-            if (argv[i + 1])
+            char *cmd = argv[i];
+            if (BARR_strmatch(cmd, "--dry-run"))
             {
-                select_dir_path = BARR_gc_strdup(argv[i + 1]);
-                size_t len = strlen(select_dir_path);
-                if (len > 0 && select_dir_path[len - 1] == '/')
+                dry_run_compile = true;
+            }
+
+            if (BARR_strmatch(cmd, "--turbo"))
+            {
+                BARR_log("Turbo mode initialized");
+                is_batch_build = true;
+            }
+
+            if (BARR_strmatch(cmd, "--dir"))
+            {
+                select_dir = true;
+                if (argv[i + 1])
                 {
-                    select_dir_path[len - 1] = '\0';
+                    select_dir_path = BARR_gc_strdup(argv[i + 1]);
+                    size_t len = strlen(select_dir_path);
+                    if (len > 0 && select_dir_path[len - 1] == '/')
+                    {
+                        select_dir_path[len - 1] = '\0';
+                    }
+                    break;
                 }
-                break;
+                else
+                {
+                    BARR_errlog("%s(): --dir options reuires directory path", __func__);
+                    select_dir = false;
+                    break;
+                }
             }
             else
             {
-                BARR_errlog("%s(): --dir options reuires directory path: '%s' is invalid", __func__, argv[i + 1]);
-                select_dir = false;
+                BARR_warnlog("Invalid option for build command: %s", cmd);
                 break;
             }
         }
-        else
-        {
-            BARR_warnlog("Invalid option for build command: %s", cmd);
-            break;
-        }
+    }
+    else
+    {
+        select_dir = false;
     }
 
     if (select_dir)
     {
         const char *old_dir = BARR_getcwd();
-        BARR_log("Switching build context to directory: %s", select_dir_path);
-
         if (chdir(select_dir_path) != 0)
         {
             BARR_errlog("%s(): failed to change directory to %s", __func__, select_dir_path);
@@ -210,7 +136,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Sub-build failed for '%s'", select_dir_path);
         }
 
-        BARR_log("Switching build context to directory: %s", old_dir);
         if (chdir(old_dir) != 0)
         {
             BARR_errlog("%s(): failed to restore working directory to %s", __func__, old_dir);
@@ -401,12 +326,15 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     bool debug_build = (build_type && BARR_strmatch(build_type, "debug"));
 
     // get the out dir from Barrfile
-    const char *out_dir = OLM_get_var(OLM_VAR_OUT_DIR);
-    if (out_dir == NULL)
+    const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
+    char out_dir[BARR_PATH_MAX];
+    if (out_dir_var == NULL)
     {
-        char tmp_out_dir[BARR_PATH_MAX];
-        snprintf(tmp_out_dir, BARR_PATH_MAX, "%s/build/debug", root_dir);
-        out_dir = tmp_out_dir;
+        snprintf(out_dir, BARR_PATH_MAX, "%s/build/debug", root_dir);
+    }
+    else
+    {
+        snprintf(out_dir, BARR_PATH_MAX, "%s/%s", root_dir, out_dir_var);
     }
 
     if (!BARR_isdir(out_dir))
@@ -690,20 +618,21 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------
     // MODULES
 
-    if (g_barr_module_count > 0)
+    size_t modules_count = BARR_get_module_count();
+    if (modules_count > 0)
     {
         BARR_list_init(&modules_includes_list, 16);
         BARR_print_modules();
 
-        for (size_t i = 0; i < g_barr_module_count; ++i)
+        for (size_t i = 0; i < modules_count; ++i)
         {
-            const char *mod_path = g_barr_modules[i].path;
+            const char *mod_path = BARR_get_module_array()[i].path;
             char build_info_path[BARR_PATH_MAX];
             snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod_path, BARR_DATA_BUILD_INFO_PATH);
 
             if (!BARR_isfile(build_info_path))
             {
-                BARR_warnlog("Module '%s' has no build.info, skipping", g_barr_modules[i].name);
+                BARR_warnlog("Module '%s' has no build.info, skipping", BARR_get_module_array()[i].name);
                 continue;
             }
 
@@ -730,12 +659,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                         char final[BARR_PATH_MAX + 3];
                         snprintf(final, sizeof(final), "-I%s", resolved);
 
-                        BARR_log("PUSHING: ----------------> %s", final);
                         BARR_list_push(&modules_includes_list, BARR_gc_strdup(final));
                     }
                     else
                     {
-                        BARR_log("PUSHING: ----------------> %s", tok);
                         BARR_list_push(&modules_includes_list, BARR_gc_strdup(tok));
                     }
                 }
@@ -1024,314 +951,31 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
         }
 
-        clock_gettime(CLOCK_MONOTONIC, &arch_start);
-        // archive stage
-        char archive_out_path[BARR_PATH_MAX * 2];
-        snprintf(archive_out_path, sizeof(archive_out_path), "%s/libbarr.a", out_dir);
-        BARR_dbglog("ARCHIVE_PATH: %s", archive_out_path);
-        barr_i32 archive_ret = BARR_archive_stage(&object_list, archive_out_path);
-        if (archive_ret != 0)
-        {
-            BARR_errlog("Archive stage failed");
-        }
-        clock_gettime(CLOCK_MONOTONIC, &arch_end);
-
         const char *target_type = OLM_get_var(OLM_VAR_TARGET_TYPE);
         if (!target_type || !target_type[0])
         {
             target_type = "executable";
         }
-
-        char lib_dir[BARR_PATH_MAX + 256];
-        snprintf(lib_dir, sizeof(lib_dir), "%s/lib", out_dir);
-        BARR_mkdir_p(lib_dir);
-
-        if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "static") ||
-            BARR_strmatch(target_type, "shared"))
+        const char *linker = OLM_get_var(OLM_VAR_LINKER);
+        if (!linker || !linker[0])
         {
-            clock_gettime(CLOCK_MONOTONIC, &link_start);
-
-            // ----------------------------------------------------------------------------------------------------
-            // STATIC
-            // ----------------------------------------------------------------------------------------------------
-
-            char dest_static[BARR_PATH_MAX * 2];
-            if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "static"))
-            {
-                snprintf(dest_static, sizeof(dest_static), "%s/lib%s.a", lib_dir, target_name);
-                BARR_mv(archive_out_path, dest_static);
-            }
-
-            // ----------------------------------------------------------------------------------------------------
-            // SHARED
-            // ----------------------------------------------------------------------------------------------------
-            char dest_shared[BARR_PATH_MAX * 2];
-            if (BARR_strmatch(target_type, "library") || BARR_strmatch(target_type, "shared"))
-            {
-                snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.so", lib_dir, target_name);
-
-                BARR_log("Building shared library: %s", dest_shared);
-
-                BARR_List so_args;
-                BARR_list_init(&so_args, 16);
-                BARR_list_push(&so_args, (char *) resolved_compiler);
-                BARR_list_push(&so_args, "-fuse-ld=lld");
-                BARR_list_push(&so_args, "-shared");
-                BARR_list_push(&so_args, "-fPIC");
-                BARR_list_push(&so_args, "-o");
-                BARR_list_push(&so_args, dest_shared);
-
-                char main_co_buf[BARR_PATH_MAX * 2];
-                snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
-                for (size_t i = 0; i < object_list.count; ++i)
-                {
-                    const char *obj = object_list.entries[i];
-                    if (!BARR_strmatch(obj, main_co_buf))
-                    {
-                        BARR_list_push(&so_args, (char *) obj);
-                    }
-                }
-                BARR_list_push(&so_args, NULL);
-
-                char **so_cmd = (char **) so_args.items;
-                barr_i32 so_ret = BARR_run_process(so_cmd[0], so_cmd, false);
-                if (so_ret != 0)
-                {
-                    BARR_errlog("Shared lib creation failed");
-                }
-            }
-            clock_gettime(CLOCK_MONOTONIC, &link_end);
-
-            // ----------------------------------------------------------------------------------------------------
-            // BUILD INFO
-            // ----------------------------------------------------------------------------------------------------
-            const char *module_includes = OLM_get_var(OLM_VAR_MODULE_INCLUDES);
-            if (module_includes == NULL)
-            {
-                module_includes = "-Iinclude";
-            }
-
-            char build_info_contents[BARR_BUF_SIZE_8192 * 4];
-            const char *barr_ver = BARR_version_get_str();
-            snprintf(build_info_contents, sizeof(build_info_contents),
-                     "[common]\n"
-                     "name = %s\n"
-                     "type = %s\n"
-                     "version = %s\n"
-                     "barr_version = %s\n"
-                     "timestamp = %ld\n"
-                     "\n[paths]\n"
-                     "cflags = %s\n"
-                     "libpath = -L%s\n"
-                     "rpath = -Wl,-rpath,%s\n"
-                     "\n[artifacts]\n"
-                     "static = %s\n"
-                     "shared = %s\n",
-                     target_name, target_type, target_version, barr_ver, time(NULL), module_includes, lib_dir, lib_dir,
-                     BARR_strmatch(target_type, "shared") ? "" : dest_static,
-                     BARR_strmatch(target_type, "static") ? "" : dest_shared);
-
-            BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
+            linker = "lld";
         }
-        else
+
+        const char *module_includes = OLM_get_var(OLM_VAR_MODULE_INCLUDES);
+        if (module_includes == NULL)
         {
-            // Link stage
-            BARR_log("Building executable target: %s", target_name);
-            clock_gettime(CLOCK_MONOTONIC, &link_start);
+            module_includes = "-Iinclude";
+        }
 
-            // base linker args
-            char main_co_buf[BARR_PATH_MAX * 2];
-            snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
+        if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
+                             linker, module_includes, target_version) != 0)
+        {
+            BARR_errlog("Failed to build");
+            goto exit;
+        }
 
-            const char *linker_fuse = OLM_get_var(OLM_VAR_LINKER);
-            char linker_fuse_buf[BARR_BUF_SIZE_32];
-            char lld_threads[BARR_BUF_SIZE_32];
-
-            BARR_LinkArgs *la = BARR_link_args_create();
-
-            BARR_link_args_add(la, resolved_compiler);
-            BARR_link_args_add(la, main_co_buf);
-
-            char archive_lib_dirpath[BARR_PATH_MAX * 2];
-            snprintf(archive_lib_dirpath, sizeof(archive_lib_dirpath), "-L%s", out_dir);
-            BARR_link_args_add(la, archive_lib_dirpath);
-
-            if (linker_fuse != NULL && !BARR_strmatch(linker_fuse, "ld"))
-            {
-                snprintf(linker_fuse_buf, sizeof(linker_fuse_buf), "-fuse-ld=%s", linker_fuse);
-                BARR_link_args_add(la, linker_fuse_buf);
-                if (BARR_strmatch(linker_fuse, "lld"))
-                {
-                    snprintf(lld_threads, sizeof(lld_threads), "-Wl,--threads=%d", n_threads);
-                    BARR_link_args_add(la, lld_threads);
-                }
-            }
-
-            //---------------
-            // MODULES
-            //---------------
-
-            for (size_t i = 0; i < g_barr_module_count; ++i)
-            {
-                BARR_Module *mod = &g_barr_modules[i];
-                char build_info_path[BARR_PATH_MAX];
-                snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod->path, BARR_DATA_BUILD_INFO_PATH);
-
-                if (!BARR_isfile(build_info_path))
-                {
-                    BARR_warnlog("Module '%s' has no build.info, skipping", mod->name);
-                    continue;
-                }
-
-                char *name = BARR_get_build_info_key(build_info_path, "name");
-                char *type = BARR_get_build_info_key(build_info_path, "type");
-                char *lib_path = BARR_get_build_info_key(build_info_path, "libpath");
-                char *runtime = BARR_get_build_info_key(build_info_path, "rpath");
-
-                if (type == NULL)
-                {
-                    type = "library";
-                }
-
-                if (BARR_strmatch(type, "static") || BARR_strmatch(type, "library"))
-                {
-                    if (lib_path && lib_path[0])
-                    {
-                        BARR_link_args_add(la, lib_path);
-                    }
-                    char name_arg[BARR_PATH_MAX];
-                    snprintf(name_arg, sizeof(name_arg), "-l%s", name);
-                    BARR_link_args_add(la, name_arg);
-                }
-
-                if (BARR_strmatch(type, "shared") || BARR_strmatch(type, "library"))
-                {
-                    if (lib_path && lib_path[0])
-                    {
-                        BARR_link_args_add(la, lib_path);
-                    }
-                    char name_arg[BARR_PATH_MAX];
-                    snprintf(name_arg, sizeof(name_arg), "-l%s", name);
-                    BARR_link_args_add(la, name_arg);
-
-                    if (runtime && runtime[0])
-                    {
-                        BARR_link_args_add(la, runtime);
-                    }
-                }
-            }
-
-            //---------------
-
-            size_t lib_count = 0;
-            for (size_t i = 0; i < pkg_list.count; ++i)
-            {
-                BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
-                if (!pkg_info)
-                {
-                    continue;
-                }
-                if (pkg_info->libs && pkg_info->libs[0])
-                {
-                    lib_count++;
-                }
-            }
-
-            if (lib_count > 0)
-            {
-                const char **libs_raw = BARR_gc_calloc(lib_count + 1, sizeof(char *));
-                size_t idx = 0;
-
-                for (size_t i = 0; i < pkg_list.count; ++i)
-                {
-                    BARR_PackageInfo *pkg_info = (BARR_PackageInfo *) pkg_list.items[i];
-                    if (!pkg_info)
-                    {
-                        BARR_warnlog("Null package info at index %zu — skipping", i);
-                        continue;
-                    }
-
-                    if (pkg_info->libs && pkg_info->libs[0])
-                    {
-                        libs_raw[idx++] = pkg_info->libs;
-                    }
-                }
-
-                libs_raw[idx] = NULL;
-
-                BARR_dedup_libs_and_add_to_link_args(la, libs_raw);
-            }
-            BARR_link_args_add(la, "-lbarr");
-
-            const char *lib_paths_raw = OLM_get_var(OLM_VAR_LIB_PATHS);
-            if (lib_paths_raw && lib_paths_raw[0])
-            {
-                char **lib_paths = BARR_tokenize_string(lib_paths_raw);
-                for (char **p = lib_paths; p && *p; ++p)
-                {
-                    BARR_link_args_add(la, *p);
-                }
-            }
-            else
-            {
-                lib_paths_raw = "";
-            }
-
-            const char *linker_flags_raw = OLM_get_var(OLM_VAR_LINKER_FLAGS);
-            if (linker_flags_raw && linker_flags_raw[0])
-            {
-                char **user_linker_flags = BARR_tokenize_string(linker_flags_raw);
-                for (char **p = user_linker_flags; p && *p; ++p)
-                {
-                    BARR_link_args_add(la, *p);
-                }
-            }
-            else
-            {
-                linker_flags_raw = "";
-            }
-
-            BARR_link_args_add(la, "-o");
-            BARR_link_args_add(la, output_path);
-            BARR_dbglog("OUPUT_PATH: %s", output_path);
-
-            // finalize link args
-            char **link_args = BARR_link_args_finalize(la);
-            if (g_barr_verbose)
-            {
-                for (char **arg = link_args; *arg != NULL; ++arg)
-                {
-                    BARR_printf("%s ", *arg);
-                }
-            }
-            BARR_printf("\n");
-            barr_i32 link_ret = BARR_link_stage(link_args);
-            if (link_ret != 0)
-            {
-                BARR_errlog("Link stage failed");
-            }
-            clock_gettime(CLOCK_MONOTONIC, &link_end);
-            BARR_file_write(".barr/data/last_bin", "%s", output_path);
-
-            // ----------------------------------------------------------------------------------------------------
-            // BUILD INFO
-            // ----------------------------------------------------------------------------------------------------
-
-            char build_info_contents[BARR_BUF_SIZE_8192 * 4];
-            const char *barr_ver = BARR_version_get_str();
-            snprintf(build_info_contents, sizeof(build_info_contents),
-                     "[common]\n"
-                     "name = %s\n"
-                     "type = %s\n"
-                     "version = %s\n"
-                     "barr_version = %s\n"
-                     "timestamp = %ld\n"
-                     "\n[paths]\n"
-                     "build_dir = %s\n",
-                     target_name, target_type, target_version, barr_ver, time(NULL), out_dir);
-
-            BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
-        }  // executable
+        // BUILD INFO
     }
 
 exit:
@@ -1339,8 +983,7 @@ exit:
     //----------------------------------------------------------------------------------------------------
     // performance
     BARR_log("Time to compile sources: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
-    BARR_log("Time to archive: \033[34;1m %s", BARR_fmt_time_elapsed(&arch_start, &arch_end));
-    BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
+    // BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
 
     clock_gettime(CLOCK_MONOTONIC, &build_end);
     BARR_log("Time to build: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));

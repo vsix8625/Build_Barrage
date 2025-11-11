@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- FIX library creation pipeline and linking stage !!!
 - Add build_info in .barr/data for libraries for barr to automatically link them
 - Build artifacts and objects recovery system.   
 - Multi target builds support.   

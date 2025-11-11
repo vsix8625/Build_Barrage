@@ -816,3 +816,20 @@ bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_
     out[out_size - 1] = '\0';
     return false;
 }
+
+char *BARR_get_self_exe(void)
+{
+    char current_barr_path[BARR_PATH_MAX];
+#if defined(BARR_OS_LINUX)
+    ssize_t len = readlink("/proc/self/exe", current_barr_path, sizeof(current_barr_path) - 1);
+    if (len != 1)
+    {
+        current_barr_path[len] = '\0';
+    }
+    else
+    {
+        strncpy(current_barr_path, "barr", sizeof(current_barr_path));
+    }
+#endif
+    return BARR_gc_strdup(current_barr_path);
+}
