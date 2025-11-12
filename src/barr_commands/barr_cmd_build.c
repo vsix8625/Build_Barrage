@@ -16,6 +16,7 @@
 #include "barr_package_scan_dir.h"
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
+#include "barr_thread_jobs.h"
 #include "olmos_ast.h"
 #include "olmos_variables.h"
 
@@ -38,7 +39,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     (void) link_end;
     clock_gettime(CLOCK_MONOTONIC, &build_start);
 
-    if (!BARR_is_initialized())
+    if (!BARR_init())
     {
         return 1;
     }
@@ -379,7 +380,16 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     const char *olmos_cflags_cp = BARR_gc_strdup(olmos_cflags);
     BARR_source_list_hash_mt(&sources, &headers, current_map, olmos_cflags_cp, pool);
-    BARR_hashmap_debug(current_map);
+    if (g_barr_verbose)
+    {
+        BARR_hashmap_debug(current_map);
+    }
+
+    BARR_WriteSourceArgs *wr_src_args = BARR_gc_alloc(sizeof(BARR_WriteSourceArgs));
+    wr_src_args->sources = &sources;
+    wr_src_args->filepath = BARR_DATA_SOURCE_FILES_LOG;
+
+    BARR_thread_pool_add(pool, BARR_write_sources_job, wr_src_args);
 
     BARR_HashMap *cached_map = NULL;
     if (has_cache)

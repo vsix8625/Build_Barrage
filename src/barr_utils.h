@@ -3,6 +3,7 @@
 #define BARR_UTILS_H_
 
 #include "barr_cmd_version.h"
+#include "barr_list.h"
 #include "barr_os_layer.h"
 
 #define BARR_NULL_TERM_CHAR '\0'
@@ -53,5 +54,7 @@ bool BARR_is_absolute(const char *p);
 
 bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_size);
 char *BARR_get_self_exe(void);
+
+void BARR_object_files_scan(BARR_List *list, const char *dirpath);
 
 #endif  // BARR_UTILS_H_

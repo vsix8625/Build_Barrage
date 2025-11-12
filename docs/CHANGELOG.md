@@ -6,24 +6,56 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- FIX library creation pipeline and linking stage !!!
-- Add build_info in .barr/data for libraries for barr to automatically link them
 - Build artifacts and objects recovery system.   
-- Multi target builds support.   
-- `depend("project")` function for `Barrfile`. 
-- A system install `barr config --install-system` that will add the binary to `/usr/local/bin`
-- Build process to create compile_commands.json(done). 
-- Valgrind and gdb support via `barr tool <tool_name>` 
-    - Example: `barr tool --valgrind check` or similar command will run `valgrind --tool=memcheck <path/to/bin>`
-    - Example: `barr tool --gdb launch` or similar command will run `gdb -- <path/to/bin>`
-               `barr tool --gdb run <args>` maybe can be added.  
 - Windows support  
+ 
+---
+
+## [0.19.1] – 2025-11-12
 ### Added
-- Custom build: hash + dependency track + cache systems (core systems implemented) 
-- Garbage collector (Battle tested 1GB allocations all free on exit)
-- Custom DSL`(Olmos)` with a C-like syntax
-- Project sessions and possibly `live-build` daemon.  
-- More CLI commands (`barr run`, `barr clean`, etc) with more options.
+- Add: `barr_thread_jobs.c` and `barr_thread_jobs.h` for general thread related job functions.  
+### Changed
+- `Barr_is_initialized()` renamed: `Barr_init()`, nothing changed internally.
+- `barr status` command now also reads `.barr/data/source_files_log` and compares source files
+   and objects files, modification time.  
+   - Printing information of modified source files at time of command run.
+### Fixed 
+### Removed
+
+---
+
+## [0.18.1] – 2025-11-12
+### Added
+### Changed
+### Fixed 
+### Removed
+- Focusing on project-local configuration with `Barrfile` and `Olmos-DSL`,
+  global config parser and `$PATH` modifications hacks was removed.
+- `barr_glob_config_parser.c` removed.
+- `barr_glob_config_parser.h` removed.
+- `barr_glob_config_keys.h` removed.
+
+---
+
+## [0.17.2] – 2025-11-11
+### Added
+- `BARR_link_target` that constructs link stage depending on `target_type`.  
+```C
+barr_i32 BARR_link_target(const char *target_type,
+                          const char *target_name,
+                          const char *out_dir,
+                          BARR_SourceList *object_list, 
+                          BARR_List *pkg_list,
+                          size_t n_threads,
+                          const char *resolved_compiler, 
+                          const char *linker, 
+                          const char *module_includes,
+                          const char *target_version);
+```
+### Changed
+- Full redesign of link stage process. 
+### Fixed 
+### Removed
 
 ---
 

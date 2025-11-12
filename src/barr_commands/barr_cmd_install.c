@@ -173,7 +173,7 @@ static void barr_install_target(const char *install_prefix)
 // NOTE: WIP
 barr_i32 BARR_command_install(barr_i32 argc, char **argv)
 {
-    if (!BARR_is_initialized())
+    if (!BARR_init())
     {
         return 1;
     }

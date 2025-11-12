@@ -74,6 +74,7 @@ typedef void (*barr_func_ptr)(void);
 #define BARR_MAX_MODULES 128
 
 #define BARR_DATA_INSTALL_INFO_PATH ".barr/data/install_info"
+#define BARR_DATA_SOURCE_FILES_LOG ".barr/data/source_files_log"
 
 #define BARR_FS_COPY_BUF BARR_BUF_SIZE_64K
 

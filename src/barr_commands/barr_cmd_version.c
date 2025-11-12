@@ -73,7 +73,7 @@ BARR_InitStatus BARR_check_initialized(void)
     return BARR_INIT_OK;
 }
 
-bool BARR_is_initialized(void)
+bool BARR_init(void)
 {
     BARR_InitStatus res = BARR_check_initialized();
     barr_i32 current_version = BARR_VERSION_ENCODE(BARR_VERSION_MAJOR, BARR_VERSION_MINOR, BARR_VERSION_PATCH);

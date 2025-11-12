@@ -2,7 +2,6 @@
 #define BARR_SRC_LIST_H_
 
 #include "barr_defs.h"
-#include "barr_thread_pool.h"
 
 typedef struct BARR_SourceList
 {

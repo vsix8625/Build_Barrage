@@ -1,3 +1,4 @@
+#include "barr_list.h"
 #define _XOPEN_SOURCE 700
 
 #include "barr_debug.h"
@@ -832,4 +833,54 @@ char *BARR_get_self_exe(void)
     }
 #endif
     return BARR_gc_strdup(current_barr_path);
+}
+
+//----------------------------------------------------------------------------------------------------
+// Object scanner
+
+static bool barr_is_object_file(const char *path)
+{
+    if (path == NULL)
+    {
+        return false;
+    }
+
+    size_t len = strlen(path);
+    return len > 2 && BARR_strmatch(path + len - 2, ".o");
+}
+
+void BARR_object_files_scan(BARR_List *list, const char *dirpath)
+{
+    if (list == NULL || dirpath == NULL)
+    {
+        BARR_errlog("%s(): invalid args", __func__);
+        return;
+    }
+
+    DIR *dir = opendir(dirpath);
+    if (dir == NULL)
+    {
+        BARR_errlog("%s(): failed to open directory '%s'", __func__, dirpath);
+        return;
+    }
+
+    struct dirent *dent;
+    while ((dent = readdir(dir)))
+    {
+        if (BARR_strmatch(dent->d_name, ".") || BARR_strmatch(dent->d_name, ".."))
+        {
+            continue;
+        }
+
+        char fullpath[BARR_PATH_MAX];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dirpath, dent->d_name);
+
+        if (dent->d_type == DT_REG && barr_is_object_file(fullpath))
+        {
+            BARR_list_push(list, BARR_gc_strdup(fullpath));
+        }
+    }
+
+    closedir(dir);
+    BARR_log("Found: %zu objects files in '%s'", list->count, dirpath);
 }

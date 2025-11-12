@@ -10,7 +10,7 @@ static barr_i32 barr_config_local_edit(barr_i32 argc, char **argv)
 {
     BARR_VOID(argc);
     BARR_VOID(argv);
-    if (!BARR_is_initialized())
+    if (!BARR_init())
     {
         return 1;
     }

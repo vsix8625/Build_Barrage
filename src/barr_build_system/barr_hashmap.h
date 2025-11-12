@@ -3,6 +3,7 @@
 
 #include "barr_defs.h"
 #include "barr_src_list.h"
+#include "barr_thread_pool.h"
 
 #include <bits/pthreadtypes.h>
 

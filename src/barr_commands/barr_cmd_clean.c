@@ -7,7 +7,7 @@
 
 barr_i32 BARR_command_clean(barr_i32 argc, char **argv)
 {
-    if (!BARR_is_initialized())
+    if (!BARR_init())
     {
         return 1;
     }

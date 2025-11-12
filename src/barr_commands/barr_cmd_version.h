@@ -34,7 +34,7 @@ typedef enum
 barr_i32 BARR_command_version(barr_i32 argc, char **argv);
 barr_i32 BARR_read_version_code(const char *init_lock_file);
 BARR_InitStatus BARR_check_initialized(void);
-bool BARR_is_initialized(void);
+bool BARR_init(void);
 
 /* @brief: Returns version as a string.
  * Utilizes BARR_gc_strdup, manual free is not required.

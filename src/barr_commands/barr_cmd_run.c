@@ -14,7 +14,7 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    if (!BARR_is_initialized())
+    if (!BARR_init())
     {
         return 1;
     }

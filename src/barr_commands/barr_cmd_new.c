@@ -52,7 +52,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
         }
         else if (BARR_strmatch(arg, "--file"))
         {
-            if (!BARR_is_initialized())
+            if (!BARR_init())
             {
                 return 1;
             }
@@ -89,7 +89,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
         }
         else if (BARR_strmatch(arg, "--barrfile"))
         {
-            if (!BARR_is_initialized())
+            if (!BARR_init())
             {
                 return 1;
             }
@@ -144,7 +144,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
         }
         else if (BARR_strmatch(arg, "--main"))
         {
-            if (!BARR_is_initialized())
+            if (!BARR_init())
             {
                 return 1;
             }
@@ -174,7 +174,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
         }
         else if (BARR_strmatch(arg, "--pair"))
         {
-            if (!BARR_is_initialized())
+            if (!BARR_init())
             {
                 return 1;
             }
