@@ -243,11 +243,11 @@ barr_i32 main(barr_i32 argc, char **argv)
     // config
     static const char *config_details =
         "Options:\n"
-        "   --install   Add barr binary directory path to $PATH and a default global config, ideal for dev stage\n"
-        "   --uninstall Remove barr binary directoy from $PATH and removes global config directory\n"
-        "   --view      Show current global config (can run anywhere)\n"
-        "   --edit      Open global config with your $EDITOR (can run anywhere)\n"
-        "\nNote: --install and --uninstall can only be run from the Build Barrage root directory\n";
+        "   --barrfile  Open local Barrfile with your $EDITOR (requires barr initialized project)\n\n"
+        "   --show      Deprecated since: v0.18.2\n"
+        "   --edit      Deprecated since: v0.18.2\n"
+        "   --path      Deprecated since: v0.18.2\n"
+        "\nNote: --install and --uninstall deprecated since: v0.18.1\n";
     static const char *config_aliases[] = {"-C", NULL};
     barr_register_command("config", BARR_cmd_config, "Manage configuration", config_aliases, config_details);
 

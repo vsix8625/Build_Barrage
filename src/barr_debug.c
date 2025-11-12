@@ -1,7 +1,5 @@
 #include "barr_debug.h"
 #include "barr_env.h"
-#include "barr_glob_config_keys.h"
-#include "barr_glob_config_parser.h"
 #include "barr_io.h"
 
 #include <execinfo.h>

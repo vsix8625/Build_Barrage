@@ -15,11 +15,16 @@ bool barr_is_valid_file_name(const char *str);
 
 //----------------------------------------------------------------------------------------------------
 
+barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *ext, const char *header_ext,
+                                bool is_public);
+
+//----------------------------------------------------------------------------------------------------
+
 barr_i32 BARR_command_new(barr_i32 argc, char **argv)
 {
     if (argc < 2)
     {
-        BARR_errlog("new requires option starting with '--'");
+        BARR_errlog("barr new command requires option");
         BARR_errlog("Usage: barr new <opt> <arg>");
         return 1;
     }
@@ -53,7 +58,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
             }
             if (i + 1 >= argc)
             {
-                BARR_errlog("new --file requires <file_name>");
+                BARR_errlog("barr new --file requires <file_name>");
                 return 1;
             }
 
@@ -77,7 +82,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
 
             if (BARR_file_write(fullpath, " ") > 0)
             {
-                BARR_log("Create new file: %s", fullpath);
+                BARR_log("File created: %s", fullpath);
             }
 
             i++;
@@ -166,6 +171,55 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                 BARR_warnlog("main.c already exists");
             }
             break;
+        }
+        else if (BARR_strmatch(arg, "--pair"))
+        {
+            if (!BARR_is_initialized())
+            {
+                return 1;
+            }
+
+            const char *name = argv[++i];
+            if (name == NULL)
+            {
+                BARR_errlog("Missing name for --pair");
+                return 1;
+            }
+
+            const char *dir = "src";
+            const char *ext = ".c";
+            const char *header_ext = ".h";
+            bool is_public = false;
+
+            while (i + 1 < argc)
+            {
+                const char *next = argv[i + 1];
+                if (BARR_strmatch(next, "--dir"))
+                {
+                    dir = argv[i + 2];
+                    i += 2;
+                }
+                else if (BARR_strmatch(next, "--ext"))
+                {
+                    ext = argv[i + 2];
+                    if (BARR_strmatch(ext, ".cpp"))
+                    {
+                        header_ext = ".hpp";
+                    }
+                    i += 2;
+                }
+                else if (BARR_strmatch(next, "--public"))
+                {
+                    is_public = BARR_strmatch(argv[i + 2], "true");
+                    i += 2;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            barr_create_pair_files(name, dir, ext, header_ext, is_public);
         }
         else
         {
@@ -296,4 +350,81 @@ bool barr_is_valid_file_name(const char *str)
     }
 
     return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *ext, const char *header_ext,
+                                bool is_public)
+{
+    if (name == NULL || dir == NULL || ext == NULL || header_ext == NULL)
+    {
+        return 1;
+    }
+
+    if (!BARR_isdir(dir))
+    {
+        BARR_mkdir_p(dir);
+    }
+
+    const char *header_dir = dir;
+    if (is_public)
+    {
+    }
+    if (is_public)
+    {
+        header_dir = "include";
+        if (!BARR_isdir(header_dir))
+        {
+            BARR_mkdir_p(header_dir);
+        }
+    }
+
+    char source_path[BARR_PATH_MAX];
+    char header_path[BARR_PATH_MAX];
+
+    snprintf(source_path, sizeof(source_path), "%s/%s%s", dir, name, ext);
+    snprintf(header_path, sizeof(header_path), "%s/%s%s", header_dir, name, header_ext);
+
+    if (!BARR_isfile(header_path))
+    {
+        char guard[BARR_PATH_MAX];
+        snprintf(guard, sizeof(guard), "%s_H_", name);
+
+        for (char *p = guard; *p; ++p)
+        {
+            *p = (char) toupper(*p);
+        }
+
+        char header_contents[BARR_BUF_SIZE_16K];
+        snprintf(header_contents, sizeof(header_contents),
+                 "#ifndef %s\n"
+                 "#define %s\n\n"
+                 "#endif // %s\n",
+                 guard, guard, guard);
+
+        BARR_file_write(header_path, "%s", header_contents);
+        BARR_log("Created: %s", header_path);
+    }
+    else
+    {
+        BARR_warnlog("%s already exists", header_path);
+    }
+
+    if (!BARR_isfile(source_path))
+    {
+        char src_contents[BARR_BUF_SIZE_16K];
+        snprintf(src_contents, sizeof(src_contents),
+                 "// Created by Build Barrage\n"
+                 "#include \"%s%s\"\n\n",
+                 name, header_ext);
+
+        BARR_file_write(source_path, "%s", src_contents);
+        BARR_log("Created: %s", source_path);
+    }
+    else
+    {
+        BARR_warnlog("%s already exists", source_path);
+    }
+
+    return 0;
 }

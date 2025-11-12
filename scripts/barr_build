@@ -17,26 +17,3 @@ cd build
 cmake -G Ninja ..
 ninja
 
-BARR_BIN_DIR=$(<path_to_bin_dir.barr)
-
-# -------------------------------
-# optional auto install 
-# -------------------------------
-if [ "${1:-}" = "--install" ]; then
-	# read bin directory 
-	if [ ! -d "${BARR_BIN_DIR}" ]; then
-		echo "[barr_build_script]: Error: bin directory not found. ${BARR_BIN_DIR}"
-		exit 1
-	fi
-
-	BARR_BIN_PATH="${BARR_BIN_DIR}/barr"
-	
-	if [ ! -x "${BARR_BIN_PATH}" ]; then
-	    echo "Error: barr binary not found at ${BARR_BIN_PATH}"
-        exit 1
-	fi
-
-	cd ..
-	echo "------\> Running barr auto-install"
-	"${BARR_BIN_PATH}" config --install
-fi

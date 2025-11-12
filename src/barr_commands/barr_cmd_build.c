@@ -8,8 +8,6 @@
 #include "barr_env.h"
 #include "barr_find_package.h"
 #include "barr_gc.h"
-#include "barr_glob_config_keys.h"
-#include "barr_glob_config_parser.h"
 #include "barr_hashmap.h"
 #include "barr_io.h"
 #include "barr_linker.h"
@@ -151,17 +149,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         has_cache = true;
     }
 
-    //  parse global config
-    const char *rc_file = BARR_get_config("file");
-    BARR_ConfigTable *rc_table = BARR_config_parse_file(rc_file);
-
     //----------------------------------------------------------------------------------------------------
     // olmos
 
     if (!OLM_init())
     {
         BARR_errlog("%s(): failed to initialize olmos", __func__);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -169,7 +162,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!olmos_ast)
     {
         BARR_errlog("Fatal: failed to parse %s", BARRFILE);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -182,7 +174,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (eval_return != 0)
     {
         BARR_errlog("OLM_eval_node fatal error: %d", eval_return);
-        rc_table->destroy(rc_table);
         BARR_destroy_arena(&olm_eval_arena);
         return 1;
     }
@@ -211,7 +202,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize source list.", __func__);
         OLM_close();
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -220,7 +210,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize header list.", __func__);
         OLM_close();
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -231,7 +220,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         OLM_close();
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -244,7 +232,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -258,7 +245,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
         BARR_destroy_source_list(&compile_list);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -347,7 +333,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_destroy_source_list(&headers);
             BARR_destroy_source_list(&inc_dir_list);
             BARR_destroy_source_list(&compile_list);
-            rc_table->destroy(rc_table);
             return 1;
         }
     }
@@ -381,9 +366,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_InfoCPU cpu = {0};
     BARR_get_cpu_info(&cpu);
-    BARR_log("[cpu]: model='%s', cores=%d, threads=%d, freq=%.2f MHz, cache=%.2f MB",
-             cpu.model[0] ? cpu.model : "unknown", cpu.cores, cpu.threads, cpu.mhz,
-             (double) cpu.cache_size / (1024.0 * 1024.0));
+    if (g_barr_verbose)
+    {
+        BARR_log("[cpu]: model='%s', cores=%d, threads=%d, freq=%.2f MHz, cache=%.2f MB",
+                 cpu.model[0] ? cpu.model : "unknown", cpu.cores, cpu.threads, cpu.mhz,
+                 (double) cpu.cache_size / (1024.0 * 1024.0));
+    }
 
     // Create thread pool
     barr_i32 n_threads = cpu.threads;
@@ -396,7 +384,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_HashMap *cached_map = NULL;
     if (has_cache)
     {
-        BARR_log("Found cache file");
+        if (g_barr_verbose)
+        {
+            BARR_log("Found cache file: %s", BARR_CACHE_FILE);
+        }
         cached_map = BARR_hashmap_read_cache(BARR_CACHE_FILE);
     }
 
@@ -490,7 +481,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     else if (compiler && compiler[0] != '\0')
     {
         resolved_compiler = BARR_gc_strdup(compiler);
-        BARR_printf("Checking tool: ");
+        BARR_printf("Found tool: ");
         if (!BARR_is_valid_tool(resolved_compiler))
         {
             BARR_warnlog("Invalid compiler: %s", resolved_compiler);
@@ -622,7 +613,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (modules_count > 0)
     {
         BARR_list_init(&modules_includes_list, 16);
-        BARR_print_modules();
+        if (g_barr_verbose)
+        {
+            BARR_print_modules();
+        }
 
         for (size_t i = 0; i < modules_count; ++i)
         {
@@ -710,9 +704,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     includes_final[includes_final_idx] = NULL;
 
-    for (size_t i = 0; i < module_count_inc + project_count_inc; ++i)
+    if (g_barr_verbose)
     {
-        BARR_log("[%zu]: %s", i, includes_final[i]);
+        for (size_t i = 0; i < module_count_inc + project_count_inc; ++i)
+        {
+            BARR_log("[%zu]: %s", i, includes_final[i]);
+        }
     }
 
     //--------------------------------------------------------------
@@ -771,7 +768,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
 
     snprintf(compile_ctx.ccmds_path, sizeof(compile_ctx.ccmds_path), "%s/compile_commands.json", out_dir);
-    BARR_dbglog("COMPILE_CMDS_PATH: %s", compile_ctx.ccmds_path);
 
     clock_gettime(CLOCK_MONOTONIC, &compile_start);
     // job producer
@@ -816,7 +812,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 BARR_destroy_hashmap(cached_map);
             }
             BARR_destroy_hashmap(current_map);
-            rc_table->destroy(rc_table);
             return 1;
         }
 
@@ -914,7 +909,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_destroy_hashmap(cached_map);
         }
         BARR_destroy_hashmap(current_map);
-        rc_table->destroy(rc_table);
         return 1;
     }
 
@@ -968,14 +962,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             module_includes = "-Iinclude";
         }
 
+        clock_gettime(CLOCK_MONOTONIC, &link_start);
         if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
                              linker, module_includes, target_version) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
         }
-
-        // BUILD INFO
+        clock_gettime(CLOCK_MONOTONIC, &link_end);
     }
 
 exit:
@@ -983,7 +977,7 @@ exit:
     //----------------------------------------------------------------------------------------------------
     // performance
     BARR_log("Time to compile sources: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
-    // BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
+    BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
 
     clock_gettime(CLOCK_MONOTONIC, &build_end);
     BARR_log("Time to build: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
@@ -1006,7 +1000,6 @@ exit:
         BARR_destroy_hashmap(cached_map);
     }
     BARR_destroy_hashmap(current_map);
-    rc_table->destroy(rc_table);
     return 0;
 }
 }
