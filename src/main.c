@@ -253,7 +253,7 @@ barr_i32 main(barr_i32 argc, char **argv)
 
     // status
     static const char *status_aliases[] = {"-S", NULL};
-    barr_register_command("status", BARR_cmd_status, "View status information", status_aliases, NULL);
+    barr_register_command("status", BARR_cmd_status, "Project status information", status_aliases, NULL);
 
     // test
     static const char *test_aliases[] = {"-t", NULL};

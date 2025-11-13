@@ -157,6 +157,9 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
                           const char *resolved_compiler, const char *linker, const char *module_includes,
                           const char *target_version)
 {
+    struct timespec link_start, link_end;
+    clock_gettime(CLOCK_MONOTONIC, &link_start);
+
     if (target_name == NULL || target_type == NULL || out_dir == NULL || object_list == NULL || pkg_list == NULL ||
         resolved_compiler == NULL)
     {
@@ -424,6 +427,8 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &link_end);
+    BARR_log("Link time: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
     return 0;
 }
 

@@ -48,8 +48,8 @@ static void barr_install_target(const char *install_prefix)
         return;
     }
 
-    char src_path[BARR_PATH_MAX * 2];
-    char dst_path[BARR_PATH_MAX * 2];
+    char src_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
+    char dst_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
     BARR_file_write(BARR_DATA_INSTALL_INFO_PATH, "# %s installed paths\n", name);
 
     if (BARR_strmatch(type, "executable"))
@@ -135,7 +135,7 @@ static void barr_install_target(const char *install_prefix)
 
                     if (BARR_path_resolve(BARR_getcwd(), raw_path, resolved, sizeof(resolved)))
                     {
-                        char dst[BARR_PATH_MAX * 2];
+                        char dst[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
                         snprintf(dst, sizeof(dst), "%s/include/%s/%s", install_prefix, name, raw_path);
                         if (BARR_isdir(raw_path))
                         {
@@ -156,7 +156,7 @@ static void barr_install_target(const char *install_prefix)
                 }
             }
 
-            char top_level_include[BARR_PATH_MAX * 2];
+            char top_level_include[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
             snprintf(top_level_include, sizeof(top_level_include), "%s/include/%s", install_prefix, name);
 
             if (BARR_isdir(top_level_include))

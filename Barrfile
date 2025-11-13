@@ -16,7 +16,7 @@ out_dir = "build/${build_type}";
 
 std = "-std=c23";
 cflags = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
-cflags_release = "${std} -Wall -O3";
+cflags_release = "${std} -Wall -O3 -march=native -mavx";
 
 defines = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 

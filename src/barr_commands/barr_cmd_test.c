@@ -12,13 +12,6 @@ barr_i32 BARR_command_test(barr_i32 argc, char **argv)
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    /*
-    for (barr_i32 i = 1; i < argc; i++)
-    {
-        continue;
-    }
-    */
-
     if (argc < 3 || !BARR_strmatch(argv[1], "--create"))
     {
         BARR_errlog("Usage: barr test --create <num_files> [dir] [--verbose|-v]");
@@ -84,11 +77,9 @@ barr_i32 BARR_command_test(barr_i32 argc, char **argv)
             if (allocated_dirpath)
             {
                 free(allocated_dirpath);
-                return 0;
+                return 1;
             }
         }
-
-        // consume remaining input
         while ((c = getchar()) != '\n' && c != EOF)
         {
         }

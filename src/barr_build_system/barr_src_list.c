@@ -156,6 +156,7 @@ bool BARR_source_list_hash_mt(BARR_SourceList *sources, BARR_SourceList *headers
     {
         BARR_errlog("%s(): failed hash", __func__);
     }
+
     barr_u8 *flags_hash_gc = (barr_u8 *) BARR_gc_alloc(sizeof(tmp_flags_hash));
     if (flags_hash_gc == NULL)
     {

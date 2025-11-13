@@ -1,9 +1,10 @@
-#include "barr_list.h"
 #define _XOPEN_SOURCE 700
 
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
+#include "barr_list.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -670,12 +671,14 @@ bool BARR_is_valid_tool(const char *tool)
     }
 
     const char *args[] = {tool, "--version", NULL};
-    barr_i32 res = BARR_run_process(args[0], (char **) args, false);
-    if (res != 0)
+    if (g_barr_verbose)
     {
-        return false;
+        return BARR_run_process(args[0], (char **) args, false) == 0;
     }
-    return true;
+    else
+    {
+        return BARR_run_process_dev_null(args[0], (char **) args) == 0;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -882,5 +885,8 @@ void BARR_object_files_scan(BARR_List *list, const char *dirpath)
     }
 
     closedir(dir);
-    BARR_log("Found: %zu objects files in '%s'", list->count, dirpath);
+    if (g_barr_verbose)
+    {
+        BARR_log("Found: %zu objects files in '%s'", list->count, dirpath);
+    }
 }

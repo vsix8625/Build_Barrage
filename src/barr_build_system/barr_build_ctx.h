@@ -3,6 +3,7 @@
 
 #include "barr_defs.h"
 #include "barr_list.h"
+
 #include <bits/pthreadtypes.h>
 
 typedef struct BARR_BuildProgressCTX
@@ -17,8 +18,8 @@ typedef struct BARR_BuildProgressCTX
 
 typedef struct BARR_CompileCmdEntry
 {
-    char directory[BARR_PATH_MAX * 2];
-    char file[BARR_PATH_MAX * 2];
+    char directory[BARR_PATH_MAX << 1];
+    char file[BARR_PATH_MAX << 1];
     char command[BARR_BUF_SIZE_8192];
 } BARR_CompileCmdEntry;
 
@@ -32,7 +33,7 @@ typedef struct BARR_CompileInfoCTX
 
     bool debug_build;
     bool gen_compile_cmds;
-    char ccmds_path[(BARR_PATH_MAX + 32) * 2];
+    char ccmds_path[(BARR_PATH_MAX + 32) << 1];
 
     const char *pch_file;
     char pch_out[BARR_BUF_SIZE_2048];

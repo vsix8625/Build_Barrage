@@ -34,9 +34,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
     bool internal_call = (argc == 0 || argv == NULL);
 
-    struct timespec build_start, build_end, compile_start, compile_end, link_start, link_end;
-    (void) link_start;
-    (void) link_end;
+    struct timespec build_start, build_end, compile_start, compile_end;
     clock_gettime(CLOCK_MONOTONIC, &build_start);
 
     if (!BARR_init())
@@ -64,12 +62,15 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
+    BARR_init_simd();
+
     BARR_BuildProgressCTX progress_ctx = {.failed = false};
 
     bool dry_run_compile = false;
     bool is_batch_build = false;
     bool select_dir = false;
     char *select_dir_path = NULL;
+    barr_u32 user_defined_threads = 0;
 
     if (!internal_call)
     {
@@ -77,18 +78,58 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         for (barr_i32 i = 1; i < argc; ++i)
         {
             char *cmd = argv[i];
+
             if (BARR_strmatch(cmd, "--dry-run"))
             {
                 dry_run_compile = true;
             }
-
-            if (BARR_strmatch(cmd, "--turbo"))
+            else if (BARR_strmatch(cmd, "--turbo"))
             {
                 BARR_log("Turbo mode initialized");
                 is_batch_build = true;
             }
-
-            if (BARR_strmatch(cmd, "--dir"))
+            else if (BARR_strmatch(cmd, "--threads") || strncmp(cmd, "-j", 2) == 0)
+            {
+                if (BARR_strmatch(cmd, "--threads"))
+                {
+                    if (i + 1 < argc)
+                    {
+                        user_defined_threads = atoi(argv[i + 1]);
+                        i++;
+                    }
+                    else
+                    {
+                        user_defined_threads = 0;
+                        BARR_warnlog("Missing value after --threads, system detected number of cores will be used");
+                    }
+                }
+                else
+                {
+                    if (cmd[2] != '\0')
+                    {
+                        char *endptr = NULL;
+                        user_defined_threads = strtol(&cmd[2], &endptr, 10);
+                        if (*endptr != '\0')
+                            if (!user_defined_threads && BARR_strmatch(&cmd[2], "0"))
+                            {
+                                BARR_warnlog("Invalid thread count after -j: %s. Default cores will be used", &cmd[2]);
+                                user_defined_threads = 0;
+                            }
+                    }
+                    else
+                    {
+                        if (i + 1 < argc)
+                        {
+                            user_defined_threads = atoi(argv[++i]);
+                        }
+                        else
+                        {
+                            BARR_warnlog("Provided -j without a number. Default cores will be used");
+                        }
+                    }
+                }
+            }
+            else if (BARR_strmatch(cmd, "--dir"))
             {
                 select_dir = true;
                 if (argv[i + 1])
@@ -99,19 +140,17 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                     {
                         select_dir_path[len - 1] = '\0';
                     }
-                    break;
+                    i++;
                 }
                 else
                 {
-                    BARR_errlog("%s(): --dir options reuires directory path", __func__);
+                    BARR_errlog("%s(): --dir option requires directory path", __func__);
                     select_dir = false;
-                    break;
                 }
             }
             else
             {
                 BARR_warnlog("Invalid option for build command: %s", cmd);
-                break;
             }
         }
     }
@@ -168,7 +207,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_Arena olm_eval_arena;
     size_t total_nodes = BARR_count_nodes(olmos_ast);
-    size_t olm_eval_arena_size = (total_nodes * 2) * sizeof(OLM_AST_Node *);
+    size_t olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_AST_Node *);
     BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
 
     barr_i32 eval_return = OLM_eval_node(olmos_ast, &olm_eval_arena);
@@ -375,7 +414,33 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     // Create thread pool
-    barr_i32 n_threads = cpu.threads;
+    barr_u32 n_threads = cpu.threads;
+    barr_u32 max_n_threads = BARR_MATH_DOUBLE(n_threads);
+
+    if (max_n_threads < 8)
+    {
+        max_n_threads = 8;
+    }
+    else if (max_n_threads > 8192)
+    {
+        max_n_threads = 8192;
+    }
+
+    if (user_defined_threads && user_defined_threads <= max_n_threads)
+    {
+        n_threads = user_defined_threads;
+    }
+    else if (user_defined_threads > max_n_threads)
+    {
+        BARR_warnlog("Requested threads (%u) exceed max allowed (%u)."
+                     "Using default: %u ()",
+                     user_defined_threads, max_n_threads, n_threads);
+    }
+
+    if (g_barr_verbose)
+    {
+        BARR_log("Thread pool: %d", n_threads);
+    }
     BARR_ThreadPool *pool = BARR_thread_pool_create(n_threads);
 
     const char *olmos_cflags_cp = BARR_gc_strdup(olmos_cflags);
@@ -491,7 +556,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     else if (compiler && compiler[0] != '\0')
     {
         resolved_compiler = BARR_gc_strdup(compiler);
-        BARR_printf("Found tool: ");
+        if (g_barr_verbose)
+        {
+            BARR_printf("Found tool: ");
+        }
         if (!BARR_is_valid_tool(resolved_compiler))
         {
             BARR_warnlog("Invalid compiler: %s", resolved_compiler);
@@ -499,9 +567,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_log("Default compiler will be set");
         }
     }
-    BARR_log("Compiler: %s", resolved_compiler);
+    if (g_barr_verbose)
+    {
+        BARR_log("Compiler: %s", resolved_compiler);
+    }
 
-    char build_dir_path[BARR_BUF_SIZE_4096 * 2];
+    char build_dir_path[BARR_MATH_DOUBLE(BARR_BUF_SIZE_4096)];
     snprintf(build_dir_path, sizeof(build_dir_path), "%s/bin", out_dir);
 
     if (!BARR_isdir(build_dir_path))
@@ -529,7 +600,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             cflags_release = "-O3 -Wall";
         }
-        flags = BARR_tokenize_string(cflags_release);
+        flags = BARR_tokenize_string(cflags_release);  // NULL-terminates
     }
 
     // prepare includes
@@ -773,13 +844,20 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
-    size_t producer_arena_size = compile_list.count * (BARR_BUF_SIZE_8192 + BARR_BUF_SIZE_1024);
+    clock_gettime(CLOCK_MONOTONIC, &compile_start);
+
+    // PREP
+    // keep the main.c.o out of the archive
+    char tmp_main_co[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
+    snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/main.c.o", out_dir);
+
+    size_t producer_arena_size =
+        compile_list.count * (sizeof(BARR_CompileJob) + (BARR_PATH_MAX << 1) + BARR_BUF_SIZE_256);
     BARR_Arena producer_arena;
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
 
     snprintf(compile_ctx.ccmds_path, sizeof(compile_ctx.ccmds_path), "%s/compile_commands.json", out_dir);
 
-    clock_gettime(CLOCK_MONOTONIC, &compile_start);
     // job producer
     for (size_t i = 0; i < compile_list.count; i++)
     {
@@ -825,9 +903,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             return 1;
         }
 
-        // keep the main.c.o out of the archive
-        char tmp_main_co[BARR_PATH_MAX * 2];
-        snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/main.c.o", out_dir);
         if (!BARR_strmatch(job->out_file, tmp_main_co))
         {
             (void) BARR_source_list_push(&object_list, job->out_file);
@@ -854,6 +929,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         if (progress_ctx.ccmds_json_entries_list)
         {
+            // TODO: move this in a thread job
             FILE *f = fopen(compile_ctx.ccmds_path, "w");
             if (f)
             {
@@ -876,7 +952,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         // Barrfile timestamp
         BARR_update_Barrfile_stamp();
 
-        char batch_dir[BARR_PATH_MAX * 2];
+        char batch_dir[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
         snprintf(batch_dir, sizeof(batch_dir), "%s/batch", out_dir);
         if (BARR_isdir(batch_dir))
         {
@@ -933,7 +1009,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         target_name = "barr_target";
     }
 
-    char output_path[BARR_PATH_MAX * 2];
+    char output_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
     const char *bin_out_path = OLM_get_var(OLM_VAR_BIN_OUT_PATH);
     if (bin_out_path)
     {
@@ -972,25 +1048,22 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             module_includes = "-Iinclude";
         }
 
-        clock_gettime(CLOCK_MONOTONIC, &link_start);
         if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
                              linker, module_includes, target_version) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
         }
-        clock_gettime(CLOCK_MONOTONIC, &link_end);
     }
 
 exit:
 {
     //----------------------------------------------------------------------------------------------------
     // performance
-    BARR_log("Time to compile sources: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
-    BARR_log("Time to link: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
+    BARR_log("Compile time: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
 
     clock_gettime(CLOCK_MONOTONIC, &build_end);
-    BARR_log("Time to build: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
+    BARR_log("Total: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
     //----------------------------------------------------------------------------------------------------
 
     printf("\n----------------------------------------------------------------------------------------------------\n");

@@ -1,5 +1,6 @@
 #include "olmos_ast.h"
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_modules.h"
@@ -763,13 +764,19 @@ static char *olm_strip_quotes(const char *s)
 bool OLM_init(void)
 {
     olm_reset_vars();
-    BARR_log("Olmos system initialized");
+    if (g_barr_verbose)
+    {
+        BARR_log("Olmos system initialized");
+    }
     return true;
 }
 
 bool OLM_close(void)
 {
-    BARR_log("Olmos system shutdown, sweeping %zu variables into the void...", g_olm_var_count);
+    if (g_barr_verbose)
+    {
+        BARR_log("Olmos system shutdown, sweeping %zu variables into the void...", g_olm_var_count);
+    }
     olm_reset_vars();
     return true;
 }

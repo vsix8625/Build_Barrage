@@ -7,6 +7,40 @@
 #include <string.h>
 #include <sys/wait.h>
 
+barr_i32 BARR_run_process_dev_null(const char *name, char **args)
+{
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        // child process: redirect all output to /dev/null
+        int fd = open("/dev/null", O_RDWR);
+        if (fd != -1)
+        {
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            close(fd);
+        }
+
+        execvp(name, args);
+        _exit(127);  // exec failed
+    }
+    else if (pid > 0)
+    {
+        int status = 0;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status))
+        {
+            return WEXITSTATUS(status);
+        }
+        return -1;
+    }
+    else
+    {
+        return -1;  // fork failed
+    }
+}
+
 char *BARR_run_process_capture(char *const argv[])
 {
     barr_i32 pipefd[2];

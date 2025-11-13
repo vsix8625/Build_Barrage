@@ -1,7 +1,51 @@
 #include "barr_cpu.h"
+#include "barr_env.h"
+#include "barr_io.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+barr_simd_level_t g_barr_simd_level = SIMD_NONE;
+
+void BARR_init_simd(void)
+{
+    BARR_InfoCPU cpu;
+    BARR_get_cpu_info(&cpu);
+    g_barr_simd_level = cpu.simd;
+
+    const char *name[] = {"NONE", "SSE2", "SSE4.2", "AVX", "AVX2"};
+    if (g_barr_verbose)
+    {
+        BARR_log("[SIMD]: Detected: %s", name[g_barr_simd_level]);
+    }
+}
+
+static barr_simd_level_t barr_detect_simd_from_flags(const char *flags_line)
+{
+    if (flags_line == NULL)
+    {
+        return SIMD_NONE;
+    }
+
+    // add avx512 in future
+    if (strstr(flags_line, "avx2"))
+    {
+        return SIMD_AVX2;
+    }
+    if (strstr(flags_line, "avx"))
+    {
+        return SIMD_AVX;
+    }
+    if (strstr(flags_line, "sse4_2"))
+    {
+        return SIMD_SSE42;
+    }
+    if (strstr(flags_line, "sse2"))
+    {
+        return SIMD_SSE2;
+    }
+    return SIMD_NONE;
+}
 
 static size_t barr_parse_cache_size(const char *buf)
 {
@@ -86,47 +130,68 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
 
     memset(info, 0, sizeof(*info));
 
-    info->threads = (barr_i32) sysconf(_SC_NPROCESSORS_ONLN);
-    info->cores = (barr_i32) sysconf(_SC_NPROCESSORS_CONF);
+    info->threads = (barr_u32) sysconf(_SC_NPROCESSORS_ONLN);
+    info->cores = (barr_u32) sysconf(_SC_NPROCESSORS_CONF);
+    info->simd = SIMD_NONE;
 
     FILE *fp = fopen("/proc/cpuinfo", "r");
-    if (fp)
+
+    if (fp == NULL)
     {
-        char line[BARR_BUF_SIZE_1024];
-        while (fgets(line, sizeof(line), fp))
+        // fallback
+        info->cache_size = 2 * 1024 * 1024;
+        return;
+    }
+
+    char line[BARR_BUF_SIZE_1024];
+    char all_flags[BARR_BUF_SIZE_1024] = {0};
+    barr_i32 flags_found = 0;
+
+    while (fgets(line, sizeof(line), fp))
+    {
+        if (strncmp(line, "model name", 10) == 0)
         {
-            if (strncmp(line, "model name", 10) == 0)
+            char *p = strchr(line, ':');
+            if (p)
             {
-                char *p = strchr(line, ':');
-                if (p)
+                strncpy(info->model, p + 2, sizeof(info->model) - 1);
+                size_t len = strlen(info->model);
+                if (len > 0 && info->model[len - 1] == '\n')
                 {
-                    strncpy(info->model, p + 2, sizeof(info->model) - 1);
-                    size_t len = strlen(info->model);
-                    if (len > 0 && info->model[len - 1] == '\n')
-                    {
-                        info->model[len - 1] = '\0';
-                    }
-                }
-            }
-            else if (strncmp(line, "cpu MHz", 7) == 0)
-            {
-                double mhz = 0.0;
-                if (sscanf(line, "cpu MHz\t: %lf", &mhz) == 1)
-                {
-                    info->mhz = mhz;
-                }
-            }
-            else if (strncmp(line, "cache size", 10) == 0 && info->cache_size == 0)
-            {
-                size_t size_kb = 0;
-                if (sscanf(line, "cache size\t: %zu KB", &size_kb) == 1)
-                {
-                    info->cache_size = size_kb * 1024UL;
+                    info->model[len - 1] = '\0';
                 }
             }
         }
-        fclose(fp);
+        else if (strncmp(line, "cpu MHz", 7) == 0)
+        {
+            double mhz = 0.0;
+            if (sscanf(line, "cpu MHz\t: %lf", &mhz) == 1)
+            {
+                info->mhz = mhz;
+            }
+        }
+        else if (strncmp(line, "cache size", 10) == 0 && info->cache_size == 0)
+        {
+            size_t size_kb = 0;
+            if (sscanf(line, "cache size\t: %zu KB", &size_kb) == 1)
+            {
+                info->cache_size = size_kb * 1024UL;
+            }
+        }
+        else if (strncmp(line, "flags", 5) == 0)
+        {
+            char *p = strchr(line, ':');
+            if (p && !flags_found)
+            {
+                strncpy(all_flags, p + 2, sizeof(all_flags) - 1);
+                all_flags[strcspn(all_flags, "\n")] = '\0';
+                flags_found = 1;
+            }
+        }
     }
+    fclose(fp);
+
+    info->simd = barr_detect_simd_from_flags(all_flags);
 
     if (info->cache_size == 0)
     {

@@ -1,4 +1,5 @@
 #include "barr_cmd_status.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "olmos_ast.h"
@@ -12,6 +13,9 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     BARR_VOID(argv);
     barr_i32 result = 0;
 
+    BARR_printf("\033[90m- Status is based on timestamps, unlike the internal build process.\n");
+    BARR_printf("\033[90m- This status check is for rapid feedback only.\n");
+    BARR_printf("\033[90m  (use \"barr status --all\" to view all)\n");
     BARR_printf("--------------------------------------------------------------------------------------\n");
 
     BARR_InitStatus res = BARR_check_initialized();
@@ -41,8 +45,8 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
         case BARR_INIT_OK:
         {
-            BARR_log("Build Barrage version %d.%d.%d initialized in %s", BARR_VERSION_MAJOR, BARR_VERSION_MINOR,
-                     BARR_VERSION_PATCH, BARR_getcwd());
+            BARR_printf("Build Barrage version %d.%d.%d initialized in %s\n", BARR_VERSION_MAJOR, BARR_VERSION_MINOR,
+                        BARR_VERSION_PATCH, BARR_getcwd());
             break;
         }
 
@@ -69,14 +73,28 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
     //---------------------------------------------------
 
-    const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
-
     char obj_dir[BARR_PATH_MAX];
-    snprintf(obj_dir, sizeof(obj_dir), "%s/obj", out_dir_var);
+    const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
 
     if (out_dir_var == NULL)
     {
         snprintf(obj_dir, sizeof(obj_dir), "build/debug/obj");
+    }
+    else
+    {
+        snprintf(obj_dir, sizeof(obj_dir), "%s/obj", out_dir_var);
+    }
+
+    char target_name[BARR_PATH_MAX];
+    const char *target = OLM_get_var(OLM_VAR_TARGET);
+
+    if (target == NULL)
+    {
+        snprintf(target_name, sizeof(target_name), "%s", obj_dir);
+    }
+    else
+    {
+        snprintf(target_name, sizeof(target_name), "%s", target);
     }
 
     BARR_List obj_list;
@@ -106,7 +124,17 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         fclose(fp);
     }
 
-    BARR_log("Object files status in %s:", obj_dir);
+    BARR_printf("Status for %s:\n\n", target_name);
+
+    bool print_all = false;
+    for (size_t i = 0; i < argc; ++i)
+    {
+        char *opt = argv[i];
+        if (BARR_strmatch(opt, "--all"))
+        {
+            print_all = true;
+        }
+    }
 
     size_t total = obj_list.count;
     size_t modified = 0;
@@ -130,11 +158,18 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
                 found = true;
 
                 bool changed = BARR_is_newer(src_file, obj_file);
-                BARR_printf("\t%s\t%s\n", obj_file, changed ? "\033[31;1mmodified" : " ");
+                if (print_all)
+                {
+                    printf("\t%s -> %s\t%s\n", src_base, obj_base, changed ? "\033[31;1mmodified\033[0m" : "");
+                }
 
                 if (changed)
                 {
                     modified++;
+                    if (!print_all)
+                    {
+                        printf("\t%s -> %s\t%s\n", src_base, obj_base, "\033[31;1mmodified\033[0m");
+                    }
                 }
                 else
                 {
@@ -147,13 +182,18 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
         if (!found)
         {
-            BARR_printf("\t%s - unknown\n", obj_file);
+            printf("\t%s\t\tunknown\n", obj_file);
             unknown++;
         }
     }
 
-    BARR_printf("--------------------------------------------------------------------------------------\n");
-    BARR_printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n", total, modified, unknown,
-                up_to_date);
+    if (!modified && !print_all)
+    {
+        printf("\tAll files are up to date\n");
+    }
+
+    BARR_printf("\n--------------------------------------------------------------------------------------\n");
+    printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n\n", total, modified, unknown, up_to_date);
+
     return result;
 }

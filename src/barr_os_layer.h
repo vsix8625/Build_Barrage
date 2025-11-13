@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #if defined(__linux)
+
 #include <unistd.h>
 
 #define BARR_OS_LINUX
@@ -32,12 +33,6 @@ typedef struct stat barr_stat_t;
 #define BARR_SYSTEM_CMD_CLEAR "clear"
 
 #define BARR_DYNAMIC_LIB_EXT "so"
-
-barr_i32 BARR_run_process_BG(const char *name, char **args);
-barr_i32 BARR_run_process(const char *name, char **args, bool verbose);
-char *BARR_run_process_capture(char *const argv[]);
-
-#include "barr_thread_pool.h"
 
 #elif defined(_WIN32) || defined(_WIN64)
 #include <direct.h>
@@ -71,5 +66,10 @@ typedef struct _stat barr_stat_t
 #define BARR_OS_MACOS
 
 #endif
+
+barr_i32 BARR_run_process_BG(const char *name, char **args);
+barr_i32 BARR_run_process(const char *name, char **args, bool verbose);
+char *BARR_run_process_capture(char *const argv[]);
+barr_i32 BARR_run_process_dev_null(const char *name, char **args);
 
 #endif  // BARR_OS_LAYER_H_

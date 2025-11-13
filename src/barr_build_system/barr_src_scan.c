@@ -1,9 +1,10 @@
+#include "barr_env.h"
 #define _FILE_OFFSET_BITS 64
 
-#include "barr_src_scan.h"
 #include "barr_debug.h"
 #include "barr_gc.h"
 #include "barr_io.h"
+#include "barr_src_scan.h"
 #include "barr_xxhash.h"
 
 #include <dirent.h>
@@ -264,7 +265,10 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
     }
     free(queue);
     printf("\n");
-    BARR_log("Found: %zu source files", list->count);
+    if (g_barr_verbose)
+    {
+        BARR_log("Found: %zu source files", list->count);
+    }
 }
 
 void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list,
@@ -346,5 +350,8 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
         }
         closedir(dir);
     }
-    BARR_log("Found: %zu header files", list->count);
+    if (g_barr_verbose)
+    {
+        BARR_log("Found: %zu header files", list->count);
+    }
 }

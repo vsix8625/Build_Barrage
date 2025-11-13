@@ -1,5 +1,6 @@
 #include "barr_find_package.h"
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_package_scan_dir.h"
@@ -105,9 +106,12 @@ BARR_PackageInfo *BARR_find_package(const char *pkg, BARR_PackageInfo *out, bool
         out->libs = out->libs_static;
     }
 
-    BARR_log("Found package: %s version %s | path: %s", out->name, out->version, out->pkg_path);
-    BARR_log("CFLAGS: %s", out->cflags);
-    BARR_log("LIBS: %s", out->libs);
+    if (g_barr_verbose)
+    {
+        BARR_log("Found package: %s version %s | path: %s", out->name, out->version, out->pkg_path);
+        BARR_log("CFLAGS: %s", out->cflags);
+        BARR_log("LIBS: %s", out->libs);
+    }
 
     return out;
 }

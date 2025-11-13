@@ -1,5 +1,4 @@
 #include "barr_thread_pool.h"
-#include "barr_debug.h"
 #include "barr_io.h"
 
 #include <pthread.h>
@@ -44,11 +43,13 @@ static barr_ptr barr_worker_loop(barr_ptr arg)
         }
 
         pthread_mutex_lock(&pool->lock);
+
         pool->active--;
         if (!pool->jobs && !pool->active)
         {
             pthread_cond_signal(&pool->empty);
         }
+
         pthread_mutex_unlock(&pool->lock);
     }
     return NULL;

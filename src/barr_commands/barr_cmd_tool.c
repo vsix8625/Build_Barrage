@@ -12,33 +12,19 @@ barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
         return 1;
     }
 
-    const char *cache_file = ".barr/data/last_bin";
-    char last_bin_path[BARR_BUF_SIZE_256] = {0};
+    char *target_name = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "name");
+    char *build_dir = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "build_dir");
 
-    // read last_bin_path like run
-    FILE *fp = fopen(cache_file, "r");
-    if (!fp)
-    {
-        BARR_errlog("Cannot open last_bin cache");
-        return 1;
-    }
-    if (!fgets(last_bin_path, sizeof(last_bin_path), fp))
-    {
-        fclose(fp);
-        return 1;
-    }
-    fclose(fp);
-    size_t len = strlen(last_bin_path);
-    if (len && last_bin_path[len - 1] == '\n')
-    {
-        last_bin_path[len - 1] = '\0';
-    }
+    char exe_path[BARR_PATH_MAX];
+    snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", build_dir, target_name);
 
-    if (!BARR_isfile(last_bin_path))
+    char **executable = BARR_gc_alloc(sizeof(char *) * (argc + 1));
+    executable[0] = exe_path;
+    for (barr_i32 i = 1; i < argc; ++i)
     {
-        BARR_errlog("Last build binary does not exist: %s", last_bin_path);
-        return 1;
+        executable[i] = argv[i];
     }
+    executable[argc] = NULL;
 
     // dispatch loop
     for (barr_i32 i = 1; i < argc; ++i)
@@ -51,12 +37,12 @@ barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            BARR_log("Launching GDB for last built binary: %s", last_bin_path);
+            BARR_log("Launching GDB for last built binary: %s", executable[0]);
 
             // build exec args
             char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
             exec_args[0] = "gdb";
-            exec_args[1] = last_bin_path;
+            exec_args[1] = executable[0];
 
             // pass remaining user args
             barr_i32 j = 2;
@@ -77,12 +63,14 @@ barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            BARR_log("Launching Valgrind for last built binary: %s", last_bin_path);
+            BARR_log("Launching Valgrind for last built binary: %s", executable[0]);
+
+            char *valgrind = BARR_which("valgrind");
 
             char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 2));
-            exec_args[0] = "valgrind";
+            exec_args[0] = valgrind;
             exec_args[1] = "--tool=memcheck";
-            exec_args[2] = last_bin_path;
+            exec_args[2] = executable[0];
 
             barr_i32 j = 3;
             for (barr_i32 k = i + 1; k < argc; ++k, ++j)
@@ -102,19 +90,25 @@ barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            BARR_log("Launching strace for last built binary: %s", last_bin_path);
+            char output_file_path[BARR_PATH_MAX];
+            snprintf(output_file_path, sizeof(output_file_path), "%s_strace_syscall.txt", target_name);
+
+            BARR_log("Launching strace for last built binary: %s", executable[0]);
 
             char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 2));
-            exec_args[0] = "strace";
-            exec_args[1] = "-c";
-            exec_args[2] = last_bin_path;
+            barr_i32 idx = 0;
 
-            barr_i32 j = 3;
-            for (barr_i32 k = i + 1; k < argc; ++k, ++j)
+            exec_args[idx++] = "strace";
+            exec_args[idx++] = "-c";
+            exec_args[idx++] = "-o";
+            exec_args[idx++] = output_file_path;
+            exec_args[idx++] = executable[0];
+
+            for (barr_i32 k = i + 1; k < argc; ++k, idx++)
             {
-                exec_args[j] = argv[k];
+                exec_args[idx] = argv[k];
             }
-            exec_args[j] = NULL;
+            exec_args[idx] = NULL;
 
             BARR_run_process(exec_args[0], exec_args, false);
             return 0;

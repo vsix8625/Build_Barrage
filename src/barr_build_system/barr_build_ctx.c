@@ -12,28 +12,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-// test it
-barr_i32 BARR_compile_pch(BARR_CompileInfoCTX *ctx)
+static inline size_t barr_count_null_terminated(const char **arr)
 {
-    if (!ctx->pch_file)
+    if (*arr == NULL)
     {
-        BARR_warnlog("No PCH detected");
-        return 1;
+        return 0;
     }
 
-    char out_pch[BARR_BUF_SIZE_2048];
-    snprintf(out_pch, sizeof(out_pch), "%s/common.h.pch", ctx->out_dir);
-
-    char *args[] = {(char *) ctx->compiler, "-x", "c-header", (char *) ctx->pch_file, "-o", out_pch, NULL};
-
-    BARR_log("Compiling PCH: %s -> %s", ctx->pch_file, out_pch);
-
-    int rc = BARR_run_process(args[0], args, false);
-    if (rc == 0)
+    size_t count = 0;
+    while (arr[count])
     {
-        strncpy(ctx->pch_out, out_pch, sizeof(ctx->pch_out));
+        count++;
     }
-    return rc;
+    return count;
 }
 
 void BARR_compile_job(barr_ptr arg)
@@ -41,35 +32,23 @@ void BARR_compile_job(barr_ptr arg)
     BARR_CompileJob *job = (BARR_CompileJob *) arg;
     const BARR_CompileInfoCTX *ctx = job->ctx;
 
-    size_t flag_count = 0;
-    size_t include_count = 0;
-    size_t define_count = 0;
-    if (ctx->flags)
-    {
-        for (const char **f = ctx->flags; *f; ++f)
-        {
-            flag_count++;
-        }
-    }
-    if (ctx->includes)
-    {
-        for (const char **inc = ctx->includes; *inc; ++inc)
-        {
-            include_count++;
-        }
-    }
-    if (ctx->defines)
-    {
-        for (const char **d = ctx->defines; *d; ++d)
-        {
-            define_count++;
-        }
-    }
+    size_t flag_count = barr_count_null_terminated(ctx->flags);
+    size_t include_count = barr_count_null_terminated(ctx->includes);
+    size_t define_count = barr_count_null_terminated(ctx->defines);
 
     // +6 for (compiler -c src -o out_file NULL)
     size_t argc_total = flag_count + include_count + define_count + 9;
-    char **args = calloc(argc_total, sizeof(char *));
-    if (!args)
+
+    char *args[BARR_BUF_SIZE_256] = {0};
+    char **args_ptr = args;
+    bool is_heap_allocated = false;
+    if (argc_total > BARR_BUF_SIZE_256)
+    {
+        args_ptr = calloc(argc_total, sizeof(char *));
+        is_heap_allocated = true;
+    }
+
+    if (is_heap_allocated && args_ptr == NULL)
     {
         BARR_errlog("%s(): failed to allocate memory for args", __func__);
         return;
@@ -119,21 +98,6 @@ void BARR_compile_job(barr_ptr arg)
     args[idx] = NULL;
     assert(idx < argc_total && "args overflow");
 
-    if (g_barr_verbose)
-    {
-        pthread_mutex_lock(&job->progress_ctx->log_mutex);
-
-        printf("[VERBOSE] ");
-        for (size_t i = 0; args[i] != NULL; i++)
-        {
-            printf("%s ", args[i]);
-        }
-        printf("\n");
-        fflush(stdout);
-
-        pthread_mutex_unlock(&job->progress_ctx->log_mutex);
-    }
-
     if (BARR_run_process(args[0], args, false) != 0)
     {
         BARR_errlog("Compilation failed for: %s", job->src);
@@ -159,8 +123,13 @@ void BARR_compile_job(barr_ptr arg)
             size_t cmd_len = 0;
             for (size_t i = 0; args[i] != NULL; i++)
             {
-                cmd_len += snprintf(ccmds_entry->command + cmd_len, sizeof(ccmds_entry->command) - cmd_len, "%s%s",
-                                    args[i], args[i + 1] ? " " : "");
+                size_t len = strlen(args[i]);
+                memcpy(ccmds_entry->command + cmd_len, args[i], len);
+                cmd_len += len;
+                if (args[i + 1])
+                {
+                    ccmds_entry->command[cmd_len++] = ' ';
+                }
             }
 
             BARR_list_push(job->progress_ctx->ccmds_json_entries_list, ccmds_entry);
@@ -169,5 +138,31 @@ void BARR_compile_job(barr_ptr arg)
         pthread_mutex_unlock(&job->progress_ctx->log_mutex);
     }
 
-    free(args);
+    if (is_heap_allocated)
+    {
+        free(args_ptr);
+    }
+}
+
+barr_i32 BARR_compile_pch(BARR_CompileInfoCTX *ctx)
+{
+    if (!ctx->pch_file)
+    {
+        BARR_warnlog("No PCH detected");
+        return 1;
+    }
+
+    char out_pch[BARR_BUF_SIZE_2048];
+    snprintf(out_pch, sizeof(out_pch), "%s/common.h.pch", ctx->out_dir);
+
+    char *args[] = {(char *) ctx->compiler, "-x", "c-header", (char *) ctx->pch_file, "-o", out_pch, NULL};
+
+    BARR_log("Compiling PCH: %s -> %s", ctx->pch_file, out_pch);
+
+    int rc = BARR_run_process(args[0], args, false);
+    if (rc == 0)
+    {
+        strncpy(ctx->pch_out, out_pch, sizeof(ctx->pch_out));
+    }
+    return rc;
 }

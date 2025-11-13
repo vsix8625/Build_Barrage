@@ -4,6 +4,7 @@
 
 #include "barr_cmd_version.h"
 #include "barr_list.h"
+#include "barr_math.h"
 #include "barr_os_layer.h"
 
 #define BARR_NULL_TERM_CHAR '\0'

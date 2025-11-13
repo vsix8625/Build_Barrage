@@ -13,6 +13,7 @@
 typedef struct BARR_HashNode
 {
     char *key;
+    barr_u64 hash64;  // for fast comparisons
     barr_u8 hash[BARR_XXHASH_LEN];
     struct BARR_HashNode *next;
 } BARR_HashNode;
