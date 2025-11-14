@@ -182,11 +182,6 @@ bool BARR_hash_file_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN]
     return success;
 }
 
-// TODO: take a deeper look on includes discovery
-// NOTE: will need to create a bidirectional walker
-// starts from file_path -> children and friends.
-// if not match check parent and friends
-// hard stop cwd()
 bool BARR_hash_includes_xxh3(const BARR_SourceList *headers, const char *file_path, barr_u8 out_hash[BARR_XXHASH_LEN])
 {
     if (!file_path || !headers || !out_hash)

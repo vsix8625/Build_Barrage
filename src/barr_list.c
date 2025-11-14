@@ -1,5 +1,6 @@
 #include "barr_list.h"
 #include "barr_gc.h"
+#include "barr_io.h"
 
 bool BARR_list_init(BARR_List *list, size_t initial_cap)
 {
@@ -40,4 +41,18 @@ void BARR_list_push(BARR_List *list, void *item)
     }
 
     list->items[list->count++] = item;
+}
+
+void BARR_list_dbg(BARR_List *list)
+{
+    if (list == NULL)
+    {
+        BARR_errlog("NULL list");
+        return;
+    }
+
+    for (size_t i = 0; i < list->count; ++i)
+    {
+        BARR_printf("\t[%zu]: %s\n", i, (char *) list->items[i]);
+    }
 }

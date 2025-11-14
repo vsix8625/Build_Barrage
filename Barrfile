@@ -1,27 +1,27 @@
 #Build Barrage v0.17.1
 
-gen_compile_commands = "yes";
+GEN_COMPILE_COMMANDS = "yes";
 
-target = "barr";
-version = "0.19.1";
-target_type = "executable";
+TARGET = "barr";
+VERSION = "0.21.1";
+TARGET_TYPE = "executable";
 
-print("Building ${target}-v${version} | Type: ${target_type}");
+print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-compiler = "/usr/bin/gcc";
-linker = "lld";
+COMPILER = "/usr/bin/gcc";
+LINKER = "lld";
 
-build_type = "release";
-out_dir = "build/${build_type}";
+BUILD_TYPE = "release";
+OUT_DIR = "build/${BUILD_TYPE}";
 
 std = "-std=c23";
-cflags = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
-cflags_release = "${std} -Wall -O3 -march=native -mavx";
+CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
+CFLAGS_RELEASE = "${std} -Wall -O3 -march=native -mavx";
 
-defines = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
+DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 
 pkgs = "xxhash";
 find_package("${pkgs}");
-# lflags = "-lpthread";
+# LFLAGS = "-lpthread";
 
 print("Build script ends!");

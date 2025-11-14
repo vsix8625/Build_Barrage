@@ -3,6 +3,7 @@
 
 #include "barr_defs.h"
 #include "barr_list.h"
+#include "barr_spin_lock.h"
 
 #include <bits/pthreadtypes.h>
 
@@ -13,6 +14,7 @@ typedef struct BARR_BuildProgressCTX
     size_t total;
 
     pthread_mutex_t log_mutex;
+    barr_spinlock_t spin_lock;
     BARR_List *ccmds_json_entries_list;
 } BARR_BuildProgressCTX;
 

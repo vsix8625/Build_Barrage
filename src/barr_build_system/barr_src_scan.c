@@ -5,7 +5,6 @@
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_src_scan.h"
-#include "barr_xxhash.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -43,13 +42,13 @@ static inline bool barr_is_project_root(const char *dirpath)
         return false;
     }
 
-    static const char *project_files[] = {
-        "Barrfile",      "Makefile",    "pyproject.toml", "CMakeLists.txt", "setup.py", "package.json",
-        "Cargo.toml",    "meson.build", "SConstruct",     "go.md",          ".csproj",  "WORKSPACE",
-        "WORSPACE.baze", "BUILD",       "BUILD.bazel",    "configure.ac",   NULL};
+    static const char *excludes[] = {"Barrfile",     "Makefile",   "pyproject.toml", "CMakeLists.txt", "setup.py",
+                                     "package.json", "Cargo.toml", "meson.build",    "SConstruct",     "go.md",
+                                     ".csproj",      "WORKSPACE",  "WORSPACE.baze",  "BUILD",          "BUILD.bazel",
+                                     "configure.ac", NULL};
 
     char config_path[BARR_PATH_MAX + 32];
-    for (const char **filename = project_files; *filename; ++filename)
+    for (const char **filename = excludes; *filename; ++filename)
     {
         snprintf(config_path, sizeof(config_path), "%s/%s", dirpath, *filename);
         if (BARR_isfile(config_path))
@@ -274,7 +273,7 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
 void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list,
                                const char **exclude_tokens)
 {
-    if (!list || !dirpath)
+    if (list == NULL || dirpath == NULL)
     {
         BARR_errlog("%s(): invalid args", __func__);
         return;
@@ -328,7 +327,10 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
                         continue;
                     }
 
-                    BARR_source_list_push(inc_dir_list, fullpath);
+                    if (inc_dir_list)
+                    {
+                        BARR_source_list_push(inc_dir_list, fullpath);
+                    }
                     if (que_size >= que_cap)
                     {
                         que_cap *= 2;
@@ -350,6 +352,7 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
         }
         closedir(dir);
     }
+
     if (g_barr_verbose)
     {
         BARR_log("Found: %zu header files", list->count);

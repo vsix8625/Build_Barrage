@@ -40,6 +40,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path);
 
 void OLM_store_var(const char *key, const char *value);
 const char *OLM_get_var(const char *key);
+void OLM_print_all_vars(void);
 
 bool OLM_init(void);
 bool OLM_close(void);

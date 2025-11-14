@@ -1,11 +1,57 @@
 #include "barr_cmd_status.h"
-#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "olmos_ast.h"
 #include "olmos_variables.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+static inline const char *barr_fmt_time_ago(time_t past_tm_stamp)
+{
+    time_t now = time(NULL);
+    double diff = difftime(now, past_tm_stamp);
+
+    static char buf[BARR_BUF_SIZE_64];
+
+    if (diff < 0)
+    {
+        return "In the future";
+    }
+
+    if (diff < 60)
+    {
+        snprintf(buf, sizeof(buf), "%.0f sec ago", diff);
+    }
+    else if (diff < 3600)
+    {
+        barr_i32 mins = (barr_i32) (diff / 60);
+        snprintf(buf, sizeof(buf), "%d min%s ago", mins, mins == 1 ? "" : "s");
+    }
+    else if (diff < 86400)
+    {
+        barr_i32 hours = (barr_i32) (diff / 3600);
+        snprintf(buf, sizeof(buf), "%d hour%s ago", hours, hours == 1 ? "" : "s");
+    }
+    else if (diff < 2592000)
+    {  // ~30 days
+        barr_i32 days = (barr_i32) (diff / 86400);
+        snprintf(buf, sizeof(buf), "%d day%s ago", days, days == 1 ? "" : "s");
+    }
+    else if (diff < 31536000)
+    {  // ~365 days
+        barr_i32 months = (barr_i32) (diff / 2592000);
+        snprintf(buf, sizeof(buf), "%d month%s ago", months, months == 1 ? "" : "s");
+    }
+    else
+    {
+        barr_i32 years = (barr_i32) (diff / 31536000);
+        snprintf(buf, sizeof(buf), "%d year%s ago", years, years == 1 ? "" : "s");
+    }
+
+    return buf;
+}
 
 barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 {
@@ -13,9 +59,6 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     BARR_VOID(argv);
     barr_i32 result = 0;
 
-    BARR_printf("\033[90m- Status is based on timestamps, unlike the internal build process.\n");
-    BARR_printf("\033[90m- This status check is for rapid feedback only.\n");
-    BARR_printf("\033[90m  (use \"barr status --all\" to view all)\n");
     BARR_printf("--------------------------------------------------------------------------------------\n");
 
     BARR_InitStatus res = BARR_check_initialized();
@@ -134,6 +177,11 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         {
             print_all = true;
         }
+        if (BARR_strmatch(opt, "--vars"))
+        {
+            printf("\t=== BARRFILE VARIABLES ===\n");
+            OLM_print_all_vars();
+        }
     }
 
     size_t total = obj_list.count;
@@ -141,6 +189,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     size_t unknown = 0;
     size_t up_to_date = 0;
 
+    printf("\n\t=== FILE STATUS ===\n");
     for (size_t i = 0; i < obj_list.count; i++)
     {
         const char *obj_file = (const char *) obj_list.items[i];
@@ -193,7 +242,20 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     }
 
     BARR_printf("\n--------------------------------------------------------------------------------------\n");
-    printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n\n", total, modified, unknown, up_to_date);
+    printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n", total, modified, unknown, up_to_date);
 
+    char *timestamp_str = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "timestamp");
+    if (timestamp_str)
+    {
+        time_t past = (time_t) strtoll(timestamp_str, NULL, 10);
+        const char *ago = barr_fmt_time_ago(past);
+        BARR_printf("\033[90mLatest build: %s\n\n", ago);
+    }
+
+    BARR_printf("\033[90mStatus check: Fast timestamp scan (for rapid feedback)\n");
+    BARR_printf("\033[90mBuild engine: Full content, flags hashing + dependency tracking\n");
+    BARR_printf("\033[90m  (use \"barr status --all\" to view all files)\n");
+    BARR_printf("\033[90m  (use \"barr status --vars\" for Barrfile variables)\n");
+    OLM_close();
     return result;
 }

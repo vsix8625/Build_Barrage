@@ -12,5 +12,6 @@ typedef struct BARR_List
 
 bool BARR_list_init(BARR_List *list, size_t initial_cap);
 void BARR_list_push(BARR_List *list, void *item);
+void BARR_list_dbg(BARR_List *list);
 
 #endif  // BARR_LIST_H_

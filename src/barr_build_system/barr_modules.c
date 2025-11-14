@@ -88,7 +88,7 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
     char *self = BARR_get_self_exe();
 
     const char *args[] = {self, "build", "--dir", path, NULL};
-    barr_i32 result = BARR_run_process(args[0], (char **) args, true);
+    barr_i32 result = BARR_run_process(args[0], (char **) args, false);
 
     if (result != 0)
     {

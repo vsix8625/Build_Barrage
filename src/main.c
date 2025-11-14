@@ -243,7 +243,7 @@ barr_i32 main(barr_i32 argc, char **argv)
     // config
     static const char *config_details =
         "Options:\n"
-        "   --barrfile  Open local Barrfile with your $EDITOR (requires barr initialized project)\n\n"
+        "   open        Open local Barrfile with your $EDITOR (requires barr initialized project)\n\n"
         "   --show      Deprecated since: v0.18.2\n"
         "   --edit      Deprecated since: v0.18.2\n"
         "   --path      Deprecated since: v0.18.2\n"

@@ -6,6 +6,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Decide to do or not `Barrfile.module` for modules build description.  
+    - To differentiate from projects `Barrfile`.
+    - `Barrfile.modules` can be treated differently than `Barrfile` in build process.
 - Build artifacts and objects recovery system.   
 - Windows support  
  

@@ -339,9 +339,96 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
-    //----------------------------------------------------------------------------------------------------
+    //----------------------------------------
+    // INCLUDES SCAN
 
     BARR_header_list_scan_dir(&headers, root_dir, &inc_dir_list, exclude_tokens);
+
+    //----------------------------------------
+    // MODULES
+
+    BARR_List modules_includes_list;
+
+    size_t modules_count = BARR_get_module_count();
+    if (modules_count > 0)
+    {
+        BARR_list_init(&modules_includes_list, 16);
+        if (g_barr_verbose)
+        {
+            BARR_print_modules();
+        }
+
+        for (size_t i = 0; i < modules_count; ++i)
+        {
+            const char *mod_path = BARR_get_module_array()[i].path;
+            char build_info_path[BARR_PATH_MAX];
+            snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod_path, BARR_DATA_BUILD_INFO_PATH);
+
+            if (!BARR_isfile(build_info_path))
+            {
+                BARR_warnlog("Module '%s' has no build.info, skipping", BARR_get_module_array()[i].name);
+                continue;
+            }
+
+            char *module_cflags_val = BARR_get_build_info_key(build_info_path, "cflags");
+            if (module_cflags_val && module_cflags_val[0] != '\0')
+            {
+                const char **tokens = (const char **) BARR_tokenize_string(module_cflags_val);
+                for (const char **p = tokens; p && *p; ++p)
+                {
+                    const char *tok = *p;
+
+                    if (strncmp(tok, "-I", 2) == 0)
+                    {
+                        const char *raw_path = tok + 2;
+
+                        char resolved[BARR_PATH_MAX];
+
+                        if (!BARR_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
+                        {
+                            BARR_warnlog("Failed to resolve module include path: %s/%s", mod_path, raw_path);
+                            continue;
+                        }
+
+                        char final[BARR_PATH_MAX + 3];
+                        snprintf(final, sizeof(final), "-I%s", resolved);
+
+                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(final));
+                    }
+                    else
+                    {
+                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(tok));
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < modules_includes_list.count; ++i)
+    {
+        const char *inc_arg = modules_includes_list.items[i];
+
+        // strip -I from the module list
+        const char *mod_path = inc_arg[2] ? inc_arg + 2 : inc_arg;
+
+        if (BARR_isdir(mod_path))
+        {
+            BARR_header_list_scan_dir(&headers, mod_path, NULL, exclude_tokens);
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------------
+
+    if (g_barr_verbose)
+    {
+        BARR_printf("Modules includes list:\n");
+        BARR_list_dbg(&modules_includes_list);
+
+        BARR_printf("Headers list:\n");
+        BARR_source_list_dbg(&headers);
+    }
+
+    //----------------------------------------------------------------------------------------------------
 
     const char *build_type = OLM_get_var(OLM_VAR_BUILD_TYPE);
     if (!build_type)
@@ -605,7 +692,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // prepare includes
     BARR_List merged_includes;
-    BARR_List modules_includes_list;
     BARR_list_init(&merged_includes, 16);
 
     const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
@@ -685,64 +771,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         case BARR_AUTO_INC_MODE_ON:
             BARR_log("include discovery: auto mode");
             break;
-    }
-
-    //----------------------------------------
-    // MODULES
-
-    size_t modules_count = BARR_get_module_count();
-    if (modules_count > 0)
-    {
-        BARR_list_init(&modules_includes_list, 16);
-        if (g_barr_verbose)
-        {
-            BARR_print_modules();
-        }
-
-        for (size_t i = 0; i < modules_count; ++i)
-        {
-            const char *mod_path = BARR_get_module_array()[i].path;
-            char build_info_path[BARR_PATH_MAX];
-            snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod_path, BARR_DATA_BUILD_INFO_PATH);
-
-            if (!BARR_isfile(build_info_path))
-            {
-                BARR_warnlog("Module '%s' has no build.info, skipping", BARR_get_module_array()[i].name);
-                continue;
-            }
-
-            char *module_cflags_val = BARR_get_build_info_key(build_info_path, "cflags");
-            if (module_cflags_val && module_cflags_val[0] != '\0')
-            {
-                const char **tokens = (const char **) BARR_tokenize_string(module_cflags_val);
-                for (const char **p = tokens; p && *p; ++p)
-                {
-                    const char *tok = *p;
-
-                    if (strncmp(tok, "-I", 2) == 0)
-                    {
-                        const char *raw_path = tok + 2;
-
-                        char resolved[BARR_PATH_MAX];
-
-                        if (!BARR_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
-                        {
-                            BARR_warnlog("Failed to resolve module include path: %s/%s", mod_path, raw_path);
-                            continue;
-                        }
-
-                        char final[BARR_PATH_MAX + 3];
-                        snprintf(final, sizeof(final), "-I%s", resolved);
-
-                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(final));
-                    }
-                    else
-                    {
-                        BARR_list_push(&modules_includes_list, BARR_gc_strdup(tok));
-                    }
-                }
-            }
-        }
     }
 
     //----------------------------------------

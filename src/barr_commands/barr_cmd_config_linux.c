@@ -32,7 +32,7 @@ barr_i32 BARR_cmd_config(barr_i32 argc, char **argv)
 
     for (barr_i32 i = 1; i < argc; ++i)
     {
-        if (BARR_strmatch(argv[i], "--barrfile") || BARR_strmatch(argv[i], "-bf"))
+        if (BARR_strmatch(argv[i], "open") || BARR_strmatch(argv[i], "-O"))
         {
             BARR_log("%s: %s/Barrfile", BARR_get_config("editor"), BARR_getcwd());
             return barr_config_local_edit(argc, argv);

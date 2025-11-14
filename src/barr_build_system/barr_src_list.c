@@ -222,3 +222,17 @@ void BARR_destroy_source_list(BARR_SourceList *list)
     list->path_buffer_size = 0;
     list->path_buffer_used = 0;
 }
+
+void BARR_source_list_dbg(BARR_SourceList *list)
+{
+    if (list == NULL)
+    {
+        BARR_errlog("NULL list");
+        return;
+    }
+
+    for (size_t i = 0; i < list->count; i++)
+    {
+        BARR_printf("\t[%zu]: %s", i, list->entries[i]);
+    }
+}

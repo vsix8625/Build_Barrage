@@ -27,6 +27,14 @@ static char *olm_strip_quotes(const char *s);
 
 //--------------------------------------------------------------------------------------------------
 
+void OLM_print_all_vars(void)
+{
+    for (size_t i = 0; i < g_olm_var_count; ++i)
+    {
+        printf("\t%-16s = %s\n", g_olm_vars[i].key, g_olm_vars[i].value);
+    }
+}
+
 void OLM_store_var(const char *key, const char *value)
 {
     if (g_olm_var_count >= g_olm_var_capacity)
@@ -345,20 +353,31 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
     while (fgets(line, sizeof(line), fp))
     {
         line_n++;
+
         olm_trim(line);
+
         if (line[0] == '\0' || line[0] == '#')
         {
             continue;
         }
 
-        size_t len = strlen(line);
-        if (len < 3 || line[len - 1] != ';')
+        /* Find the statement terminator ';' ---- */
+        char *semicolon = strchr(line, ';');
+        if (!semicolon)
         {
-            BARR_errlog("%s(): syntax error at line %s:%zu", __func__, line, line_n);
+            BARR_errlog("%s(): missing ';' at line %zu", __func__, line_n);
             fclose(fp);
             return NULL;
         }
-        line[len - 1] = '\0';
+
+        *semicolon = '\0';
+
+        olm_trim(line);
+
+        if (line[0] == '\0')
+        {
+            continue;
+        }
 
         OLM_AST_Node *node = BARR_gc_alloc(sizeof(OLM_AST_Node));
         if (!node)

@@ -98,6 +98,20 @@ void BARR_compile_job(barr_ptr arg)
     args[idx] = NULL;
     assert(idx < argc_total && "args overflow");
 
+    if (g_barr_verbose)
+    {
+        barr_spin_lock(&job->progress_ctx->spin_lock);
+
+        for (size_t i = 0; args[i] != NULL; i++)
+        {
+            printf("%s  ", args[i]);
+        }
+        printf("\n");
+        fflush(stdout);
+
+        barr_spin_unlock(&job->progress_ctx->spin_lock);
+    }
+
     if (BARR_run_process(args[0], args, false) != 0)
     {
         BARR_errlog("Compilation failed for: %s", job->src);
