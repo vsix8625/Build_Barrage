@@ -32,6 +32,7 @@
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
+    bool is_exec = false;
     bool internal_call = (argc == 0 || argv == NULL);
 
     struct timespec build_start, build_end, compile_start, compile_end;
@@ -1082,6 +1083,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_errlog("Failed to build");
             goto exit;
         }
+        if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
+        {
+            is_exec = true;
+        }
     }
 
 exit:
@@ -1097,6 +1102,12 @@ exit:
     printf("\n----------------------------------------------------------------------------------------------------\n");
     BARR_log("BUILD ENDS: %s", root_dir);
     printf("----------------------------------------------------------------------------------------------------\n");
+
+    if (is_exec)
+    {
+        BARR_printf("\033[90m[Tip]: To run the binary: 'barr run'\n");
+        BARR_printf("\033[90m[Tip]: To view project status: 'barr status'\n");
+    }
 
     // cleanup
     BARR_destroy_thread_pool(pool);
