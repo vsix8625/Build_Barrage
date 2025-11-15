@@ -1,10 +1,10 @@
-#include "barr_env.h"
 #define _FILE_OFFSET_BITS 64
 
+#include "barr_src_scan.h"
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
-#include "barr_src_scan.h"
 
 #include <dirent.h>
 #include <fcntl.h>

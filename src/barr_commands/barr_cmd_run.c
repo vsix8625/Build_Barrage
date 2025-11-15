@@ -6,7 +6,6 @@
 #include "olmos_variables.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 
 barr_i32 BARR_command_run(barr_i32 argc, char **argv)

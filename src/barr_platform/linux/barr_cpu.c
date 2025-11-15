@@ -1,7 +1,11 @@
 #include "barr_cpu.h"
 #include "barr_env.h"
 #include "barr_io.h"
+
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -217,4 +221,123 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
     {
         info->cache_size = 256UL << 20;
     }
+}
+
+// Governors
+
+#define GOVERNOR_DIR "/sys/devices/system/cpu"
+#define GOVERNOR_PERF "performance"
+#define GOVERNOR_SCHUTIL "schedutil"
+
+static barr_i32 barr_gov_write(const char *cpu_name, const char *gov)
+{
+    char path[BARR_BUF_SIZE_512];
+    snprintf(path, sizeof(path), "%s/%s/cpufreq/scaling_governor", GOVERNOR_DIR, cpu_name);
+
+    barr_i32 fd = open(path, O_WRONLY);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    ssize_t n = write(fd, gov, strlen(gov));
+
+    close(fd);
+    return n == (ssize_t) strlen(gov);
+}
+
+static barr_i32 barr_gov_read(const char *cpu_name, char *buf, size_t buf_size)
+{
+    char path[BARR_BUF_SIZE_512];
+    snprintf(path, sizeof(path), "%s/%s/cpufreq/scaling_governor", GOVERNOR_DIR, cpu_name);
+
+    barr_i32 fd = open(path, O_RDONLY);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    ssize_t n = read(fd, buf, buf_size - 1);
+    close(fd);
+
+    if (n <= 0)
+    {
+        return 0;
+    }
+
+    buf[n] = '\0';
+
+    char *nl = strchr(buf, '\n');
+    if (nl)
+    {
+        *nl = '\0';
+    }
+
+    return 1;
+}
+
+bool BARR_cpu_perf(void)
+{
+    DIR *dir = opendir(GOVERNOR_DIR);
+    if (dir == NULL)
+    {
+        return false;
+    }
+
+    struct dirent *ent;
+    barr_i32 changed = 0;
+
+    while ((ent = readdir(dir)))
+    {
+        if (strncmp(ent->d_name, "cpu", 3) != 0)
+        {
+            continue;
+        }
+
+        char current[BARR_BUF_SIZE_32];
+        if (!barr_gov_read(ent->d_name, current, sizeof(current)))
+        {
+            continue;
+        }
+
+        if (BARR_strmatch(current, GOVERNOR_PERF))
+        {
+            continue;
+        }
+
+        if (barr_gov_write(ent->d_name, GOVERNOR_PERF))
+        {
+            changed++;
+        }
+    }
+
+    closedir(dir);
+    return changed > 0;
+}
+
+bool BARR_cpu_norm(void)
+{
+    DIR *dir = opendir(GOVERNOR_DIR);
+    if (dir == NULL)
+    {
+        return false;
+    }
+    struct dirent *ent;
+    barr_i32 changed = 0;
+
+    while ((ent = readdir(dir)))
+    {
+        if (strncmp(ent->d_name, "cpu", 3) != 0)
+        {
+            continue;
+        }
+
+        if (barr_gov_write(ent->d_name, GOVERNOR_SCHUTIL))
+        {
+            changed++;
+        }
+    }
+
+    closedir(dir);
+    return changed > 0;
 }

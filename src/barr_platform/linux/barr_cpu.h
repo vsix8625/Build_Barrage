@@ -3,6 +3,8 @@
 
 #include "barr_defs.h"
 
+#define BARR_GOV_CONFIG_FILE "/etc/barr/cpu_governors.conf"
+
 typedef enum
 {
     SIMD_NONE,
@@ -24,5 +26,8 @@ typedef struct BARR_InfoCPU
 
 void BARR_get_cpu_info(BARR_InfoCPU *info);
 void BARR_init_simd(void);
+
+bool BARR_cpu_perf(void);
+bool BARR_cpu_norm(void);
 
 #endif  // BARR_CPU_H_
