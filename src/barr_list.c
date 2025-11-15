@@ -53,6 +53,6 @@ void BARR_list_dbg(BARR_List *list)
 
     for (size_t i = 0; i < list->count; ++i)
     {
-        BARR_printf("\t[%zu]: %s\n", i, (char *) list->items[i]);
+        BARR_printf("\t[%zu]: %s\n", i + 1, (char *) list->items[i]);
     }
 }

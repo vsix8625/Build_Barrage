@@ -8,8 +8,15 @@ barr_i32 BARR_command_uninstall(barr_i32 argc, char **argv)
 {
     BARR_VOID(argc);
     BARR_VOID(argv);
+
     if (!BARR_init())
     {
+        return 1;
+    }
+
+    if (getuid() != 0)
+    {
+        BARR_errlog("[%s]:%s(): sudo required", __TIME__, __func__);
         return 1;
     }
 

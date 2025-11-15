@@ -890,3 +890,148 @@ void BARR_object_files_scan(BARR_List *list, const char *dirpath)
         BARR_log("Found: %zu objects files in '%s'", list->count, dirpath);
     }
 }
+
+bool BARR_isdigit_str(const char *s)
+{
+    if (s == NULL || !*s)
+    {
+        return false;
+    }
+
+    for (const char *p = s; *p; ++p)
+    {
+        if (!isdigit((barr_u8) *p))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// -------------------------------------------------------------------------------
+
+void BARR_scan_dir_shallow(BARR_List *list, const char *dirpath, BARR_ScanType type)
+{
+    if (list == NULL || dirpath == NULL)
+    {
+        BARR_errlog("%s(): invalid args", __func__);
+        return;
+    }
+
+    DIR *dir = opendir(dirpath);
+    if (dir == NULL)
+    {
+        BARR_warnlog("%s(): cannot open dir '%s'", __func__, dirpath);
+    }
+
+    struct dirent *ent;
+    while ((ent = readdir(dir)))
+    {
+        if (BARR_strmatch(ent->d_name, ".") || BARR_strmatch(ent->d_name, ".."))
+        {
+            continue;
+        }
+
+        char *fullpath = BARR_gc_alloc(BARR_PATH_MAX);
+        snprintf(fullpath, BARR_PATH_MAX, "%s/%s", dirpath, ent->d_name);
+
+        if (ent->d_type == DT_DIR)
+        {
+            if (type == BARR_SCAN_TYPE_DIR || BARR_SCAN_TYPE_ALL)
+            {
+                BARR_list_push(list, fullpath);
+            }
+        }
+        else if (ent->d_type == DT_REG)
+        {
+            if (type == BARR_SCAN_TYPE_FILE || BARR_SCAN_TYPE_ALL)
+            {
+                BARR_list_push(list, fullpath);
+            }
+        }
+    }
+    closedir(dir);
+}
+
+void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type)
+{
+    if (list == NULL || dirpath == NULL)
+    {
+        BARR_errlog("%s(): invalid args", __func__);
+        return;
+    }
+
+    char **queue = malloc(64 * sizeof(char *));
+    if (queue == NULL)
+    {
+        BARR_errlog("%s(): failed to allocate memory for queue", __func__);
+        return;
+    }
+
+    size_t que_size = 0;
+    size_t que_cap = 64;
+    queue[que_size++] = strdup(dirpath);
+
+    while (que_size > 0)
+    {
+        char *current = queue[--que_size];
+        if (!current)
+        {
+            continue;
+        }
+
+        DIR *dir = opendir(current);
+        if (dir == NULL)
+        {
+            BARR_warnlog("%s(): cannot open dir '%s'", __func__, current);
+            free(current);
+            continue;
+        }
+
+        struct dirent *ent;
+        while ((ent = readdir(dir)))
+        {
+            if (BARR_strmatch(ent->d_name, ".") || BARR_strmatch(ent->d_name, ".."))
+            {
+                continue;
+            }
+
+            char *fullpath = BARR_gc_alloc(BARR_PATH_MAX);
+            snprintf(fullpath, BARR_PATH_MAX, "%s/%s", current, ent->d_name);
+
+            if (ent->d_type == DT_DIR)
+            {
+                if (type == BARR_SCAN_TYPE_DIR || BARR_SCAN_TYPE_ALL)
+                {
+                    BARR_list_push(list, fullpath);
+                }
+
+                if (que_size >= que_cap)
+                {
+                    que_cap *= 2;
+                    char **new_que = realloc(queue, que_cap * sizeof(char *));
+
+                    if (new_que == NULL)
+                    {
+                        BARR_errlog("%s(): failed to realloc queue", __func__);
+                        break;
+                    }
+                    queue = new_que;
+                }
+                queue[que_size++] = strdup(fullpath);
+            }
+            else if (ent->d_type == DT_REG)
+            {
+                if (type == BARR_SCAN_TYPE_FILE || BARR_SCAN_TYPE_ALL)
+                {
+                    BARR_list_push(list, fullpath);
+                }
+            }
+        }
+
+        closedir(dir);
+        free(current);
+    }
+
+    free(queue);
+}

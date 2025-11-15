@@ -7,6 +7,13 @@
 #include "barr_math.h"
 #include "barr_os_layer.h"
 
+typedef enum
+{
+    BARR_SCAN_TYPE_ALL,
+    BARR_SCAN_TYPE_DIR,
+    BARR_SCAN_TYPE_FILE
+} BARR_ScanType;
+
 #define BARR_NULL_TERM_CHAR '\0'
 #define BARRFILE_TIMESTAMP_PATH ".barr/data/Barrfile.stamp"
 
@@ -47,6 +54,7 @@ barr_i32 BARR_mkdir_p(const char *path);
 bool BARR_is_valid_tool(const char *tool);
 
 void BARR_update_Barrfile_stamp(void);
+bool BARR_isdigit_str(const char *s);
 
 void BARR_trim(char *s);
 char *BARR_get_build_info_key(const char *file_path, const char *key);
@@ -57,5 +65,8 @@ bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_
 char *BARR_get_self_exe(void);
 
 void BARR_object_files_scan(BARR_List *list, const char *dirpath);
+
+void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type);
+void BARR_scan_dir_shallow(BARR_List *list, const char *dirpath, BARR_ScanType type);
 
 #endif  // BARR_UTILS_H_

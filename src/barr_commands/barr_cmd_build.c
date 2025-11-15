@@ -551,7 +551,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         {
             BARR_log("Found cache file: %s", BARR_CACHE_FILE);
         }
-        cached_map = BARR_hashmap_read_cache(BARR_CACHE_FILE);
+        if (BARR_isfile(BARR_CACHE_FILE))
+        {
+            cached_map = BARR_hashmap_read_cache(BARR_CACHE_FILE);
+        }
     }
 
     for (size_t i = 0; i < sources.count; i++)
@@ -950,6 +953,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!progress_ctx.failed && !dry_run_compile)
     {
         // only write new hash if compilation was successful
+        BARR_mkdir_p(BARR_CACHE_DIR);
         if (!BARR_hashmap_write_cache(current_map, BARR_CACHE_FILE))
         {
             printf("\n");

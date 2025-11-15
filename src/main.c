@@ -255,6 +255,10 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *status_aliases[] = {"-s", NULL};
     barr_register_command("status", BARR_cmd_status, "Project status information", status_aliases, NULL);
 
+    // recovery
+    static const char *recovery_aliases[] = {"-ry", NULL};
+    barr_register_command("recovery", BARR_command_recovery, "Project save and restore state", recovery_aliases, NULL);
+
     // test
     static const char *test_aliases[] = {"-t", NULL};
     barr_register_command("test", BARR_command_test, "Test helpers", test_aliases, NULL);

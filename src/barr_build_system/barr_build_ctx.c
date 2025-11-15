@@ -158,6 +158,7 @@ void BARR_compile_job(barr_ptr arg)
     }
 }
 
+// NOTE: this probably do not work since Barrfile refactor
 barr_i32 BARR_compile_pch(BARR_CompileInfoCTX *ctx)
 {
     if (!ctx->pch_file)

@@ -184,6 +184,12 @@ barr_i32 BARR_command_install(barr_i32 argc, char **argv)
         return 1;
     }
 
+    if (getuid() != 0)
+    {
+        BARR_errlog("[%s]:%s(): sudo required", __TIME__, __func__);
+        return 1;
+    }
+
     char *prefix = NULL;
     char *destdir = NULL;
 

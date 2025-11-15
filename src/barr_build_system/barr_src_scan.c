@@ -63,10 +63,10 @@ static inline bool barr_is_project_root(const char *dirpath)
 
 static inline bool barr_exclude(const char *path, const char **exclude_patterns)
 {
-    static const char *skip_names[] = {"build",   "bin",        "obj",     ".git",    "cache",   ".vs",  ".idea",
-                                       "test",    "CMakeFiles", "Debug",   "Release", ".barr",   "docs", "assets",
-                                       "scripts", "modes",      "pycache", ".vscode", "objects", "out",  "target",
-                                       ".svn",    ".hg",        "vendor",  NULL};
+    static const char *skip_names[] = {
+        "build",   "bin",    "obj",  ".git",   "cache",   ".vs",   ".idea",          "test",    "CMakeFiles", "Debug",
+        "Release", ".barr",  "docs", "assets", "scripts", "modes", ".barr_recovery", "pycache", ".vscode",    "objects",
+        "out",     "target", ".svn", ".hg",    "vendor",  NULL};
 
     if (strstr(path, "/.") != NULL)
     {
