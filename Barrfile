@@ -1,14 +1,24 @@
 #Build Barrage v0.17.1
 
+# build & run detect_features tool
+detect_features_dir = "tools/linux/detect_features";
+detect_feats_out = "tools/bin/detect_feats";
+# build
+run_cmd("gcc ${detect_features_dir}/src/main.c -Wall -O2 -g -D_GNU_SOURCE -o ${detect_feats_out}");
+# run
+run_cmd("./${detect_feats_out}");
+
+# ----------------------------------------------------------------------
+
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.21.1";
+VERSION = "0.21.2";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-COMPILER = "/usr/bin/gcc";
+COMPILER = "${BARR_COMPILER_CLANG}";
 LINKER = "lld";
 
 BUILD_TYPE = "release";
@@ -17,6 +27,8 @@ OUT_DIR = "build/${BUILD_TYPE}";
 std = "-std=c23";
 CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
 CFLAGS_RELEASE = "${std} -Wall -O3 -march=native -mavx";
+
+EXCLUDE_PATTERNS = "tools";
 
 DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 

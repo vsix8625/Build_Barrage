@@ -31,11 +31,11 @@ void OLM_print_all_vars(void)
 {
     for (size_t i = 0; i < g_olm_var_count; ++i)
     {
-        printf("\t%-16s = %s\n", g_olm_vars[i].key, g_olm_vars[i].value);
+        printf("\t%-24s = %s\n", g_olm_vars[i].key, g_olm_vars[i].value);
     }
 }
 
-void OLM_store_var(const char *key, const char *value)
+void OLM_store_var_const(const char *key, const char *value)
 {
     if (g_olm_var_count >= g_olm_var_capacity)
     {
@@ -48,7 +48,34 @@ void OLM_store_var(const char *key, const char *value)
         g_olm_vars = tmp;
         g_olm_var_capacity = new_cap;
     }
-    g_olm_vars[g_olm_var_count++] = (OLM_Var) {key, value};
+    g_olm_vars[g_olm_var_count++] =
+        (OLM_Var) {.key = BARR_gc_strdup(key), .value = BARR_gc_strdup(value), .is_const = true};
+}
+
+void OLM_store_var(const char *key, const char *value)
+{
+    for (size_t i = 0; i < g_olm_var_count; i++)
+    {
+        if (BARR_strmatch(g_olm_vars[i].key, key) && g_olm_vars[i].is_const)
+        {
+            BARR_errlog("Cannot assign to constant: %s", key);
+            return;
+        }
+    }
+
+    if (g_olm_var_count >= g_olm_var_capacity)
+    {
+        size_t new_cap = g_olm_var_capacity == 0 ? OLM_INITIAL_VARS : g_olm_var_capacity * 2;
+        OLM_Var *tmp = BARR_gc_realloc(g_olm_vars, sizeof(OLM_Var) * new_cap);
+        if (tmp == NULL)
+        {
+            return;
+        }
+        g_olm_vars = tmp;
+        g_olm_var_capacity = new_cap;
+    }
+    g_olm_vars[g_olm_var_count++] =
+        (OLM_Var) {.key = BARR_gc_strdup(key), .value = BARR_gc_strdup(value), .is_const = false};
 }
 
 const char *OLM_get_var(const char *key)
@@ -780,6 +807,98 @@ static char *olm_strip_quotes(const char *s)
     return BARR_gc_strdup(s);  // no quotes, copy as-is
 }
 
+//---------------------------------------------------------------------------------------
+
+static char *olm_get_os_version(void)
+{
+#if defined(BARR_OS_LINUX)
+    {
+        char buf[BARR_PATH_MAX];
+        snprintf(buf, sizeof(buf), "%d.%d.%d", LINUX_VERSION_MAJOR, LINUX_VERSION_PATCHLEVEL, LINUX_VERSION_SUBLEVEL);
+        return BARR_gc_strdup(buf);
+    }
+#endif
+}
+
+static char *olm_barr_build_compiler(void)
+{
+#if defined(__clang__)
+    return BARR_which("clang");
+#elif defined(__GNUC__)
+    return BARR_which("gcc");
+#elif defined(__MSC_VER)
+    return "msvc";
+#else
+    return "unknown";
+#endif
+}
+
+static void olm_detect_compilers(void)
+{
+    static const char *compiler_list[] = {"gcc",
+                                          "g++",
+                                          "clang",
+                                          "clang++",
+                                          "cc",
+                                          "clang-18",
+                                          "clang-17",
+                                          "cl.exe",
+                                          "clang.exe",
+                                          "clang-cl.exe",
+                                          "clang++.exe",
+                                          "gcc.exe",
+                                          "g++.exe",
+                                          "tcc.exe",
+                                          "icl.exe",
+                                          "icx.exe",
+                                          "tcc",
+                                          "x86_64-w64-mingw32-gcc.exe",
+                                          "x86_64-w64-mingw32-g++.exe",
+                                          "i686-w64-mingw32-gcc.exe",
+                                          "i686-w64-mingw32-g++.exe",
+                                          "musl-gcc",
+                                          "zig",
+                                          NULL};
+
+    for (size_t i = 0; compiler_list[i]; ++i)
+    {
+        char *value = BARR_find_in_path(compiler_list[i]);
+
+        if (value)
+        {
+            char key[BARR_BUF_SIZE_64];
+            char *str = strdup(compiler_list[i]);
+            size_t len = strlen(str);
+
+            for (size_t j = 0; j < len; ++j)
+            {
+                str[j] = (char) toupper((barr_u8) str[j]);
+            }
+
+            snprintf(key, sizeof(key), "BARR_COMPILER_%s", str);
+            OLM_store_var_const(key, value);
+
+            free(str);
+        }
+    }
+}
+
+static void olm_load_constants(void)
+{
+    olm_barr_build_compiler();
+
+    OLM_store_var_const("BARR_OS_NAME", BARR_OS_NAME);
+    char *os_version = olm_get_os_version();
+    OLM_store_var_const("BARR_OS_VESRION", os_version);
+
+    OLM_store_var_const("BARR_VERSION", BARR_version_get_str());
+    OLM_store_var_const("BARR_COMPILER", olm_barr_build_compiler());
+
+    olm_detect_compilers();
+}
+
+//---------------------------------------------------------------------------------------
+
 bool OLM_init(void)
 {
     olm_reset_vars();
@@ -787,6 +906,7 @@ bool OLM_init(void)
     {
         BARR_log("Olmos system initialized");
     }
+    olm_load_constants();
     return true;
 }
 

@@ -9,6 +9,11 @@
 
 barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
 {
+    if (!BARR_init())
+    {
+        return 1;
+    }
+
     for (size_t i = 1; i < argc; ++i)
     {
         const char *opt = argv[i];
@@ -31,11 +36,6 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             barr_i32 min = t.tm_min;
             barr_i32 sec = t.tm_sec;
 
-            if (!BARR_init())
-            {
-                return 1;
-            }
-
             if (!BARR_isdir("build"))
             {
                 BARR_errlog("%s(): build directory not found", __func__);
@@ -50,17 +50,17 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
 
             BARR_mkdir_p(BARR_RECOVERY_DIR);
 
-            char recovery_dir[BARR_BUF_SIZE_1024];
-            snprintf(recovery_dir, sizeof(recovery_dir), "%s/%d-%d-%d-%dh-%d%d", BARR_RECOVERY_DIR, year, month, day, h,
-                     min, sec);
+            char saved_dir[BARR_BUF_SIZE_1024];
+            snprintf(saved_dir, sizeof(saved_dir), "%s/%d-%d-%d-%dh-%d%d", BARR_RECOVERY_DIR, year, month, day, h, min,
+                     sec);
 
-            BARR_mkdir_p(recovery_dir);
+            BARR_mkdir_p(saved_dir);
 
             char cp_build_dir[BARR_PATH_MAX];
-            snprintf(cp_build_dir, sizeof(cp_build_dir), "%s/build", recovery_dir);
+            snprintf(cp_build_dir, sizeof(cp_build_dir), "%s/build", saved_dir);
 
             char cp_barr_dir[BARR_PATH_MAX];
-            snprintf(cp_barr_dir, sizeof(cp_barr_dir), "%s/.barr", recovery_dir);
+            snprintf(cp_barr_dir, sizeof(cp_barr_dir), "%s/.barr", saved_dir);
 
             // form the build and .barr dirr
             BARR_fs_copy_tree("build", cp_build_dir);
@@ -69,7 +69,7 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             BARR_printf("[RECOVERY]: saved .barr -> %s\n", cp_barr_dir);
 
             char cp_barrfile[BARR_PATH_MAX];
-            snprintf(cp_barrfile, sizeof(cp_barrfile), "%s/Barrfile", recovery_dir);
+            snprintf(cp_barrfile, sizeof(cp_barrfile), "%s/Barrfile", saved_dir);
             BARR_printf("[RECOVERY]: saved Barrfile -> %s\n", cp_barrfile);
 
             BARR_file_copy("Barrfile", cp_barrfile);

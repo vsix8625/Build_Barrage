@@ -8,6 +8,7 @@
 
 #if defined(__linux)
 
+#include <linux/version.h>
 #include <unistd.h>
 
 #define BARR_OS_LINUX

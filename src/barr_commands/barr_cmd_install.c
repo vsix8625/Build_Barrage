@@ -1,7 +1,6 @@
 #include "barr_cmd_install.h"
 #include "barr_cmd_version.h"
 #include "barr_io.h"
-#include "barr_list.h"
 #include <stdio.h>
 #include <string.h>
 

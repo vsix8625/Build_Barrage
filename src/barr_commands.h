@@ -21,6 +21,7 @@ typedef struct BARR_Command
 // include all commands
 #include "barr_cmd_build.h"
 #include "barr_cmd_clean.h"
+#include "barr_cmd_debug.h"
 #include "barr_cmd_init.h"
 #include "barr_cmd_install.h"
 #include "barr_cmd_new.h"

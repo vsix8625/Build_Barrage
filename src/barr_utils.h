@@ -14,6 +14,24 @@ typedef enum
     BARR_SCAN_TYPE_FILE
 } BARR_ScanType;
 
+typedef struct
+{
+    char *path;
+    size_t size;
+
+    time_t modified_time;
+    time_t accessed_time;
+
+    nlink_t hard_links;
+    mode_t mode;
+
+    uid_t owner_id;
+    gid_t group_id;
+    dev_t device_id;
+
+    blkcnt_t blocks_allocated;
+} BARR_FSInfo;  // file system info
+
 #define BARR_NULL_TERM_CHAR '\0'
 #define BARRFILE_TIMESTAMP_PATH ".barr/data/Barrfile.stamp"
 
@@ -39,6 +57,7 @@ bool BARR_isdir(const char *dir);
 bool BARR_isfile(const char *path);
 barr_i32 BARR_setperm(const char *path, const char *perm);
 
+char *BARR_find_in_path(const char *app);
 bool BARR_is_installed(const char *app);
 char *BARR_which(const char *app);
 bool BARR_isdir_empty(const char *path);
@@ -68,5 +87,10 @@ void BARR_object_files_scan(BARR_List *list, const char *dirpath);
 
 void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type);
 void BARR_scan_dir_shallow(BARR_List *list, const char *dirpath, BARR_ScanType type);
+
+void BARR_fsinfo_collect_stats_dir_r(BARR_List *list, const char *dirpath);
+void BARR_list_fsinfo_print(const BARR_List *list);
+
+const char *BARR_bytes_to_human(size_t bytes, char *out, size_t out_size);
 
 #endif  // BARR_UTILS_H_

@@ -244,6 +244,35 @@ char *BARR_which(const char *app)
     return NULL;
 }
 
+char *BARR_find_in_path(const char *app)
+{
+    const char *env_path = getenv("PATH");
+    if (env_path == NULL)
+    {
+        return NULL;
+    }
+
+    char *path = BARR_gc_strdup(env_path);
+    char *saveptr = NULL;
+    char *dir = strtok_r(path, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
+
+    while (dir)
+    {
+        char fullpath[BARR_BUF_SIZE_1024];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, app);
+
+        if (barr_access(fullpath, X_OK) == 0)
+        {
+            char *result = BARR_gc_strdup(fullpath);
+            return result;
+        }
+
+        dir = strtok_r(NULL, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
+    }
+
+    return NULL;
+}
+
 bool BARR_is_installed(const char *app)
 {
     const char *env_path = getenv("PATH");
@@ -1034,4 +1063,213 @@ void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type)
     }
 
     free(queue);
+}
+
+static void BARR_fsinfo_fill(BARR_FSInfo *info, const char *path, const struct barr_stat *st)
+{
+    info->path = BARR_gc_strdup(path);
+    info->size = (size_t) st->st_size;
+
+    info->modified_time = st->st_mtime;
+    info->modified_time = st->st_atime;
+
+    info->hard_links = st->st_nlink;
+    info->mode = st->st_mode;
+
+    info->owner_id = st->st_uid;
+    info->group_id = st->st_gid;
+    info->device_id = st->st_dev;
+
+    info->blocks_allocated = st->st_blocks;
+}
+
+void BARR_fsinfo_collect_stats_dir_r(BARR_List *list, const char *dirpath)
+{
+    if (list == NULL || dirpath == NULL)
+    {
+        BARR_errlog("%s(): invalid args", __func__);
+        return;
+    }
+
+    char **queue = malloc(64 * sizeof(char *));
+    if (queue == NULL)
+    {
+        BARR_errlog("%s(): failed to allocate memory for queue", __func__);
+        return;
+    }
+
+    size_t que_size = 0;
+    size_t que_cap = 64;
+    queue[que_size++] = strdup(dirpath);
+
+    while (que_size > 0)
+    {
+        char *current = queue[--que_size];
+        if (current == NULL)
+        {
+            continue;
+        }
+
+        DIR *dir = opendir(current);
+        if (dir == NULL)
+        {
+            BARR_warnlog("%s(): cannot open dir '%s'", __func__, current);
+            free(current);
+            continue;
+        }
+
+        struct dirent *ent;
+
+        while ((ent = readdir(dir)))
+        {
+            if (BARR_strmatch(ent->d_name, ".") || BARR_strmatch(ent->d_name, ".."))
+            {
+                continue;
+            }
+
+            char *fullpath = BARR_gc_alloc(BARR_PATH_MAX);
+            snprintf(fullpath, BARR_PATH_MAX, "%s/%s", current, ent->d_name);
+
+            struct barr_stat st;
+            if (lstat(fullpath, &st) != 0)
+            {
+                BARR_warnlog("%s(): cannot stat '%s'", __func__, fullpath);
+                continue;
+            }
+
+            BARR_FSInfo *info = malloc(sizeof(BARR_FSInfo));
+            if (info == NULL)
+            {
+                BARR_errlog("%s(): failed to allocate fsinfo", __func__);
+                continue;
+            }
+
+            BARR_fsinfo_fill(info, fullpath, &st);
+            BARR_list_push(list, info);
+
+            if (S_ISDIR(st.st_mode))
+            {
+                if (que_size >= que_cap)
+                {
+                    que_cap *= 2;
+                    char **new_que = realloc(queue, que_cap * sizeof(char *));
+                    if (new_que == NULL)
+                    {
+                        BARR_errlog("%s(): failed to realloc queue", __func__);
+                        break;
+                    }
+                    queue = new_que;
+                }
+
+                queue[que_size++] = strdup(fullpath);
+            }
+        }
+
+        closedir(dir);
+        free(current);
+    }
+
+    free(queue);
+}
+
+static void barr_fsinfo_print(const BARR_FSInfo *info)
+{
+    if (info == NULL)
+    {
+        return;
+    }
+
+    printf("%s\n", info->path);
+    printf("{\n");
+    printf("    size            = %zu\n", info->size);
+    printf("    modified_time   = %ld\n", (long) info->modified_time);
+    printf("    accessed_time   = %ld\n", (long) info->accessed_time);
+    printf("    owner_id        = %u\n", info->owner_id);
+    printf("    group_id        = %u\n", info->group_id);
+    printf("    mode            = %o\n", info->mode);
+    printf("    hard_links      = %lu\n", (unsigned long) info->hard_links);
+    printf("    device_id       = %lu\n", (unsigned long) info->device_id);
+    printf("    blocks_allocated = %lu\n", (unsigned long) info->blocks_allocated);
+    printf("}\n\n");
+}
+
+const char *BARR_bytes_to_human(size_t bytes, char *out, size_t out_size)
+{
+    if (bytes < 1024)
+    {
+        snprintf(out, out_size, "%zuB", bytes);
+    }
+    else if (bytes < 1024 * 1024)
+    {
+        snprintf(out, out_size, "%.2fKB", bytes / 1024.0);
+    }
+    else if (bytes < 1024 * 1024 * 1024)
+    {
+        snprintf(out, out_size, "%.2fMB", bytes / (1024.0 * 1024.0));
+    }
+    else
+    {
+        snprintf(out, out_size, "%.2fGB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+    return out;
+}
+
+void BARR_list_fsinfo_print(const BARR_List *list)
+{
+    if (list == NULL)
+    {
+        return;
+    }
+
+    size_t total_dirs = 0;
+    size_t total_files = 0;
+    size_t total_symlinks = 0;
+    size_t total_exec = 0;
+    size_t total_size = 0;
+    BARR_FSInfo *largest = NULL;
+
+    for (size_t i = 0; i < list->count; ++i)
+    {
+        BARR_FSInfo *info = (BARR_FSInfo *) list->items[i];
+        if (g_barr_verbose)
+        {
+            barr_fsinfo_print(info);
+        }
+
+        total_size += info->size;
+        if (S_ISDIR(info->mode))
+        {
+            total_dirs++;
+        }
+        else if (S_ISREG(info->mode))
+        {
+            total_files++;
+            if (info->mode & S_IXUSR)
+            {
+                total_exec++;
+            }
+
+            if (largest == NULL || info->size > largest->size)
+            {
+                largest = info;
+            }
+        }
+        else if (S_ISLNK(info->mode))
+        {
+            total_symlinks++;
+        }
+    }
+
+    printf("[summary]: Dirs %zu, Files %zu, Symlinks %zu, Executables %zu\n", total_dirs, total_files, total_symlinks,
+           total_exec);
+    char hsize[BARR_BUF_SIZE_32];
+    BARR_bytes_to_human(total_size, hsize, sizeof(hsize));
+    printf("[summary]: Total %zu, Size %s\n", list->count, hsize);
+
+    if (largest)
+    {
+        char hsize_largest[32];
+        BARR_bytes_to_human(largest->size, hsize_largest, sizeof(hsize_largest));
+        printf("[summary]: Largest: %s: %s\n", largest->path, hsize_largest);
+    }
 }

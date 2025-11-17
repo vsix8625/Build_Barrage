@@ -259,6 +259,10 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *recovery_aliases[] = {"-ry", NULL};
     barr_register_command("recovery", BARR_command_recovery, "Project save and restore state", recovery_aliases, NULL);
 
+    // debug
+    static const char *debug_aliases[] = {"-db", NULL};
+    barr_register_command("debug", BARR_cmd_debug, "Debug and information", debug_aliases, NULL);
+
     // test
     static const char *test_aliases[] = {"-t", NULL};
     barr_register_command("test", BARR_command_test, "Test helpers", test_aliases, NULL);

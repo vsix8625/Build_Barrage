@@ -55,8 +55,6 @@ static inline const char *barr_fmt_time_ago(time_t past_tm_stamp)
 
 barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 {
-    BARR_VOID(argc);
-    BARR_VOID(argv);
     barr_i32 result = 0;
 
     BARR_printf("--------------------------------------------------------------------------------------\n");
@@ -177,10 +175,24 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         {
             print_all = true;
         }
+
         if (BARR_strmatch(opt, "--vars"))
         {
-            printf("\t=== BARRFILE VARIABLES ===\n");
+            printf("\t========================================\n");
+            printf("\t%-10s%s\n", " ", "BARRFILE VARIABLES");
+            printf("\t========================================\n");
             OLM_print_all_vars();
+        }
+
+        if (BARR_strmatch(opt, "--binfo"))
+        {
+            printf("========================================\n");
+            printf("%-10s%s\n", " ", "BUILD INFO");
+            printf("========================================\n");
+            if (BARR_isfile(BARR_DATA_BUILD_INFO_PATH))
+            {
+                printf("%s\n", BARR_file_read(BARR_DATA_BUILD_INFO_PATH));
+            }
         }
     }
 
@@ -252,10 +264,10 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         BARR_printf("\033[90mLatest build: %s\n\n", ago);
     }
 
-    BARR_printf("\033[90mStatus check: Fast timestamp scan (for rapid feedback)\n");
-    BARR_printf("\033[90mBuild engine: Full content, flags hashing + dependency tracking\n");
-    BARR_printf("\033[90m  (use \"barr status --all\" to view all files)\n");
-    BARR_printf("\033[90m  (use \"barr status --vars\" for Barrfile variables)\n");
+    printf("\033[90mStatus check: Fast timestamp scan (for rapid feedback)\n");
+    printf("\033[90mBuild engine: Full content, flags hashing + dependency tracking\n");
+    printf("\033[90m  (use \"barr status --all\" to view all files)\n");
+    printf("\033[90m  (use \"barr status --vars\" for Barrfile variables)\n\033[0m");
     OLM_close();
     return result;
 }

@@ -31,6 +31,8 @@ typedef struct OLM_Var
 {
     const char *key;
     const char *value;
+
+    bool is_const;
 } OLM_Var;
 
 size_t BARR_count_nodes(OLM_AST_Node *node);
