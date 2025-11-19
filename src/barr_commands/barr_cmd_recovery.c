@@ -215,6 +215,6 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
         }
     }
 
-    BARR_errlog("Recovery requires opt: <save|restore|destroy>");
+    BARR_errlog("Recovery requires opt: <save|list|restore|destroy>");
     return 1;
 }

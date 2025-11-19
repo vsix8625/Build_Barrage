@@ -38,6 +38,16 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     struct timespec build_start, build_end, compile_start, compile_end;
     clock_gettime(CLOCK_MONOTONIC, &build_start);
 
+    if (BARR_isfile(BARR_BUILD_LOCK))
+    {
+        BARR_errlog("Detected .barr_lock");
+        return 1;
+    }
+    else
+    {
+        BARR_file_write(BARR_BUILD_LOCK, "%ld", build_start.tv_nsec);
+    }
+
     if (!BARR_init())
     {
         return 1;
@@ -1134,6 +1144,11 @@ exit:
         BARR_destroy_hashmap(cached_map);
     }
     BARR_destroy_hashmap(current_map);
+
+    if (BARR_isfile(BARR_BUILD_LOCK))
+    {
+        BARR_rmrf(BARR_BUILD_LOCK);
+    }
     return 0;
 }
 }

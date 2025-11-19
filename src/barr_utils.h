@@ -88,6 +88,7 @@ void BARR_object_files_scan(BARR_List *list, const char *dirpath);
 void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type);
 void BARR_scan_dir_shallow(BARR_List *list, const char *dirpath, BARR_ScanType type);
 
+void BARR_get_relative_path(char *out, size_t out_size, const char *root, const char *full_path);
 void BARR_fsinfo_collect_stats_dir_r(BARR_List *list, const char *dirpath);
 void BARR_list_fsinfo_print(const BARR_List *list);
 

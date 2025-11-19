@@ -717,6 +717,9 @@ size_t BARR_count_nodes(OLM_AST_Node *node)
 
 barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
 {
+    time_t start = time(NULL);
+    const time_t max_seconds = 5;
+
     if (root == NULL || arena == NULL)
     {
         return 1;
@@ -737,6 +740,12 @@ barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
 
     while (top > 0)
     {
+        if (difftime(time(NULL), start) > max_seconds)
+        {
+            BARR_errlog("%s(): execution time exceeded %lds", __func__, max_seconds);
+            return 1;
+        }
+
         if (top >= stack_capacity)
         {
             BARR_errlog("Eval stack overflow: %zu >= %zu", top, stack_capacity);

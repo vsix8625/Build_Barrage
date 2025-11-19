@@ -1214,6 +1214,48 @@ const char *BARR_bytes_to_human(size_t bytes, char *out, size_t out_size)
     return out;
 }
 
+//----------------------------------------------------------------------------------------------------
+
+typedef struct
+{
+    BARR_FSInfo *info;
+} ExecEntry;
+
+static barr_i32 barr_compare_exec_desc(const void *a, const void *b)
+{
+    const ExecEntry *ea = (const ExecEntry *) a;
+    const ExecEntry *eb = (const ExecEntry *) b;
+    if (ea->info->size < eb->info->size)
+    {
+        return 1;
+    }
+    else if (ea->info->size > eb->info->size)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+//----------------------------------------------------------------------------------------------------
+
+void BARR_get_relative_path(char *out, size_t out_size, const char *root, const char *full_path)
+{
+    size_t root_len = strlen(root);
+    if (strncmp(full_path, root, root_len) == 0 && full_path[root_len] == '/')
+    {
+        // Path inside project: strip root + leading slash
+        snprintf(out, out_size, "%s", full_path + root_len + 1);
+    }
+    else
+    {
+        // Outside project: just use basename
+        char path_copy[PATH_MAX];
+        strncpy(path_copy, full_path, sizeof(path_copy) - 1);
+        path_copy[sizeof(path_copy) - 1] = '\0';
+        snprintf(out, out_size, "%s", basename(path_copy));
+    }
+}
+
 void BARR_list_fsinfo_print(const BARR_List *list)
 {
     if (list == NULL)
@@ -1270,6 +1312,41 @@ void BARR_list_fsinfo_print(const BARR_List *list)
     {
         char hsize_largest[32];
         BARR_bytes_to_human(largest->size, hsize_largest, sizeof(hsize_largest));
-        printf("[summary]: Largest: %s: %s\n", largest->path, hsize_largest);
+        printf("[largest]: %s: \033[34m%s\033[0m\n", largest->path, hsize_largest);
+    }
+
+    if (total_exec > 0)
+    {
+        ExecEntry *execs = BARR_gc_alloc(sizeof(ExecEntry) * total_exec);
+
+        if (execs == NULL)
+        {
+            return;
+        }
+
+        size_t idx = 0;
+
+        for (size_t i = 0; i < list->count; ++i)
+        {
+            BARR_FSInfo *info = (BARR_FSInfo *) list->items[i];
+            if (S_ISREG(info->mode) && (info->mode & S_IXUSR))
+            {
+                execs[idx++].info = info;
+            }
+        }
+
+        qsort(execs, total_exec, sizeof(ExecEntry), barr_compare_exec_desc);
+
+        printf("[executables]:\n");
+        for (size_t i = 0; i < total_exec; ++i)
+        {
+            char hsize_exec[32];
+            BARR_bytes_to_human(execs[i].info->size, hsize_exec, sizeof(hsize_exec));
+
+            char rel_path[BARR_PATH_MAX];
+            BARR_get_relative_path(rel_path, sizeof(rel_path), BARR_getcwd(), execs[i].info->path);
+
+            printf("\t%-64s: \033[34m%s\033[0m\n", rel_path, hsize_exec);
+        }
     }
 }

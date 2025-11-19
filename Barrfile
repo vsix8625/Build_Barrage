@@ -38,7 +38,8 @@ OUT_DIR = "build/${BUILD_TYPE}";
 
 std = "-std=c23";
 CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
-CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx";
+extra_opts = "-fomit-frame-pointer -funroll-loops -fno-common";
+CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx ${extra_opts}";
 
 EXCLUDE_PATTERNS = "tools";
 
@@ -46,7 +47,8 @@ DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 
 pkgs = "xxhash";
 find_package("${pkgs}");
-# LFLAGS = "-lpthread";
+
+LFLAGS = "-Wl,--gc-sections";
 
 # ----------------------------------------------------------------------
 # Write barr_hq
