@@ -113,6 +113,32 @@ barr_i32 BARR_command_tool(barr_i32 argc, char **argv)
             BARR_run_process(exec_args[0], exec_args, false);
             return 0;
         }
+        else if (BARR_strmatch(argv[i], "--perf"))
+        {
+            if (!BARR_is_installed("perf"))
+            {
+                BARR_errlog("perf not found");
+                return 1;
+            }
+
+            BARR_log("Launching perf for last built binary: %s", executable[0]);
+
+            char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 2));
+            barr_i32 idx = 0;
+
+            exec_args[idx++] = "perf";
+            exec_args[idx++] = "stat";
+            exec_args[idx++] = executable[0];
+
+            for (barr_i32 k = i + 1; k < argc; ++k, idx++)
+            {
+                exec_args[idx] = argv[k];
+            }
+            exec_args[idx] = NULL;
+
+            BARR_run_process(exec_args[0], exec_args, false);
+            return 0;
+        }
     }
 
     BARR_errlog("Unknown tool flag. Usage: barr tool --gdb|--valgrind|--strace");

@@ -1,5 +1,6 @@
-#include "barr_gc.h"
 #define _POSIX_C_SOURCE 200809L /* for utimensat */
+
+#include "barr_gc.h"
 
 #include "barr_config.h"
 #include "barr_io.h"
@@ -219,7 +220,7 @@ barr_i32 BARR_file_write(const char *filename, const char *format, ...)
     fclose(fp);
 
     atomic_flag_clear(&barr_io_file_write_lock);
-    return result >= 0;
+    return result >= 0 ? 0 : -1;
 }
 
 barr_i32 BARR_file_append(const char *filename, const char *format, ...)
@@ -242,7 +243,7 @@ barr_i32 BARR_file_append(const char *filename, const char *format, ...)
 
     fclose(fp);
     atomic_flag_clear(&barr_io_file_write_lock);
-    return result >= 0;
+    return result >= 0 ? 0 : -1;
 }
 
 //----------------------------------------------------------------------------------------------------

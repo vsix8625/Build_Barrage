@@ -16,7 +16,7 @@ static const char *barr_path_filename(const char *path)
 
     while (*p)
     {
-        if (*p == BARR_PATH_SEPARATOR_CHAR)  // handle Unix and Windows separators
+        if (*p == BARR_PATH_SEPARATOR_CHAR)
         {
             last = p + 1;
         }

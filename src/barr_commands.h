@@ -15,6 +15,7 @@ typedef struct BARR_Command
 
     const char *help;
     const char **aliases;  // null terminated list
+    const char **options;
     const char *detailed;
 } BARR_Command;
 
@@ -22,6 +23,7 @@ typedef struct BARR_Command
 #include "barr_cmd_build.h"
 #include "barr_cmd_clean.h"
 #include "barr_cmd_debug.h"
+#include "barr_cmd_fo.h"
 #include "barr_cmd_init.h"
 #include "barr_cmd_install.h"
 #include "barr_cmd_new.h"

@@ -356,6 +356,30 @@ static bool olm_parse_string_args(const char *src, char ***out_args, size_t *out
     return true;
 }
 
+static char *barr_find_unquoted_eq(const char *s)
+{
+    barr_i32 in_single = 0;
+    barr_i32 in_double = 0;
+
+    for (size_t i = 0; s[i]; ++i)
+    {
+        if (s[i] == '\'' && !in_double)
+        {
+            in_single = !in_single;
+        }
+        else if (s[i] == '"' && !in_single)
+        {
+            in_double = !in_double;
+        }
+        else if (s[i] == '=' && !in_single && !in_double)
+        {
+            return (char *) (s + i);
+        }
+    }
+
+    return NULL;
+}
+
 OLM_AST_Node *OLM_parse_file(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
@@ -414,25 +438,23 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
         }
         memset(node, 0, sizeof(*node));
 
-        char *eq = strchr(line, '=');
+        char *eq = barr_find_unquoted_eq(line);
         if (eq)
         {
             *eq = '\0';
             olm_trim(line);
-            olm_trim(eq + 1);
 
             char *value_start = eq + 1;
-            size_t val_len = strlen(value_start);
-            if (val_len < 2 || !((value_start[0] == '"' && value_start[val_len - 1] == '"') ||
-                                 (value_start[0] == '\'' && value_start[val_len - 1] == '\'')))
-            {
-                BARR_errlog("%s(): syntax error at line %s:%zu", __func__, line, line_n);
-                fclose(fp);
-                return NULL;
-            }
+            olm_trim(value_start);
 
-            value_start[val_len - 1] = '\0';
-            value_start++;
+            size_t val_len = strlen(value_start);
+
+            if (val_len >= 2 && !((value_start[0] == '"' && value_start[val_len - 1] == '"') ||
+                                  (value_start[0] == '\'' && value_start[val_len - 1] == '\'')))
+            {
+                value_start[val_len - 1] = '\0';
+                value_start++;
+            }
 
             node->type = OLM_NODE_ASSIGNMENT;
             node->name = BARR_gc_strdup(line);
@@ -461,16 +483,12 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             olm_trim(start);
 
             size_t val_len = strlen(start);
-            if (val_len < 2 ||
-                !((start[0] == '"' && start[val_len - 1] == '"') || (start[0] == '\'' && start[val_len - 1] == '\'')))
+            if (val_len >= 2 &&
+                ((start[0] == '"' && start[val_len - 1] == '"') || (start[0] == '\'' && start[val_len - 1] == '\'')))
             {
-                BARR_errlog("%s(): syntax error at line %s:%zu, unmatched quote in print()", __func__, line, line_n);
-                fclose(fp);
-                return NULL;
+                start[val_len - 1] = '\0';
+                start++;
             }
-
-            start[val_len - 1] = '\0';
-            start++;
 
             node->type = OLM_NODE_FN_CALL;
             node->name = BARR_gc_strdup("print");
@@ -486,7 +504,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
         else if (strncmp(line, "find_package", 12) == 0)
         {
             char *start = strchr(line, '(');
-            char *end = strchr(line, ')');
+            char *end = strrchr(line, ')');
 
             if (start == NULL || end == NULL || end <= start)
             {
@@ -522,7 +540,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
         else if (strncmp(line, "run_cmd", 7) == 0)
         {
             char *start = strchr(line, '(');
-            char *end = strchr(line, ')');
+            char *end = strrchr(line, ')');
 
             if (start == NULL || end == NULL || end <= start)
             {
@@ -535,8 +553,10 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             start++;
 
             olm_trim(start);
+
             size_t len = strlen(start);
-            if (len >= 2 && start[0] == '"' && start[len - 1] == '"')
+            if (len >= 2 &&
+                ((start[0] == '"' && start[len - 1] == '"') || (start[0] == '\'' && start[len - 1] == '\'')))
             {
                 start[len - 1] = '\0';
                 start++;
@@ -552,6 +572,44 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
                 return NULL;
             }
             node->args[0] = BARR_gc_strdup(start);
+        }
+        else if (strncmp(line, "file_write", 10) == 0)
+        {
+            char *start = strchr(line, '(');
+            char *end = strrchr(line, ')');
+
+            if (start == NULL || end == NULL || end <= start)
+            {
+                BARR_errlog("%s(): syntax error at line %s:%zu, invalid file_write()", __func__, line, line_n);
+                fclose(fp);
+                return NULL;
+            }
+
+            *end = '\0';
+            start++;
+
+            olm_trim(start);
+
+            // parse quoted args inside parentheses
+            char **args = NULL;
+            size_t argc = 0;
+            if (!olm_parse_string_args(start, &args, &argc) || argc < 2 || argc > 3)
+            {
+                BARR_errlog("%s(): file_write() requires: content, filename[, append|true]", __func__);
+                fclose(fp);
+                return NULL;
+            }
+
+            node->type = OLM_NODE_FN_CALL;
+            node->name = BARR_gc_strdup("file_write");
+            node->arg_count = argc;
+            node->args = BARR_gc_alloc(sizeof(char *) * argc);
+            for (size_t i = 0; i < argc; ++i)
+            {
+                node->args[i] = BARR_gc_strdup(args[i]);
+            }
+
+            BARR_dbglog("file_write parsed: arg_count=%zu", argc);
         }
         else if (strncmp(line, "add_module", 10) == 0)
         {
@@ -714,8 +772,54 @@ barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
 
                 if (BARR_strmatch(node->name, "run_cmd"))
                 {
-                    char **argv = BARR_tokenize_string(node->args[0]);
+                    const char *cmd = node->args[0];
+                    char *argv[] = {"/usr/bin/bash", "-c", (char *) cmd, NULL};
+
                     BARR_run_process(argv[0], argv, false);
+                }
+
+                if (BARR_strmatch(node->name, "file_write"))
+                {
+                    if (node->arg_count < 2 || node->arg_count > 3)
+                    {
+                        BARR_errlog("file_write() require: content, filename[, append|true]");
+                        return 1;
+                    }
+
+                    const char *content = node->args[0];
+                    const char *filename = node->args[1];
+
+                    bool do_append = false;
+
+                    if (node->arg_count == 3)
+                    {
+                        if (BARR_strmatch(node->args[2], "append") || BARR_strmatch(node->args[2], "true"))
+                        {
+                            do_append = true;
+                        }
+                        else
+                        {
+                            BARR_errlog("file_write(): third argument must be 'append' or 'true'");
+                            return 1;
+                        }
+                    }
+
+                    barr_i32 result = 0;
+
+                    if (do_append)
+                    {
+                        result = BARR_file_append(filename, "%s\n", content);
+                    }
+                    else
+                    {
+                        result = BARR_file_write(filename, "%s\n", content);
+                    }
+
+                    if (result < 0)
+                    {
+                        BARR_errlog("file_write() failed for %s", filename);
+                        return 1;
+                    }
                 }
 
                 if (BARR_strmatch(node->name, "add_module"))
@@ -809,17 +913,6 @@ static char *olm_strip_quotes(const char *s)
 
 //---------------------------------------------------------------------------------------
 
-static char *olm_get_os_version(void)
-{
-#if defined(BARR_OS_LINUX)
-    {
-        char buf[BARR_PATH_MAX];
-        snprintf(buf, sizeof(buf), "%d.%d.%d", LINUX_VERSION_MAJOR, LINUX_VERSION_PATCHLEVEL, LINUX_VERSION_SUBLEVEL);
-        return BARR_gc_strdup(buf);
-    }
-#endif
-}
-
 static char *olm_barr_build_compiler(void)
 {
 #if defined(__clang__)
@@ -888,8 +981,27 @@ static void olm_load_constants(void)
     olm_barr_build_compiler();
 
     OLM_store_var_const("BARR_OS_NAME", BARR_OS_NAME);
-    char *os_version = olm_get_os_version();
-    OLM_store_var_const("BARR_OS_VESRION", os_version);
+    OLM_store_var_const("BARR_OS_VESRION", BARR_get_config("version"));
+    OLM_store_var_const("BARR_OS_MACHINE", BARR_get_config("machine"));
+    OLM_store_var_const("BARR_CWD", BARR_getcwd());
+
+    //---------------------------------------
+
+    char data_buf[BARR_PATH_MAX];
+    char *data_dir = getenv("XDG_DATA_DIR");
+
+    if (data_dir == NULL)
+    {
+        snprintf(data_buf, sizeof(data_buf), "%s/%s", BARR_GET_HOME(), ".local/share/barr");
+    }
+    else
+    {
+        snprintf(data_buf, sizeof(data_buf), "%s/barr", data_dir);
+    }
+
+    OLM_store_var_const("BARR_DATA_DIR", data_buf);
+
+    //---------------------------------------
 
     OLM_store_var_const("BARR_VERSION", BARR_version_get_str());
     OLM_store_var_const("BARR_COMPILER", olm_barr_build_compiler());

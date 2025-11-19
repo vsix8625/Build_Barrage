@@ -233,6 +233,6 @@ void BARR_source_list_dbg(BARR_SourceList *list)
 
     for (size_t i = 0; i < list->count; i++)
     {
-        BARR_printf("\t[%zu]: %s", i, list->entries[i]);
+        BARR_printf("\t[%zu]: %s\n", i, list->entries[i]);
     }
 }

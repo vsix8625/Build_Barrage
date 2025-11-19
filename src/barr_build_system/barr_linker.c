@@ -5,6 +5,8 @@
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_modules.h"
+#include "olmos_ast.h"
+#include "olmos_variables.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -155,7 +157,7 @@ void BARR_link_collect_pkg_list(BARR_List *list, BARR_LinkArgs *input, BARR_Link
 barr_i32 BARR_link_target(const char *target_type, const char *target_name, const char *out_dir,
                           BARR_SourceList *object_list, BARR_List *pkg_list, size_t n_threads,
                           const char *resolved_compiler, const char *linker, const char *module_includes,
-                          const char *target_version)
+                          const char *target_version, const char *main_source)
 {
     struct timespec link_start, link_end;
     clock_gettime(CLOCK_MONOTONIC, &link_start);
@@ -221,6 +223,26 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
     char archive_lib_dirpath[BARR_PATH_MAX * 2];
     snprintf(archive_lib_dirpath, sizeof(archive_lib_dirpath), "-L%s", out_dir);
     BARR_link_args_add(la, archive_lib_dirpath);
+
+    const char *user_lflags = OLM_get_var(OLM_VAR_LINKER_FLAGS);
+    if (user_lflags && user_lflags[0])
+    {
+        char **tokens = BARR_tokenize_string(user_lflags);
+        for (char **t = tokens; t && *t; ++t)
+        {
+            BARR_link_args_add(la, *t);
+        }
+    }
+
+    const char *user_lib_paths = OLM_get_var(OLM_VAR_LIB_PATHS);
+    if (user_lib_paths && user_lib_paths[0])
+    {
+        char **tokens = BARR_tokenize_string(user_lib_paths);
+        for (char **t = tokens; t && *t; ++t)
+        {
+            BARR_link_args_add(la, *t);
+        }
+    }
 
     // packages and modules
     for (size_t i = 0; i < BARR_get_module_count(); ++i)
@@ -387,7 +409,7 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         snprintf(exe_path, sizeof(exe_path), "%s/%s", bin_dir, target_name);
 
         char main_co_buf[BARR_PATH_MAX * 2];
-        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/main.c.o", out_dir);
+        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/%s.o", out_dir, main_source);
 
         BARR_link_args_add(la, main_co_buf);
         BARR_link_args_add(la, "-o");

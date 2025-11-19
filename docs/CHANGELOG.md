@@ -6,9 +6,20 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
-- Build artifacts and objects recovery system (initial system added)
-- Windows support  
- 
+- Conditional logic in `Olmos-DLS` for `Barrfile`
+### Removed
+- Planned Windows/cross-platform support — `Build Barrage` is now Linux-only (since: `v.23.1`).
+
+---
+
+## [0.23.1] – 2025-11-18
+### Added
+### Changed
+### Fixed 
+### Removed
+- Planned Windows/cross-platform support — Barr is now Linux-only.  
+- Directory structure and file names from cross-platform code retained for convenience.
+
 ---
 
 ## [0.19.1] – 2025-11-12

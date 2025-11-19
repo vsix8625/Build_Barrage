@@ -21,7 +21,7 @@ bool g_barr_verbose = false;
 barr_i32 BARR_command_help(barr_i32 argc, char **argv);
 
 static void barr_register_command(const char *name, barr_cmd_fn fn, const char *help, const char **aliases,
-                                  const char *detailed)
+                                  const char **options, const char *detailed)
 {
     if (!g_barr_cmds_list)
     {
@@ -40,6 +40,7 @@ static void barr_register_command(const char *name, barr_cmd_fn fn, const char *
     cmd->fn = fn;
     cmd->help = help;
     cmd->aliases = aliases;
+    cmd->options = options;
     cmd->detailed = detailed;
 }
 
@@ -191,91 +192,116 @@ barr_i32 main(barr_i32 argc, char **argv)
     // help
     static const char *help_aliases[] = {"--help", "-h", NULL};  // null terminated list
     barr_register_command("help", BARR_command_help, "Show general help or help for specific command", help_aliases,
-                          NULL);
+                          NULL, NULL);
 
     // version
     static const char *ver_aliases[] = {"--version", "-v", NULL};
-    barr_register_command("version", BARR_command_version, "Show version information", ver_aliases, NULL);
+    barr_register_command("version", BARR_command_version, "Show version information", ver_aliases, NULL, NULL);
 
     // build
     static const char *build_aliases[] = {"-b", NULL};
-    barr_register_command("build", BARR_command_build, "Build project", build_aliases, NULL);
+    static const char *build_opts[] = {"--dir <dirpath>", "--dry-run", "--turbo", "--threads [N]| -j[N]", NULL};
+    barr_register_command("build", BARR_command_build, "Build project", build_aliases, build_opts, NULL);
 
     // rebuild
     static const char *rebuild_aliases[] = {"-rb", NULL};
-    barr_register_command("rebuild", BARR_command_rebuild, "Clean and build project", rebuild_aliases, NULL);
+    barr_register_command("rebuild", BARR_command_rebuild, "Clean and build project", rebuild_aliases, NULL, NULL);
 
     // run
     static const char *run_aliases[] = {"-r", NULL};
-    barr_register_command("run", BARR_command_run, "Run latest binary", run_aliases, NULL);
+    barr_register_command("run", BARR_command_run, "Run latest binary", run_aliases, NULL, NULL);
 
-    // run
+    // tool
     static const char *tool_aliases[] = {"-tl", NULL};
-    barr_register_command("tool", BARR_command_tool, "Run tool", tool_aliases, NULL);
+    static const char *tool_opts[] = {"--gdb", "--perf", "--valgrind", "--strace", NULL};
+    barr_register_command("tool", BARR_command_tool, "Run tool", tool_aliases, tool_opts, NULL);
 
     // clean
     static const char *clean_aliases[] = {"-c", NULL};
-    barr_register_command("clean", BARR_command_clean, "Clean build directory", clean_aliases, NULL);
+    static const char *clean_opts[] = {"--no-confirm | -nc", NULL};
+    barr_register_command("clean", BARR_command_clean, "Clean build directory", clean_aliases, clean_opts, NULL);
 
     // init
     static const char *init_aliases[] = {"-I", NULL};
     barr_register_command("init", BARR_command_init, "Initialize Build Barrage in current working directory",
-                          init_aliases, NULL);
+                          init_aliases, NULL, NULL);
 
     // deinit
     static const char *deinit_aliases[] = {"-D", NULL};
     barr_register_command("deinit", BARR_command_deinit, "Uninitialize Build Barrage in current working directory",
-                          deinit_aliases, NULL);
+                          deinit_aliases, NULL, NULL);
 
     // new
     static const char *new_details =
-        "Options:\n"
-        "  --project <project_name>          Create <project_name> directory with Build Barrage initialized (can run "
+        "  --project <project_name>      # Creates <project_name> directory with Build Barrage initialized (can run "
         "anywhere)\n"
-        "  --file <file_name> <opt=dir_name> Create <file_name> file with optional directory (requires "
-        "initialized barr project)\n"
-        "Example: barr new --project my_project\n"
-        "         barr new --file main.c\n"
-        "         barr new --file main.c src\n";
+        "  --file <name> [dirpath]       # Creates <name> file with optional directory\n"
+        "  --barrfile                    # Creates a default Barrfile\n"
+        "  --main                        # Creates src/main.c with Hello,from barr\n"
+        "  --pair <file_name> [--dir] <dir_name> [--ext] <ext>\n\n"
+        "Examples: barr new --project my_project\n"
+        "          barr new --file main.c\n"
+        "          barr new --file main.c src\n"
+        "          barr new --pair core --dir src                                # Creates: src/core.c, scr/core.h\n"
+        "          barr new --pair graphics --dir src --ext .cpp --public true   # Creates: src/graphics.cpp, "
+        "inc/graphics.hpp\n";
     static const char *new_aliases[] = {"-n", NULL};
-    barr_register_command("new", BARR_command_new, "Create new project or files", new_aliases, new_details);
+    static const char *new_opts[] = {"--project", "--file", "--pair", "--barrfile", "--main", NULL};
+    barr_register_command("new", BARR_command_new, "Create new project or files", new_aliases, new_opts, new_details);
 
     // config
     static const char *config_details =
-        "Options:\n"
-        "   open        Open local Barrfile with your $EDITOR (requires barr initialized project)\n\n"
-        "   --show      Deprecated since: v0.18.2\n"
-        "   --edit      Deprecated since: v0.18.2\n"
-        "   --path      Deprecated since: v0.18.2\n"
-        "\nNote: --install and --uninstall deprecated since: v0.18.1\n";
+        "   open        Open local Barrfile with your $EDITOR (requires barr initialized project)\n"
+        "   cpu-perf    Change cpu governor to performance (requires sudo)\n"
+        "   cpu-norm    Change cpu governor to schedutil (requires sudo)\n";
     static const char *config_aliases[] = {"-C", NULL};
-    barr_register_command("config", BARR_cmd_config, "Manage configuration", config_aliases, config_details);
+    static const char *config_opts[] = {"open | -O", "cpu-perf", "cpu-norm", NULL};
+    barr_register_command("config", BARR_cmd_config, "Manage configuration", config_aliases, config_opts,
+                          config_details);
 
     // status
+    static const char *status_details = "\t--vars         # Print all project Barrfile variables\n"
+                                        "\t--binfo        # Print project build info\n"
+                                        "\t--all          # Print all project source files\n";
     static const char *status_aliases[] = {"-s", NULL};
-    barr_register_command("status", BARR_cmd_status, "Project status information", status_aliases, NULL);
+    static const char *status_opts[] = {"--vars", "--all", "--binfo", NULL};
+    barr_register_command("status", BARR_cmd_status, "Project status information", status_aliases, status_opts,
+                          status_details);
 
     // recovery
     static const char *recovery_aliases[] = {"-ry", NULL};
-    barr_register_command("recovery", BARR_command_recovery, "Project save and restore state", recovery_aliases, NULL);
+    static const char *recovery_opts[] = {"save", "restore", "list", "destroy", NULL};
+    barr_register_command("recovery", BARR_command_recovery, "Project save and restore state", recovery_aliases,
+                          recovery_opts, NULL);
+
+    // fo
+    static const char *fo_alias[] = {NULL};
+    static const char *fo_opts[] = {"ON", "OFF", "REPORT", NULL};
+    barr_register_command("fo", BARR_command_fo, "Project forward observer: Reaper 1-6", fo_alias, fo_opts, NULL);
 
     // debug
+    static const char *debug_details = "\t--fsinfo       # Show a summary of all project dirs and files\n"
+                                       "\t--cache        # Print project cached files\n";
     static const char *debug_aliases[] = {"-db", NULL};
-    barr_register_command("debug", BARR_cmd_debug, "Debug and information", debug_aliases, NULL);
+    static const char *debug_opts[] = {"--fsinfo", "--cache", NULL};
+    barr_register_command("debug", BARR_cmd_debug, "Debug and information", debug_aliases, debug_opts, debug_details);
 
     // test
     static const char *test_aliases[] = {"-t", NULL};
-    barr_register_command("test", BARR_command_test, "Test helpers", test_aliases, NULL);
+    static const char *test_opts[] = {"--create", "--no-confirm | -nc", NULL};
+    barr_register_command("test", BARR_command_test, "Test helpers", test_aliases, test_opts, NULL);
 
     static const char *install_aliases[] = {"-i", NULL};
-    barr_register_command("install", BARR_command_install, "System install", install_aliases, NULL);
+    static const char *install_opts[] = {"--destdir", "--prefix", NULL};
+    barr_register_command("install", BARR_command_install, "System install", install_aliases, install_opts, NULL);
 
     static const char *uninstall_aliases[] = {"-uni", NULL};
-    barr_register_command("uninstall", BARR_command_uninstall, "System uninstall", uninstall_aliases, NULL);
+    barr_register_command("uninstall", BARR_command_uninstall, "System uninstall", uninstall_aliases, NULL, NULL);
 
     // play
     static const char *play_aliases[] = {"-pl", NULL};
-    barr_register_command("play", BARR_command_play, "Play music", play_aliases, NULL);
+    static const char *play_opts[] = {"--shuffle", "--video", NULL};
+    barr_register_command("play", BARR_command_play, "Play music", play_aliases, play_opts, NULL);
 
     //----------------------------------------------------------------------------------------------------
     // Dispatch
@@ -340,6 +366,16 @@ barr_i32 BARR_command_help(barr_i32 argc, char **argv)
                     {
                         BARR_printf("%s ", *alias);
                     }
+
+                    if (g_barr_cmds_list[i].options)
+                    {
+                        BARR_printf("\n\nOptions:\n");
+                        for (const char **opt = g_barr_cmds_list[i].options; *opt; ++opt)
+                        {
+                            BARR_printf("  %s\n", *opt);
+                        }
+                    }
+
                     BARR_printf("\n");
                     if (g_barr_cmds_list[i].detailed)
                     {
@@ -357,6 +393,15 @@ barr_i32 BARR_command_help(barr_i32 argc, char **argv)
                     {
                         BARR_printf("Command: %s (alias: %s)\n", g_barr_cmds_list[i].name, *alias);
                         BARR_printf("Description: %s\n", g_barr_cmds_list[i].help);
+
+                        if (g_barr_cmds_list[i].options)
+                        {
+                            BARR_printf("\n\nOptions:\n");
+                            for (const char **opt = g_barr_cmds_list[i].options; *opt; ++opt)
+                            {
+                                BARR_printf("  %s\n", *opt);
+                            }
+                        }
 
                         if (g_barr_cmds_list[i].detailed)
                         {

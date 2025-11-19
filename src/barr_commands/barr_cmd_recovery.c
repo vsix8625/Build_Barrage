@@ -3,6 +3,7 @@
 #include "barr_io.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #define BARR_RECOVERY_DIR ".barr_recovery"
@@ -73,6 +74,23 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             BARR_printf("[RECOVERY]: saved Barrfile -> %s\n", cp_barrfile);
 
             BARR_file_copy("Barrfile", cp_barrfile);
+
+            char notes[BARR_BUF_SIZE_64];
+            notes[0] = '\0';
+
+            if (argc > i + 1)
+            {
+                strncpy(notes, argv[i + 1], sizeof(notes) - 1);
+                notes[sizeof(notes) - 1] = '\0';
+                i++;
+            }
+
+            if (notes[0])
+            {
+                char notes_file[BARR_PATH_MAX];
+                snprintf(notes_file, sizeof(notes_file), "%s/.notes", saved_dir);
+                BARR_file_write(notes_file, "%s\n", notes);
+            }
 
             return 0;
         }
@@ -171,11 +189,27 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
 
             BARR_List recovery_list;
             BARR_list_init(&recovery_list, 16);
-
             BARR_scan_dir_shallow(&recovery_list, BARR_RECOVERY_DIR, BARR_SCAN_TYPE_DIR);
 
             BARR_printf("Recovery List:\n");
-            BARR_list_dbg(&recovery_list);
+
+            for (size_t j = 0; j < recovery_list.count; ++j)
+            {
+                char *dir = recovery_list.items[j];
+                char notes_file[BARR_PATH_MAX];
+                snprintf(notes_file, sizeof(notes_file), "%s/.notes", dir);
+
+                char notes[BARR_BUF_SIZE_64 + 1] = "";
+                FILE *cf = fopen(notes_file, "r");
+                if (cf)
+                {
+                    fgets(notes, sizeof(notes), cf);
+                    notes[strcspn(notes, "\n")] = '\0';
+                    fclose(cf);
+                }
+
+                BARR_printf("[%zu]: %s%s%s\n", j + 1, dir, notes[0] ? " -> " : "", notes);
+            }
 
             return recovery_list.count > 0 ? 0 : 1;
         }

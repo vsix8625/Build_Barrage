@@ -1,19 +1,31 @@
 #Build Barrage v0.17.1
 
-# build & run detect_features tool
+# -------------------------------------------------------------
+# build & run detect_features tool for barr_config.h
+# -------------------------------------------------------------
+
 detect_features_dir = "tools/linux/detect_features";
 detect_feats_out = "tools/bin/detect_feats";
-# build
 run_cmd("gcc ${detect_features_dir}/src/main.c -Wall -O2 -g -D_GNU_SOURCE -o ${detect_feats_out}");
-# run
 run_cmd("./${detect_feats_out}");
+
+# -------------------------------------------------------------
+# build forward observer
+# -------------------------------------------------------------
+
+add_module("fo","tools/fo","no");
+
+# ----------------------------------------------------------------------
+# Create $HOME/.loca/share/barr
+
+run_cmd("mkdir -p ${BARR_DATA_DIR}");
 
 # ----------------------------------------------------------------------
 
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.21.2";
+VERSION = "0.22.2";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
@@ -26,7 +38,7 @@ OUT_DIR = "build/${BUILD_TYPE}";
 
 std = "-std=c23";
 CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
-CFLAGS_RELEASE = "${std} -Wall -O3 -march=native -mavx";
+CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx";
 
 EXCLUDE_PATTERNS = "tools";
 
@@ -35,5 +47,17 @@ DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 pkgs = "xxhash";
 find_package("${pkgs}");
 # LFLAGS = "-lpthread";
+
+# ----------------------------------------------------------------------
+# Write barr_hq
+
+barr_hq_file = "${BARR_DATA_DIR}/barr_hq";
+build_dir = "${BARR_CWD}/${OUT_DIR}";
+
+file_write("root=${BARR_CWD}", "${barr_hq_file}");
+file_write("version=${VERSION}", "${barr_hq_file}","true");
+file_write("build_dir=${build_dir}", "${barr_hq_file}","true");
+
+# ----------------------------------------------------------------------
 
 print("Build script ends!");

@@ -32,7 +32,7 @@ barr_i32 BARR_command_test(barr_i32 argc, char **argv)
 
     for (barr_i32 i = 3; i < argc; i++)
     {
-        if (BARR_strmatch(argv[i], "--verbose") || BARR_strmatch(argv[i], "-v"))
+        if (g_barr_verbose)
         {
             verbose = true;
         }

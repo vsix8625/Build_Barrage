@@ -43,7 +43,7 @@ void BARR_list_push(BARR_List *list, void *item)
     list->items[list->count++] = item;
 }
 
-void BARR_list_dbg(BARR_List *list)
+void BARR_list_print(BARR_List *list)
 {
     if (list == NULL)
     {

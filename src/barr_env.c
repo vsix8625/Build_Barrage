@@ -10,7 +10,7 @@
 static inline const char *barr_global_config_dir(void)
 {
     static char path[BARR_BUF_SIZE_512];
-    const char *base = BARR_GET_CONFIG_HOME();
+    const char *base = BARR_GET_HOME();
     if (base)
     {
 #if defined(BARR_OS_WIN32)
@@ -57,7 +57,7 @@ static inline char *barr_lx_kernel_version(void)
     static struct utsname uts;
     if (uname(&uts) != 0)
     {
-        return "barr_lx_unknown";
+        return "unknown";
     }
     return uts.release;
 }
@@ -67,7 +67,7 @@ static inline char *barr_lx_machine(void)
     static struct utsname uts;
     if (uname(&uts) != 0)
     {
-        return "barr_lx_unknown";
+        return "unknown";
     }
     return uts.machine;
 }

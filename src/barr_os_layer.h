@@ -6,15 +6,13 @@
 
 #include <sys/stat.h>
 
-#if defined(__linux)
-
 #include <linux/version.h>
 #include <unistd.h>
 
 #define BARR_OS_LINUX
 #define BARR_OS_NAME "Linux"
+
 #define BARR_GET_HOME() getenv("HOME")
-#define BARR_GET_CONFIG_HOME() getenv("HOME")
 
 #define BARR_OS_GET_CACHE_LINE_SIZE() sysconf(_SC_LEVEL1_DCACHE_LINESIZE)
 #define BARR_OS_GET_CORES() sysconf(_SC_NPROCESSORS_ONLN)
@@ -34,39 +32,6 @@ typedef struct stat barr_stat_t;
 #define BARR_SYSTEM_CMD_CLEAR "clear"
 
 #define BARR_DYNAMIC_LIB_EXT "so"
-
-#elif defined(_WIN32) || defined(_WIN64)
-#include <direct.h>
-#include <io.h>
-
-#define BARR_OS_WIN32
-#define ALT_OS_NAME "Win32"
-#define BARR_GET_HOME() getenv("USERPROFILE")
-#define BARR_GET_CONFIG_HOME() getenv("APPDATA")
-
-#define barr_stat _stat
-typedef struct _stat barr_stat_t
-
-#define barr_mkdir(dir) _mkdir((dir))
-
-#define BARR_DEVNULL "nul"
-#define BARR_PATH_SEPARATOR_STR "\\"
-#define BARR_PATH_SEPARATOR_CHAR '\\'
-#define BARR_PATH_DELIMITER ';'
-
-#define BARR_DYNAMIC_LIB_EXT "dll"
-
-#define barr_access _access
-#define X_OK 0
-
-#define barr_getcwd _getcwd
-#define BARR_SYSTEM_CMD_CLEAR "cls"
-
-#elif defined(__APPLE__)
-
-#define BARR_OS_MACOS
-
-#endif
 
 barr_i32 BARR_run_process_BG(const char *name, char **args);
 barr_i32 BARR_run_process(const char *name, char **args, bool verbose);

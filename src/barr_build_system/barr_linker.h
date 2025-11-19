@@ -24,7 +24,7 @@ char **BARR_link_args_finalize(BARR_LinkArgs *la);
 barr_i32 BARR_link_target(const char *target_type, const char *target_name, const char *out_dir,
                           BARR_SourceList *object_list, BARR_List *pkg_list, size_t n_threads,
                           const char *resolved_compiler, const char *linker, const char *module_includes,
-                          const char *version);
+                          const char *version, const char *main_source);
 
 void BARR_link_collect_pkg_list(BARR_List *list, BARR_LinkArgs *input, BARR_LinkArgs *flags);
 

@@ -64,9 +64,9 @@ static inline bool barr_is_project_root(const char *dirpath)
 static inline bool barr_exclude(const char *path, const char **exclude_patterns)
 {
     static const char *skip_names[] = {
-        "build",   "bin",    "obj",  ".git",   "cache",   ".vs",   ".idea",          "test",    "CMakeFiles", "Debug",
-        "Release", ".barr",  "docs", "assets", "scripts", "modes", ".barr_recovery", "pycache", ".vscode",    "objects",
-        "out",     "target", ".svn", ".hg",    "vendor",  NULL};
+        "build",   "bin",     "obj",   ".git",   "cache",  ".vs",     ".idea",  "test",           "CMakeFiles",
+        "Debug",   "Release", ".barr", "docs",   "assets", "scripts", "modes",  ".barr_recovery", "pycache",
+        ".vscode", "objects", "out",   "target", ".svn",   ".hg",     "vendor", ".trash",         NULL};
 
     if (strstr(path, "/.") != NULL)
     {
@@ -181,6 +181,11 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
                 continue;
             }
 
+            if (barr_exclude(dent->d_name, exclude_tokens))
+            {
+                continue;
+            }
+
             char *fullpath = BARR_gc_alloc(BARR_PATH_MAX);
             snprintf(fullpath, BARR_PATH_MAX, "%s/%s", current, dent->d_name);
 
@@ -188,11 +193,6 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
 
             if (dent->d_type == DT_DIR)
             {
-                if (barr_exclude(dent->d_name, exclude_tokens))
-                {
-                    continue;
-                }
-
                 if (barr_is_project_root(fullpath))
                 {
                     BARR_dbglog("%s(): skipped '%s'", __func__, fullpath);

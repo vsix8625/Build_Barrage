@@ -232,6 +232,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         olmos_defines = "-DDEBUG";
     }
 
+    const char *olmos_main_source = OLM_get_var(OLM_VAR_MAIN_SOURCE);
+    if (olmos_main_source == NULL)
+    {
+        olmos_main_source = "main.c";
+    }
+
     //----------------------------------------------------------------------------------------------------
     // Begin build
 
@@ -239,6 +245,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // generic list for full scan
     BARR_SourceList sources;
+
     if (!BARR_source_list_init(&sources, BARR_SOURCE_LIST_INITIAL_FILES))
     {
         BARR_errlog("%s(): failed to initialize source list.", __func__);
@@ -323,12 +330,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_source_list_scan_dir(&sources, *p, exclude_tokens);
         }
     }
-    else
-    {
-        BARR_source_list_scan_dir(&sources, root_dir, exclude_tokens);
-    }
-
-    if (has_manual_sources)
+    else if (has_manual_sources)
     {
         const char **src_files = (const char **) BARR_tokenize_string(sources_raw);
         for (const char **f = src_files; f && *f; ++f)
@@ -338,6 +340,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 BARR_warnlog("Failed to push source file '%s'", *f);
             }
         }
+    }
+    else
+    {
+        BARR_source_list_scan_dir(&sources, root_dir, exclude_tokens);
     }
 
     //----------------------------------------
@@ -423,7 +429,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (g_barr_verbose)
     {
         BARR_printf("Modules includes list:\n");
-        BARR_list_dbg(&modules_includes_list);
+        BARR_list_print(&modules_includes_list);
 
         BARR_printf("Headers list:\n");
         BARR_source_list_dbg(&headers);
@@ -468,7 +474,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     char obj_dir_buf[BARR_PATH_MAX + 32];
     snprintf(obj_dir_buf, sizeof(obj_dir_buf), "%s/obj", out_dir);
     BARR_mkdir_p(obj_dir_buf);
+    BARR_mkdir_p(BARR_CACHE_DIR);
 
+    // NOTE: might not work as expected
     BARR_SourceList batch_list = {0};
     if (is_batch_build)
     {
@@ -881,7 +889,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // PREP
     // keep the main.c.o out of the archive
     char tmp_main_co[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
-    snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/main.c.o", out_dir);
+    snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/%s.o", out_dir, olmos_main_source);
 
     size_t producer_arena_size =
         compile_list.count * (sizeof(BARR_CompileJob) + (BARR_PATH_MAX << 1) + BARR_BUF_SIZE_256);
@@ -1082,7 +1090,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
 
         if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
-                             linker, module_includes, target_version) != 0)
+                             linker, module_includes, target_version, olmos_main_source) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
