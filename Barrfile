@@ -25,7 +25,7 @@ run_cmd("mkdir -p ${BARR_DATA_DIR}");
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.22.2";
+VERSION = "0.22.3";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
