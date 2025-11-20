@@ -782,6 +782,20 @@ barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
                 if (BARR_strmatch(node->name, "run_cmd"))
                 {
                     const char *cmd = node->args[0];
+
+                    char cmd_copy[1024];
+                    strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
+                    cmd_copy[sizeof(cmd_copy) - 1] = '\0';
+                    char *first_word = strtok(cmd_copy, " \t");
+
+                    const char *self = basename(BARR_get_self_exe());
+
+                    if (strstr(first_word, self))
+                    {
+                        BARR_errlog("%s(): barr cannot invoke itself via run_cmd()", __func__);
+                        return 1;
+                    }
+
                     char *argv[] = {"/usr/bin/bash", "-c", (char *) cmd, NULL};
 
                     BARR_run_process(argv[0], argv, false);

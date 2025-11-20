@@ -94,4 +94,7 @@ void BARR_list_fsinfo_print(const BARR_List *list);
 
 const char *BARR_bytes_to_human(size_t bytes, char *out, size_t out_size);
 
+barr_u64 BARR_hashstr(const char *s);
+bool BARR_hashcmp(barr_u64 h1, barr_u64 h2);
+
 #endif  // BARR_UTILS_H_

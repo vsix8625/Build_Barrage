@@ -8,6 +8,16 @@
 barr_i32 BARR_command_init(barr_i32 argc, char **argv)
 {
     const char *cwd = BARR_getcwd();
+
+    for (size_t i = 1; i < argc; ++i)
+    {
+        if (BARR_strmatch(argv[i], "--sync") || BARR_strmatch(argv[i], "-s"))
+        {
+            BARR_command_deinit(0, NULL);
+            ++i;
+        }
+    }
+
     if (BARR_isdir(BARR_MARKER_DIR))
     {
         BARR_log("It seems Build Barrage is already initialized in %s", cwd);
@@ -83,8 +93,6 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
     }
 
     BARR_log("Initialized Build Barrage %s in: %s", BARR_version_get_str(), cwd);
-    BARR_VOID(argc);
-    BARR_VOID(argv);
     return 0;
 }
 

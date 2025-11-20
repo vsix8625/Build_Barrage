@@ -40,7 +40,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 ### Fixed 
 ### Removed
-- Focusing on project-local configuration with `Barrfile` and `Olmos-DSL`,
+- Focusing on project-local configuration with `Barrfile` and `Olmos-scripting layer`,
   global config parser and `$PATH` modifications hacks was removed.
 - `barr_glob_config_parser.c` removed.
 - `barr_glob_config_parser.h` removed.
@@ -82,7 +82,7 @@ barr_i32 BARR_link_target(const char *target_type,
 - `barr new` additional options for project creation. (`barr new --barrfile`). 
 - Global command option: `--gc-dump` dumps all `BARR_gc` tracked allocations to `barr_gc_dumb.txt`.  
 ### Changed
-- `Olmos DSL` and `Barrfile` received multiple tweaks: new functions, variables and quality-of-life updates.  
+- `Olmos` and `Barrfile` received multiple tweaks: new functions, variables and quality-of-life updates.  
 ### Fixed 
 - Source list reallocation bug causing corruption on large projects.  
 ### Removed
@@ -112,7 +112,7 @@ barr_i32 BARR_link_target(const char *target_type,
 ## [0.12.1] – 2025-10-26
 ### Added
 - `BARR_gc_file_dump()` that writes to `barr_gc_dump.txt` file, all active allocations at the call time.  
-- Initial integration for `Olmos DSL` for defining `Barr` build configurations.  
+- Initial integration for `Olmos` for defining `Barr` build configurations.  
 ### Changed
 - Renamed `Crux` to `Olmos`
 ### Fixed 
@@ -150,7 +150,7 @@ barr_i32 BARR_link_target(const char *target_type,
 - `barr build` now scans the current working directory and sub directories for source files.  
     - Also it creates a cache with `sha256` digest with the contents of source file, its includes and compile flags.  
     - And finally it runs the compiler building object files for changed source files.  
-    - NOTE: compile flags passed on the function are a placeholder for now until the DSL would be ready.  
+    - NOTE: compile flags passed on the function are a placeholder for now until the  would be ready.  
     - NOTE: This is the pre-alpha stage for the build system as a whole and changes will happen.   
 ### Changed
 ### Fixed 
@@ -160,15 +160,15 @@ barr_i32 BARR_link_target(const char *target_type,
 
 ## [0.8.0] – 2025-10-11
 ### Added
-- Began design of **custom BARR DSL** (C-like syntax) to replace Lua for defining projects.
-- DSL will integrate natively with BARR’s core — no VM or script bridge required.
+- Began design of **custom Olmos scripting layer** (C-like syntax) to replace Lua for defining projects.
+- Will integrate natively with BARR’s core — no VM or script bridge required.
 ### Changed
 ### Fixed 
 ### Removed
 - **Lua DSL integration**: all Lua dependencies and bindings removed.
   - `barr_lua_rt` directory deprecated.
   - Lua stack and state handling functions (`luaL_newstate`, etc.) eliminated.
-  - DSL scripts (`barr_build.lua`) no longer supported.
+  - Scripts (`barr_build.lua`) no longer supported.
 
 
 ---

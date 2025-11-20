@@ -1,6 +1,6 @@
-# Olmos DSL (for `barr`)
+# Olmos (for `Barrfile`)
 
-Olmos is the domain-specific language (DSL) used by Build Barrage (`barr`) to configure project builds.  
+Olmos is the scripting layer (AST) used by Build Barrage (`barr`) to configure project builds.  
 It allows you to define compile flags, build type, output name,  
 and other build variables in a human-readable syntax.  
 
