@@ -344,7 +344,52 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         BARR_mkdir_p(bin_dir);
     }
 
-    // STATIC
+    if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
+    {
+        char exe_path[BARR_PATH_MAX * 2];
+        snprintf(exe_path, sizeof(exe_path), "%s/%s", bin_dir, target_name);
+
+        char main_co_buf[BARR_PATH_MAX * 2];
+        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/%s.o", out_dir, main_source);
+
+        BARR_link_args_add(la, main_co_buf);
+        BARR_link_args_add(la, "-o");
+        BARR_link_args_add(la, exe_path);
+
+        char **link_args = BARR_link_args_finalize(la);
+
+        if (g_barr_verbose)
+        {
+            for (char **f = link_args; f && *f; ++f)
+            {
+                BARR_printf("%s ", *f);
+            }
+            BARR_printf("\n ");
+        }
+
+        barr_i32 ret = BARR_link_stage(link_args);
+        if (ret != 0)
+        {
+            BARR_errlog("Executable link stage  failed");
+            return 1;
+        }
+
+        char build_info_contents[BARR_BUF_SIZE_8192 * 5];
+        const char *barr_ver = BARR_version_get_str();
+        snprintf(build_info_contents, sizeof(build_info_contents),
+                 "[common]\n"
+                 "name = %s\n"
+                 "type = %s\n"
+                 "version = %s\n"
+                 "barr_version = %s\n"
+                 "timestamp = %ld\n"
+                 "\n[paths]\n"
+                 "build_dir = %s\n",
+                 target_name, target_type, target_version, barr_ver, time(NULL), out_dir);
+
+        BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
+    }
+    else
     {
         char dest_static[BARR_PATH_MAX * 2];
         if (BARR_strmatch(target_type, "static") || BARR_strmatch(target_type, "library"))
@@ -399,52 +444,6 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
                  target_name, target_type, target_version, barr_ver, time(NULL), module_includes, lib_dir_final,
                  lib_dir_final, BARR_strmatch(target_type, "shared") ? "" : dest_static,
                  BARR_strmatch(target_type, "static") ? "" : dest_shared);
-
-        BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
-    }
-
-    if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
-    {
-        char exe_path[BARR_PATH_MAX * 2];
-        snprintf(exe_path, sizeof(exe_path), "%s/%s", bin_dir, target_name);
-
-        char main_co_buf[BARR_PATH_MAX * 2];
-        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/%s.o", out_dir, main_source);
-
-        BARR_link_args_add(la, main_co_buf);
-        BARR_link_args_add(la, "-o");
-        BARR_link_args_add(la, exe_path);
-
-        char **link_args = BARR_link_args_finalize(la);
-
-        if (g_barr_verbose)
-        {
-            for (char **f = link_args; f && *f; ++f)
-            {
-                BARR_printf("%s ", *f);
-            }
-            BARR_printf("\n ");
-        }
-
-        barr_i32 ret = BARR_link_stage(link_args);
-        if (ret != 0)
-        {
-            BARR_errlog("Executable link stage  failed");
-            return 1;
-        }
-
-        char build_info_contents[BARR_BUF_SIZE_8192 * 5];
-        const char *barr_ver = BARR_version_get_str();
-        snprintf(build_info_contents, sizeof(build_info_contents),
-                 "[common]\n"
-                 "name = %s\n"
-                 "type = %s\n"
-                 "version = %s\n"
-                 "barr_version = %s\n"
-                 "timestamp = %ld\n"
-                 "\n[paths]\n"
-                 "build_dir = %s\n",
-                 target_name, target_type, target_version, barr_ver, time(NULL), out_dir);
 
         BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
     }

@@ -92,6 +92,15 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
             BARR_printf("%s", BARR_file_read(BARR_FO_REPORT_FILE));
             return 0;
         }
+
+        if (BARR_strmatch(opt, "watch"))
+        {
+            char cmd[BARR_PATH_MAX + 128];
+            snprintf(cmd, sizeof(cmd), "watch -n 1 'tail -n 50 %s | bat --style=plain -l text'", BARR_FO_LOG_FILE);
+
+            char *args[] = {"sh", "-c", cmd, NULL};
+            return BARR_run_process(args[0], args, false);
+        }
     }
 
     return 0;

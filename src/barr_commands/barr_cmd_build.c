@@ -1089,12 +1089,14 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             module_includes = "-Iinclude";
         }
 
+        // TODO: fix race conditions
         if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
                              linker, module_includes, target_version, olmos_main_source) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
         }
+
         if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
         {
             is_exec = true;

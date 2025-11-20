@@ -7,6 +7,7 @@
 #define BARR_FO_LOCK ".barr/fo/lock"
 
 #define BARR_FO_REPORT_FILE ".barr/fo/report"
+#define BARR_FO_LOG_FILE ".barr/fo/live_log"
 #define BARR_LOCAL_SHARE_DATA_DIR ".local/share/barr"
 #define BARR_LOCAL_SHARE_BARR_HQ BARR_LOCAL_SHARE_DATA_DIR "/barr_hq"
 
