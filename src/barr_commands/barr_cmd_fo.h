@@ -5,6 +5,7 @@
 
 #define BARR_FO_DIR ".barr/fo"
 #define BARR_FO_LOCK ".barr/fo/lock"
+#define BARR_FO_WAIT_LOCK_FILE ".barr/fo/fo_wait.lock"
 
 #define BARR_FO_REPORT_FILE ".barr/fo/report"
 #define BARR_FO_LOG_FILE ".barr/fo/live_log"

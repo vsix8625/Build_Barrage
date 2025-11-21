@@ -3,6 +3,7 @@
 #include "barr_batch_build.h"
 #include "barr_build_ctx.h"
 #include "barr_cmd_clean.h"
+#include "barr_cmd_fo.h"
 #include "barr_cpu.h"
 #include "barr_debug.h"
 #include "barr_env.h"
@@ -27,6 +28,31 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+//----------------------------------------------------------------------------------------------------
+
+static void barr_fo_wait_lock(void)
+{
+    if (!BARR_isdir(BARR_FO_DIR))
+    {
+        BARR_mkdir_p(BARR_FO_DIR);
+    }
+
+    if (BARR_isfile(BARR_FO_WAIT_LOCK_FILE))
+    {
+        return;
+    }
+
+    BARR_file_write(BARR_FO_WAIT_LOCK_FILE, " ");
+}
+
+static void barr_fo_wait_unlock(void)
+{
+    if (BARR_isfile(BARR_FO_WAIT_LOCK_FILE))
+    {
+        BARR_rmrf(BARR_FO_WAIT_LOCK_FILE);
+    }
+}
 
 //----------------------------------------------------------------------------------------------------
 
@@ -72,6 +98,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     bool select_dir = false;
     char *select_dir_path = NULL;
     barr_u32 user_defined_threads = 0;
+
+    barr_fo_wait_lock();
 
     if (!internal_call)
     {
@@ -166,6 +194,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (chdir(select_dir_path) != 0)
         {
             BARR_errlog("%s(): failed to change directory to %s", __func__, select_dir_path);
+            barr_fo_wait_unlock();
             return 1;
         }
 
@@ -178,9 +207,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (chdir(old_dir) != 0)
         {
             BARR_errlog("%s(): failed to restore working directory to %s", __func__, old_dir);
+            barr_fo_wait_unlock();
             return 1;
         }
 
+        barr_fo_wait_unlock();
         return status;
     }
 
@@ -196,6 +227,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!OLM_init())
     {
         BARR_errlog("%s(): failed to initialize olmos", __func__);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -203,6 +235,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (!olmos_ast)
     {
         BARR_errlog("Fatal: failed to parse %s", BARRFILE);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -216,6 +249,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("OLM_eval_node fatal error: %d", eval_return);
         BARR_destroy_arena(&olm_eval_arena);
+        barr_fo_wait_unlock();
         return 1;
     }
     BARR_destroy_arena(&olm_eval_arena);
@@ -250,6 +284,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize source list.", __func__);
         OLM_close();
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -258,6 +293,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_errlog("%s(): failed to initialize header list.", __func__);
         OLM_close();
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -268,6 +304,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         OLM_close();
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -280,6 +317,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_destroy_source_list(&sources);
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -293,6 +331,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_destroy_source_list(&headers);
         BARR_destroy_source_list(&inc_dir_list);
         BARR_destroy_source_list(&compile_list);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -467,6 +506,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_destroy_source_list(&headers);
             BARR_destroy_source_list(&inc_dir_list);
             BARR_destroy_source_list(&compile_list);
+            barr_fo_wait_unlock();
             return 1;
         }
     }
@@ -880,6 +920,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         if (BARR_compile_pch(&compile_ctx))
         {
             BARR_errlog("%s(): failed to precompile header '%s'", __func__, compile_ctx.pch_file);
+            barr_fo_wait_unlock();
             return 1;
         }
     }
@@ -940,6 +981,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 BARR_destroy_hashmap(cached_map);
             }
             BARR_destroy_hashmap(current_map);
+            barr_fo_wait_unlock();
             return 1;
         }
 
@@ -1036,6 +1078,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             BARR_destroy_hashmap(cached_map);
         }
         BARR_destroy_hashmap(current_map);
+        barr_fo_wait_unlock();
         return 1;
     }
 
@@ -1068,6 +1111,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             if (BARR_mkdir_p(out_dir))
             {
                 BARR_errlog("Failed to create out_dir directory");
+                barr_fo_wait_unlock();
                 return 1;
             }
         }
@@ -1089,7 +1133,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             module_includes = "-Iinclude";
         }
 
-        // TODO: fix race conditions
         if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
                              linker, module_includes, target_version, olmos_main_source) != 0)
         {
@@ -1137,6 +1180,7 @@ exit:
     }
     BARR_destroy_hashmap(current_map);
 
+    barr_fo_wait_unlock();
     return 0;
 }
 }

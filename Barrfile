@@ -13,6 +13,7 @@ run_cmd("./${detect_feats_out}");
 # build forward observer
 # -------------------------------------------------------------
 
+fo_clean = "tools/fo/build tools/fo/.barr/cache/build.cache";
 add_module("fo","tools/fo","no");
 
 # ----------------------------------------------------------------------
@@ -25,7 +26,7 @@ run_cmd("mkdir -p ${BARR_DATA_DIR}");
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.22.3";
+VERSION = "0.23.0";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
@@ -61,5 +62,7 @@ file_write("version=${VERSION}", "${barr_hq_file}","true");
 file_write("build_dir=${build_dir}", "${barr_hq_file}","true");
 
 # ----------------------------------------------------------------------
+
+CLEAN_TARGETS = "${fo_clean}";
 
 print("Build script ends!");

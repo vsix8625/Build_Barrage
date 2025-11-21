@@ -1,4 +1,5 @@
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 
@@ -124,7 +125,10 @@ barr_i32 BARR_run_process_BG(const char *name, char **args)
     }
     else if (pid > 0)
     {
-        BARR_log("Started %s in background with PID %d", name, pid);
+        if (g_barr_verbose)
+        {
+            BARR_log("%s(): Started %s in background with PID %d", __func__, name, pid);
+        }
         return pid;  // return child PID so caller can track/kill if needed
     }
     else

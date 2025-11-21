@@ -100,6 +100,11 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
         }
     }
 
+    if (!BARR_update_build_info_timestamp(BARR_DATA_BUILD_INFO_PATH))
+    {
+        BARR_warnlog("%s(): failed to update build info timestamp", __func__);
+    }
+
     if (!barr_add_module_to_registry(name, path))
     {
         BARR_errlog("Failed to register module %s at %s", name, path);

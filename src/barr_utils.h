@@ -76,7 +76,10 @@ void BARR_update_Barrfile_stamp(void);
 bool BARR_isdigit_str(const char *s);
 
 void BARR_trim(char *s);
+
 char *BARR_get_build_info_key(const char *file_path, const char *key);
+bool BARR_update_build_info_timestamp(const char *file_path);
+
 void BARR_join_path(char *out, size_t out_size, const char *base, const char *rel);
 bool BARR_is_absolute(const char *p);
 

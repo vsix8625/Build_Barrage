@@ -760,6 +760,57 @@ static char *barr_trim_s(char *str)
     return str;
 }
 
+//-------------------------------------------------------------------------------
+
+bool BARR_update_build_info_timestamp(const char *file_path)
+{
+    FILE *fp = fopen(file_path, "r+");
+    if (fp == NULL)
+    {
+        BARR_errlog("Cannot open build_info: %s", file_path);
+        return false;
+    }
+
+    char line[BARR_BUF_SIZE_1024];
+    size_t ts_len = strlen("timestamp");
+    barr_i64 new_ts = time(NULL);
+    barr_i64 pos = 0;
+    bool updated = false;
+
+    while (fgets(line, sizeof(line), fp))
+    {
+        char *eq = strchr(line, '=');
+        if (!eq)
+        {
+            pos = ftell(fp);
+            continue;
+        }
+
+        *eq = 0;
+        char *line_key = barr_trim_s(line);
+
+        if (strncmp(line_key, "timestamp", ts_len) == 0)
+        {
+            fseek(fp, pos, SEEK_SET);
+            fprintf(fp, "timestamp = %ld\n", new_ts);
+            updated = true;
+            break;
+        }
+
+        pos = ftell(fp);
+    }
+
+    if (!updated)
+    {
+        // append if not found
+        fseek(fp, 0, SEEK_END);
+        fprintf(fp, "timestamp = %ld\n", new_ts);
+    }
+
+    fclose(fp);
+    return true;
+}
+
 char *BARR_get_build_info_key(const char *file_path, const char *key)
 {
     FILE *fp = fopen(file_path, "r");

@@ -39,6 +39,16 @@ static void barr_fo_off(void)
 
 barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
 {
+    if (argc == 1)
+    {
+        BARR_printf("Usage: %s <opts>\n", argv[0]);
+        if (BARR_isfile(BARR_FO_REPORT_FILE))
+        {
+            BARR_printf("%s", BARR_file_read(BARR_FO_REPORT_FILE));
+        }
+        return 0;
+    }
+
     if (!BARR_init())
     {
         return 1;
@@ -48,7 +58,7 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
     {
         const char *opt = argv[i];
 
-        if (BARR_strmatch(opt, "on"))
+        if (BARR_strmatch(opt, "deploy") || BARR_strmatch(opt, "-d"))
         {
             if (BARR_isfile(BARR_FO_LOCK))
             {
@@ -76,14 +86,15 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
             snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", fo_build_dir, fo_name);
 
             char *args[] = {exe_path, NULL};
-            BARR_run_process_BG(args[0], args);
-            return 0;
+            pid_t pid = BARR_run_process_BG(args[0], args);
+            BARR_log("Forward Observer deployed: %d", pid);
+            return (pid > 0) ? 0 : pid;
         }
 
-        if (BARR_strmatch(opt, "off"))
+        if (BARR_strmatch(opt, "dismiss") || BARR_strmatch(opt, "-s"))
         {
             barr_fo_off();
-            BARR_log("Forward observer switched off");
+            BARR_log("Forward observer dismissed");
             return 0;
         }
 
@@ -93,7 +104,7 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
             return 0;
         }
 
-        if (BARR_strmatch(opt, "watch"))
+        if (BARR_strmatch(opt, "watch") || BARR_strmatch(opt, "-w"))
         {
             char cmd[BARR_PATH_MAX + 128];
             snprintf(cmd, sizeof(cmd), "watch -n 1 'tail -n 50 %s | bat --style=plain -l text'", BARR_FO_LOG_FILE);
