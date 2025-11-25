@@ -29,6 +29,7 @@ barr_i32 BARR_command_uninstall(barr_i32 argc, char **argv)
 
     bool success = true;
     char line[BARR_PATH_MAX];
+
     while (fgets(line, sizeof(line), f))
     {
         // trim newline

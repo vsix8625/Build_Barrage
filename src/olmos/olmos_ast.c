@@ -390,10 +390,13 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
     }
 
     OLM_AST_Node *root = BARR_gc_alloc(sizeof(OLM_AST_Node));
+
     if (!root)
     {
+        BARR_errlog("Olmos parser returned NULL");
         return NULL;
     }
+
     root->type = OLM_NODE_PROJECT;
     root->name = BARR_gc_strdup("root");
     root->child_count = 0;

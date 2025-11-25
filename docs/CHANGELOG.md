@@ -6,6 +6,20 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 ### Planned
+- Module system full redesign. 
+System Install Support:  
+- move staging to build/share...
+- Copy staging/share/<project>-<version> tree to system dirs (e.g., /usr/local/share/<project>).  
+- Update/install_rpath in module build_info so binaries find shared libs after install.  
+- Ensure binaries link correctly against installed module libs, not build-time paths.  
+- Verify module includes and libs are properly staged/copied.  
+- Module manifest, to write into staging directory `.barr/share` or `.barr/staging/share`. 
+    - The staging directory will be used for system installs.   
+- All `barr` tools should live in `~/.local/share/barr/tools/bin`.  
+- `barr build` command overrides for build type or target. 
+    - Example:
+        - `barr build --release` forcing release build. 
+        - `barr build --target <name>` overrides `TARGET` from `Barrfile`.
 - Conditional logic in `Olmos-DLS` for `Barrfile`
 ### Removed
 - Planned Windows/cross-platform support — `Build Barrage` is now Linux-only (since: `v.23.1`).

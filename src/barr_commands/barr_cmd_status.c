@@ -119,6 +119,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
     if (out_dir_var == NULL)
     {
+        BARR_warnlog("%s(): Failed to parse Barrfile 'OUT_DIR': fallback to %s", __func__, out_dir_var);
         snprintf(obj_dir, sizeof(obj_dir), "build/debug/obj");
     }
     else
@@ -131,6 +132,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
     if (target == NULL)
     {
+        BARR_warnlog("%s(): Failed to parse Barrfile 'TARGET': fallback to %s", __func__, basename(obj_dir));
         snprintf(target_name, sizeof(target_name), "%s", obj_dir);
     }
     else
@@ -168,7 +170,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     BARR_printf("Status for %s:\n\n", target_name);
 
     bool print_all = false;
-    for (size_t i = 0; i < argc; ++i)
+    for (barr_i32 i = 0; i < argc; ++i)
     {
         char *opt = argv[i];
         if (BARR_strmatch(opt, "--all"))

@@ -9,7 +9,7 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
 {
     const char *cwd = BARR_getcwd();
 
-    for (size_t i = 1; i < argc; ++i)
+    for (barr_i32 i = 1; i < argc; ++i)
     {
         if (BARR_strmatch(argv[i], "--sync") || BARR_strmatch(argv[i], "-s"))
         {

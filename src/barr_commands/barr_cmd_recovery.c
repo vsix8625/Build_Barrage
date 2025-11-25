@@ -123,7 +123,7 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
                 if (BARR_isdigit_str(argv[j]))
                 {
                     barr_i32 idx = atoi(argv[j]);
-                    if (idx <= 0 || idx > recovery_list.count)
+                    if (idx <= 0 || (size_t) idx > recovery_list.count)
                     {
                         BARR_warnlog("Invalid recovery index: %s", argv[j]);
                         continue;

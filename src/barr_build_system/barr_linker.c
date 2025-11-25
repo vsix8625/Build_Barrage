@@ -344,6 +344,10 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         BARR_mkdir_p(bin_dir);
     }
 
+    char origin[BARR_PATH_MAX];
+    snprintf(origin, sizeof(origin), "-Wl,-rpath,$ORIGIN/../share/%s/lib", target_name);
+    BARR_link_args_add(la, origin);
+
     if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
     {
         char exe_path[BARR_PATH_MAX * 2];
@@ -427,6 +431,7 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
 
         char build_info_contents[BARR_BUF_SIZE_8192 * 5];
         const char *barr_ver = BARR_version_get_str();
+
         snprintf(build_info_contents, sizeof(build_info_contents),
                  "[common]\n"
                  "name = %s\n"

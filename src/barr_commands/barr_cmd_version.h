@@ -5,9 +5,9 @@
 
 #define BARR_VERSION_MAJOR 0
 #define BARR_VERSION_MINOR 23
-#define BARR_VERSION_PATCH 0
+#define BARR_VERSION_PATCH 1
 
-#define BARR_VERSION_DATE "2025-11-20"
+#define BARR_VERSION_DATE "2025-11-21"
 
 #define BARR_VERSION_ENCODE(maj, min, pat) (((maj) << 22) | (min) << 12 | (pat))
 

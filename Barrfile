@@ -9,6 +9,14 @@ detect_feats_out = "tools/bin/detect_feats";
 run_cmd("gcc ${detect_features_dir}/src/main.c -Wall -O2 -g -D_GNU_SOURCE -o ${detect_feats_out}");
 run_cmd("./${detect_feats_out}");
 
+# ----------------------------------------------------------------------
+# Create $HOME/.loca/share/barr
+run_cmd("mkdir -p ${BARR_DATA_DIR}");
+
+# Create $HOME/.loca/share/barr/tools/bin
+# barr_hq_bin = "${BARR_DATA_DIR}/tools/bin";
+# run_cmd("mkdir -p ${barr_hq_bin}");
+
 # -------------------------------------------------------------
 # build forward observer
 # -------------------------------------------------------------
@@ -16,17 +24,15 @@ run_cmd("./${detect_feats_out}");
 fo_clean = "tools/fo/build tools/fo/.barr/cache/build.cache";
 add_module("fo","tools/fo","no");
 
-# ----------------------------------------------------------------------
-# Create $HOME/.loca/share/barr
-
-run_cmd("mkdir -p ${BARR_DATA_DIR}");
+# Copy fo to Barr_HQ
+# run_cmd("cp tools/fo/build/fo/debug/bin/fo ${barr_hq_bin}");
 
 # ----------------------------------------------------------------------
 
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.23.0";
+VERSION = "0.23.1";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");

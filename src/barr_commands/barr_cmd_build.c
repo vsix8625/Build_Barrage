@@ -487,9 +487,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // get the out dir from Barrfile
     const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
     char out_dir[BARR_PATH_MAX];
+
     if (out_dir_var == NULL)
     {
         snprintf(out_dir, BARR_PATH_MAX, "%s/build/debug", root_dir);
+        OLM_store_var(OLM_VAR_OUT_DIR, out_dir);
     }
     else
     {
@@ -673,9 +675,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             }
         }
     }
+
     const char *target_version = OLM_get_var(OLM_VAR_VERSION);
+
     if (target_version == NULL)
     {
+        BARR_warnlog("%s == NULL", OLM_VAR_VERSION);
         target_version = "0.0.1";
     }
 
@@ -900,7 +905,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     const char *olm_ccmds = OLM_get_var(OLM_VAR_GEN_CCMDS);
     if (olm_ccmds != NULL)
     {
-        if (BARR_strmatch(olm_ccmds, "yes"))
+        if (BARR_strmatch(olm_ccmds, "yes") || BARR_strmatch(olm_ccmds, "on"))
         {
             compile_ctx.gen_compile_cmds = true;
             progress_ctx.ccmds_json_entries_list = BARR_gc_alloc(sizeof(BARR_List));
@@ -1088,6 +1093,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // out name
     const char *target_name = OLM_get_var(OLM_VAR_TARGET);
+
     if (target_name == NULL)
     {
         target_name = "barr_target";
@@ -1095,6 +1101,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     char output_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
     const char *bin_out_path = OLM_get_var(OLM_VAR_BIN_OUT_PATH);
+
     if (bin_out_path)
     {
         snprintf(output_path, sizeof(output_path), "%s/%s", root_dir, bin_out_path);

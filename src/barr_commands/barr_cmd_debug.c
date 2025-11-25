@@ -11,7 +11,7 @@ barr_i32 BARR_cmd_debug(barr_i32 argc, char **argv)
         return 1;
     }
 
-    for (size_t i = 0; i < argc; ++i)
+    for (barr_i32 i = 0; i < argc; ++i)
     {
         const char *opt = argv[i];
 

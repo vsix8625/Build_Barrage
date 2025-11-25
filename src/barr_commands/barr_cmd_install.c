@@ -51,7 +51,7 @@ static void barr_install_target(const char *install_prefix)
     char dst_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
     BARR_file_write(BARR_DATA_INSTALL_INFO_PATH, "# %s installed paths\n", name);
 
-    if (BARR_strmatch(type, "executable"))
+    if (BARR_strmatch(type, "executable") || BARR_strmatch(type, "exec"))
     {
         const char *build_dir = BARR_get_build_info_key(info, "build_dir");
 

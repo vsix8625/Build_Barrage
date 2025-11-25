@@ -54,7 +54,7 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
         return 1;
     }
 
-    for (size_t i = 1; i < argc; ++i)
+    for (barr_i32 i = 1; i < argc; ++i)
     {
         const char *opt = argv[i];
 
@@ -77,6 +77,8 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
                 BARR_errlog("%s(): failed to get barr root dir", __func__);
                 return 1;
             }
+
+            // TODO: move this to .local/share
             char fo_barr_binfo[BARR_PATH_MAX];
             snprintf(fo_barr_binfo, sizeof(fo_barr_binfo), "%s/tools/fo/.barr/data/build_info", root);
 

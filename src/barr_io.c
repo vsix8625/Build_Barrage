@@ -250,6 +250,14 @@ barr_i32 BARR_file_append(const char *filename, const char *format, ...)
 
 barr_i32 BARR_file_copy(const char *src, const char *dst)
 {
+    struct stat st;
+
+    if (stat(src, &st) != 0)
+    {
+        BARR_errlog("Failed to stat source file");
+        return 1;
+    }
+
     FILE *in = fopen(src, "r");
     if (!in)
     {
@@ -281,6 +289,13 @@ barr_i32 BARR_file_copy(const char *src, const char *dst)
 
     fclose(in);
     fclose(out);
+
+    if (chmod(dst, st.st_mode) != 0)
+    {
+        BARR_errlog("Failed to chmod destination");
+        return 1;
+    }
+
     return 0;
 }
 
