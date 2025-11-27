@@ -1,0 +1,9 @@
+[common]
+name = fo
+type = executable
+version = 0.2.0
+barr_version = 0.23.1
+timestamp = 1764274935
+
+[paths]
+build_dir = /devenv/repos/Build_Barrage/tools/fo/build/fo/debug

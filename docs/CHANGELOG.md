@@ -26,6 +26,23 @@ System Install Support:
 
 ---
 
+## [0.23.1] – 2025-11-18
+### Added
+- Forward Observer `fo`, prototype, monitors project directory and its sub-directories for changes,
+  and runs `barr build` if needed.
+    - Can be turn on with `barr fo on`, and off with `barr fo off`.
+    - For status report `barr fo report`.  
+    - To watch live log in terminal `barr fo watch`.
+    - `notify-send` integrated, for various information.
+    - Options are subject to change.
+- When it successfully builds and data gets updated `fo` relaxes.  
+- TBA: `barr fo reload` or make it smarter if certain files do not exists at the time of launched. 
+### Changed
+### Fixed 
+### Removed
+
+---
+
 ## [0.22.1] – 2025-11-18
 ### Added
 - Forward Observer `fo`, prototype, monitors project directory and its sub-directories for changes,
