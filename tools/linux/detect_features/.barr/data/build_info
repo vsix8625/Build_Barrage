@@ -1,9 +1,0 @@
-[common]
-name = detect_feats
-type = executable
-version = 0.0.1
-barr_version = 0.21.1
-timestamp = 1763271036
-
-[paths]
-build_dir = /devenv/repos/Build_Barrage/tools/linux/detect_features/build/debug
