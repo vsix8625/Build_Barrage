@@ -54,7 +54,7 @@ static barr_simd_level_t barr_detect_simd_from_flags(const char *flags_line)
 static size_t barr_parse_cache_size(const char *buf)
 {
     size_t size = 0;
-    char unit = 0;
+    char   unit = 0;
 
     if (sscanf(buf, "%zu%c", &size, &unit) == 2)
     {
@@ -77,8 +77,8 @@ static size_t barr_parse_cache_size(const char *buf)
 
 static size_t barr_get_cache_size_sys(const char *wanted_type)
 {
-    char path[BARR_BUF_SIZE_128];
-    char buf[BARR_BUF_SIZE_64];
+    char   path[BARR_BUF_SIZE_128];
+    char   buf[BARR_BUF_SIZE_64];
     size_t size = 0;
 
     for (int i = 0; i < 8; i++)
@@ -135,8 +135,8 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
     memset(info, 0, sizeof(*info));
 
     info->threads = (barr_u32) sysconf(_SC_NPROCESSORS_ONLN);
-    info->cores = (barr_u32) sysconf(_SC_NPROCESSORS_CONF);
-    info->simd = SIMD_NONE;
+    info->cores   = (barr_u32) sysconf(_SC_NPROCESSORS_CONF);
+    info->simd    = SIMD_NONE;
 
     FILE *fp = fopen("/proc/cpuinfo", "r");
 
@@ -147,9 +147,9 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
         return;
     }
 
-    char line[BARR_BUF_SIZE_1024];
-    char all_flags[BARR_BUF_SIZE_1024] = {0};
-    barr_i32 flags_found = 0;
+    char     line[BARR_BUF_SIZE_1024];
+    char     all_flags[BARR_BUF_SIZE_1024] = {0};
+    barr_i32 flags_found                   = 0;
 
     while (fgets(line, sizeof(line), fp))
     {
@@ -189,7 +189,7 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
             {
                 strncpy(all_flags, p + 2, sizeof(all_flags) - 1);
                 all_flags[strcspn(all_flags, "\n")] = '\0';
-                flags_found = 1;
+                flags_found                         = 1;
             }
         }
     }
@@ -209,7 +209,7 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
 
     if (info->cache_size == 0)
     {
-        size_t threads = (size_t) (info->threads > 0 ? info->threads : 4);
+        size_t threads   = (size_t) (info->threads > 0 ? info->threads : 4);
         info->cache_size = threads * 2UL * 1024UL * 1024UL;
     }
 
@@ -225,8 +225,8 @@ void BARR_get_cpu_info(BARR_InfoCPU *info)
 
 // Governors
 
-#define GOVERNOR_DIR "/sys/devices/system/cpu"
-#define GOVERNOR_PERF "performance"
+#define GOVERNOR_DIR     "/sys/devices/system/cpu"
+#define GOVERNOR_PERF    "performance"
 #define GOVERNOR_SCHUTIL "schedutil"
 
 static barr_i32 barr_gov_write(const char *cpu_name, const char *gov)
@@ -285,7 +285,7 @@ bool BARR_cpu_perf(void)
     }
 
     struct dirent *ent;
-    barr_i32 changed = 0;
+    barr_i32       changed = 0;
 
     while ((ent = readdir(dir)))
     {
@@ -323,7 +323,7 @@ bool BARR_cpu_norm(void)
         return false;
     }
     struct dirent *ent;
-    barr_i32 changed = 0;
+    barr_i32       changed = 0;
 
     while ((ent = readdir(dir)))
     {

@@ -26,7 +26,7 @@ barr_i32 BARR_archive_stage(BARR_SourceList *list, const char *archive_path)
 
     size_t argc = list->count + 3;
     char **args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
-    size_t idx = 0;
+    size_t idx  = 0;
     args[idx++] = "ar";
     args[idx++] = "rcs";
     args[idx++] = (char *) archive_path;
@@ -56,9 +56,9 @@ BARR_LinkArgs *BARR_link_args_create(void)
         return NULL;
     }
     la->capacity = BARR_INITIAL_LINK_ARGS_CAPACITY;
-    la->count = 0;
-    la->args = BARR_gc_alloc(sizeof(char *) * la->capacity);
-    la->args[0] = NULL;
+    la->count    = 0;
+    la->args     = BARR_gc_alloc(sizeof(char *) * la->capacity);
+    la->args[0]  = NULL;
     return la;
 }
 
@@ -72,14 +72,14 @@ void BARR_link_args_add(BARR_LinkArgs *la, const char *arg)
     if (la->count >= la->capacity)
     {
         size_t new_capacity = (la->capacity == 0) ? 16 : la->capacity * 2;
-        char **new_args = BARR_gc_realloc(la->args, new_capacity * sizeof(char *));
+        char **new_args     = BARR_gc_realloc(la->args, new_capacity * sizeof(char *));
         if (new_args == NULL)
         {
             BARR_errlog("%s(): failed to realloc linker args", __func__);
             return;
         }
 
-        la->args = new_args;
+        la->args     = new_args;
         la->capacity = new_capacity;
     }
 
@@ -154,16 +154,23 @@ void BARR_link_collect_pkg_list(BARR_List *list, BARR_LinkArgs *input, BARR_Link
     }
 }
 
-barr_i32 BARR_link_target(const char *target_type, const char *target_name, const char *out_dir,
-                          BARR_SourceList *object_list, BARR_List *pkg_list, size_t n_threads,
-                          const char *resolved_compiler, const char *linker, const char *module_includes,
-                          const char *target_version, const char *main_source)
+barr_i32 BARR_link_target(const char      *target_type,
+                          const char      *target_name,
+                          const char      *out_dir,
+                          BARR_SourceList *object_list,
+                          BARR_List       *pkg_list,
+                          size_t           n_threads,
+                          const char      *resolved_compiler,
+                          const char      *linker,
+                          const char      *module_includes,
+                          const char      *target_version,
+                          const char      *main_source)
 {
     struct timespec link_start, link_end;
     clock_gettime(CLOCK_MONOTONIC, &link_start);
 
-    if (target_name == NULL || target_type == NULL || out_dir == NULL || object_list == NULL || pkg_list == NULL ||
-        resolved_compiler == NULL)
+    if (target_name == NULL || target_type == NULL || out_dir == NULL || object_list == NULL ||
+        pkg_list == NULL || resolved_compiler == NULL)
     {
         BARR_errlog("%s(): NULL argument", __func__);
         return 1;
@@ -248,8 +255,12 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
     for (size_t i = 0; i < BARR_get_module_count(); ++i)
     {
         BARR_Module *mod = &BARR_get_module_array()[i];
-        char build_info_path[BARR_PATH_MAX];
-        snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod->path, BARR_DATA_BUILD_INFO_PATH);
+        char         build_info_path[BARR_PATH_MAX];
+        snprintf(build_info_path,
+                 sizeof(build_info_path),
+                 "%s/%s",
+                 mod->path,
+                 BARR_DATA_BUILD_INFO_PATH);
 
         if (!BARR_isfile(build_info_path))
         {
@@ -257,10 +268,10 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
             continue;
         }
 
-        char *name = BARR_get_build_info_key(build_info_path, "name");
-        char *type = BARR_get_build_info_key(build_info_path, "type");
+        char *name     = BARR_get_build_info_key(build_info_path, "name");
+        char *type     = BARR_get_build_info_key(build_info_path, "type");
         char *lib_path = BARR_get_build_info_key(build_info_path, "libpath");
-        char *runtime = BARR_get_build_info_key(build_info_path, "rpath");
+        char *runtime  = BARR_get_build_info_key(build_info_path, "rpath");
 
         if (type == NULL)
         {
@@ -378,9 +389,10 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
             return 1;
         }
 
-        char build_info_contents[BARR_BUF_SIZE_8192 * 5];
+        char        build_info_contents[BARR_BUF_SIZE_8192 * 5];
         const char *barr_ver = BARR_version_get_str();
-        snprintf(build_info_contents, sizeof(build_info_contents),
+        snprintf(build_info_contents,
+                 sizeof(build_info_contents),
                  "[common]\n"
                  "name = %s\n"
                  "type = %s\n"
@@ -389,7 +401,12 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
                  "timestamp = %ld\n"
                  "\n[paths]\n"
                  "build_dir = %s\n",
-                 target_name, target_type, target_version, barr_ver, time(NULL), out_dir);
+                 target_name,
+                 target_type,
+                 target_version,
+                 barr_ver,
+                 time(NULL),
+                 out_dir);
 
         BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
     }
@@ -406,7 +423,12 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         char dest_shared[BARR_PATH_MAX * 2];
         if (BARR_strmatch(target_type, "shared") || BARR_strmatch(target_type, "library"))
         {
-            snprintf(dest_shared, sizeof(dest_shared), "%s/lib%s.%s", lib_dir, target_name, BARR_DYNAMIC_LIB_EXT);
+            snprintf(dest_shared,
+                     sizeof(dest_shared),
+                     "%s/lib%s.%s",
+                     lib_dir,
+                     target_name,
+                     BARR_DYNAMIC_LIB_EXT);
 
             BARR_link_args_add(la, "-shared");
             BARR_link_args_add(la, "-fPIC");
@@ -417,8 +439,8 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
             {
                 BARR_link_args_debug(la);
             }
-            char **link_args = BARR_link_args_finalize(la);
-            barr_i32 ret = BARR_link_stage(link_args);
+            char   **link_args = BARR_link_args_finalize(la);
+            barr_i32 ret       = BARR_link_stage(link_args);
             if (ret != 0)
             {
                 BARR_errlog("Shared lib creation failed");
@@ -429,10 +451,11 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
         char lib_dir_final[BARR_PATH_MAX];
         snprintf(lib_dir_final, sizeof(lib_dir_final), "%s/lib", out_dir);
 
-        char build_info_contents[BARR_BUF_SIZE_8192 * 5];
+        char        build_info_contents[BARR_BUF_SIZE_32K * 2];
         const char *barr_ver = BARR_version_get_str();
 
-        snprintf(build_info_contents, sizeof(build_info_contents),
+        snprintf(build_info_contents,
+                 sizeof(build_info_contents),
                  "[common]\n"
                  "name = %s\n"
                  "type = %s\n"
@@ -446,15 +469,22 @@ barr_i32 BARR_link_target(const char *target_type, const char *target_name, cons
                  "\n[artifacts]\n"
                  "static = %s\n"
                  "shared = %s\n",
-                 target_name, target_type, target_version, barr_ver, time(NULL), module_includes, lib_dir_final,
-                 lib_dir_final, BARR_strmatch(target_type, "shared") ? "" : dest_static,
+                 target_name,
+                 target_type,
+                 target_version,
+                 barr_ver,
+                 time(NULL),
+                 module_includes,
+                 lib_dir_final,
+                 lib_dir_final,
+                 BARR_strmatch(target_type, "shared") ? "" : dest_static,
                  BARR_strmatch(target_type, "static") ? "" : dest_shared);
 
         BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &link_end);
-    BARR_log("Link time: \033[34;1m %s", BARR_fmt_time_elapsed(&link_start, &link_end));
+    BARR_log("Link time: \033[34;1m %s\033[0m", BARR_fmt_time_elapsed(&link_start, &link_end));
     return 0;
 }
 

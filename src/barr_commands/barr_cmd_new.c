@@ -6,17 +6,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DASH '-'
+#define DASH       '-'
 #define UNDERSCORE '_'
-#define MAX_LEN 128
+#define MAX_LEN    128
 
 bool barr_is_valid_name(const char *str);
 bool barr_is_valid_file_name(const char *str);
 
 //----------------------------------------------------------------------------------------------------
 
-barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *ext, const char *header_ext,
-                                bool is_public);
+barr_i32 barr_create_pair_files(const char *name,
+                                const char *dir,
+                                const char *ext,
+                                const char *header_ext,
+                                bool        is_public);
 
 //----------------------------------------------------------------------------------------------------
 
@@ -63,7 +66,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
             }
 
             const char *file_name = argv[i + 1];
-            const char *dir_path = ".";  // current dir def
+            const char *dir_path  = ".";  // current dir def
 
             if (i + 2 < argc && argv[i + 2][0] != '-')
             {
@@ -112,23 +115,27 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                     "# ------------------------------------------------------------------\n"
                     "# 1. PROJECT METADATA                                                \n"
                     "# ------------------------------------------------------------------\n"
-                    "TARGET        = \"barr_default\";          # Name of the final binary / library\n"
+                    "TARGET        = \"barr_default\";          # Name of the final binary / "
+                    "library\n"
                     "VERSION       = \"0.0.1\";                # Project version (informational)\n"
-                    "TARGET_TYPE   = \"executable\";           # \"executable\" | \"static\" | \"shared\"\n"
+                    "TARGET_TYPE   = \"executable\";           # \"executable\" | \"static\" | "
+                    "\"shared\"\n"
                     "\n"
                     "print(\"Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}\");\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
                     "# 2. TOOLCHAIN                                                       \n"
                     "# ------------------------------------------------------------------\n"
-                    "COMPILER      = \"/usr/bin/gcc\";         # C compiler (full path recommended)\n"
-                    "LINKER        = \"lld\";                  # Linker (ld, gold, lld, …)\n"
+                    "COMPILER      = \"/usr/bin/clang\";  # C compiler (full path recommended)\n"
+                    "LINKER        = \"lld\";             # Linker (ld, gold, lld,mold …)\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
                     "# 3. BUILD TYPE & OUTPUT                                             \n"
                     "# ------------------------------------------------------------------\n"
-                    "BUILD_TYPE    = \"debug\";                          # \"debug\" (default) | \"release\"\n"
-                    "OUT_DIR       = \"build/${TARGET}/${BUILD_TYPE}\";  # Directory for objects & final binary\n"
+                    "BUILD_TYPE    = \"debug\";                          # \"debug\" (default) | "
+                    "\"release\"\n"
+                    "OUT_DIR       = \"build/${TARGET}/${BUILD_TYPE}\";  # Directory for objects & "
+                    "final binary\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
                     "# 4. COMPILATION FLAGS                                               \n"
@@ -136,21 +143,25 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                     "# You can define your own variables like the line below.\n"
                     "std           = \"-std=c23\";             # C standard (c11, c17, c23, …)\n"
                     "CFLAGS        = \"${std} -Wall -Werror -Wextra -g\";   # Debug flags\n"
-                    "CFLAGS_RELEASE = \"${std} -Wall -O3\";                # Release flags (used when "
+                    "CFLAGS_RELEASE = \"${std} -Wall -O3\";                # Release flags (used "
+                    "when "
                     "BUILD_TYPE=release)\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
                     "# 5. SOURCE & INCLUDE DISCOVERY                                      \n"
                     "# ------------------------------------------------------------------\n"
-                    "# AUTO_INCLUDE_DISCOVERY = \"on\";   # \"on\" (default) | \"append\" | \"off\"\n"
+                    "# AUTO_INCLUDE_DISCOVERY = \"on\";   # \"on\" (default) | \"append\" | "
+                    "\"off\"\n"
                     "#   • \"on\"  – automatically scan the project root for headers.\n"
                     "#   • \"append\" – scan + keep manually added INCLUDES.\n"
                     "#   • \"off\" – disable scanning; only use explicit INCLUDES.\n"
                     "#\n"
                     "# INCLUDES = \"-Iinc\";             # Manually added include directories\n"
-                    "#   • Adding this variable automatically sets AUTO_INCLUDE_DISCOVERY = \"off\".\n"
+                    "#   • Adding this variable automatically sets AUTO_INCLUDE_DISCOVERY = "
+                    "\"off\".\n"
                     "\n"
-                    "# GLOB_SOURCES = \"src dir1 dir2\"; # Recursive glob patterns (turns off auto-source discovery)\n"
+                    "# GLOB_SOURCES = \"src dir1 dir2\"; # Recursive glob patterns (turns off "
+                    "auto-source discovery)\n"
                     "# SOURCES = \"main.c file1.c src/file3.c\"; # Explicit source list\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
@@ -167,8 +178,10 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                     "# ------------------------------------------------------------------\n"
                     "# 8. MISCELLANEOUS                                                   \n"
                     "# ------------------------------------------------------------------\n"
-                    "# GEN_COMPILE_COMMANDS = \"on\";           # Generate compile_commands.json (on/off)\n"
-                    "# EXCLUDE_PATTERNS = \"build test\";        # Patterns excluded from glob scanning\n"
+                    "# GEN_COMPILE_COMMANDS = \"on\";           # Generate compile_commands.json "
+                    "(on/off)\n"
+                    "# EXCLUDE_PATTERNS = \"build test\";        # Patterns excluded from glob "
+                    "scanning\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
                     "# 9. MODULE SUPPORT\n"
@@ -179,8 +192,10 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                     "# engine_includes = \"-Iinclude -Iengine_public_inc\";\n"
                     "# engine_clean_targets = \"engine/build engine/.barr/cache/build.cache\";\n\n"
                     "# Finalize the module includes in case of multiple modules\n"
-                    "# MODULES_INCLUDES = \"${engine_includes}\"; # Aggregated includes from modules\n"
-                    "# CLEAN_TARGETS = \"${engine_clean_targets} ${other_clean_targets}...\";       # Extra paths "
+                    "# MODULES_INCLUDES = \"${engine_includes}\"; # Aggregated includes from "
+                    "modules\n"
+                    "# CLEAN_TARGETS = \"${engine_clean_targets} ${other_clean_targets}...\";      "
+                    " # Extra paths "
                     "removed by 'barr clean'\n"
                     "\n"
                     "# ------------------------------------------------------------------\n"
@@ -196,10 +211,16 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                     "\n"
                     "print(\"Barrfile execution finished\");\n";
 
-                BARR_file_write("Barrfile", "# Auto-generated by Build Barrage v%d.%d.%d\n# Latest update: %s\n\n",
-                                BARR_VERSION_MAJOR, BARR_VERSION_MINOR, BARR_VERSION_PATCH, BARR_VERSION_DATE);
+                BARR_file_write(
+                    "Barrfile",
+                    "# Auto-generated by Build Barrage v%d.%d.%d\n# Latest update: %s\n\n",
+                    BARR_VERSION_MAJOR,
+                    BARR_VERSION_MINOR,
+                    BARR_VERSION_PATCH,
+                    BARR_VERSION_DATE);
                 BARR_file_append("Barrfile", "%s", barrfile_contents);
-                BARR_log("Barrfile created, you can run 'barr config open' to open it with you $EDITOR");
+                BARR_log(
+                    "Barrfile created, you can run 'barr config open' to open it with you $EDITOR");
             }
             else
             {
@@ -222,9 +243,7 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
             {
                 char *main_contents = "// Created by Build Barrage\n"
                                       "#include <stdio.h>\n\n"
-                                      "int main(int argc,char **argv){\n"
-                                      "  (void)argc;\n"
-                                      "  (void)argv;\n"
+                                      "int main(void){\n"
                                       "  printf(\"Hello, from barr\\n\");\n"
                                       "  return 0;\n"
                                       "}\n";
@@ -251,18 +270,18 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            const char *dir = "src";
-            const char *ext = ".c";
+            const char *dir        = "src";
+            const char *ext        = ".c";
             const char *header_ext = ".h";
-            bool is_public = false;
+            bool        is_public  = false;
 
             while (i + 1 < argc)
             {
                 const char *next = argv[i + 1];
                 if (BARR_strmatch(next, "--dir"))
                 {
-                    dir = argv[i + 2];
-                    i += 2;
+                    dir  = argv[i + 2];
+                    i   += 2;
                 }
                 else if (BARR_strmatch(next, "--ext"))
                 {
@@ -275,8 +294,8 @@ barr_i32 BARR_command_new(barr_i32 argc, char **argv)
                 }
                 else if (BARR_strmatch(next, "--public"))
                 {
-                    is_public = BARR_strmatch(argv[i + 2], "true");
-                    i += 2;
+                    is_public  = BARR_strmatch(argv[i + 2], "true");
+                    i         += 2;
                 }
                 else
                 {
@@ -308,7 +327,8 @@ bool barr_is_valid_name(const char *str)
     size_t len = strlen(str);
     if (len > (size_t) MAX_LEN)
     {
-        BARR_warnlog("Project name length: %zu is greater than max allowed: %d", strlen(str), MAX_LEN);
+        BARR_warnlog(
+            "Project name length: %zu is greater than max allowed: %d", strlen(str), MAX_LEN);
         return false;
     }
 
@@ -320,7 +340,7 @@ bool barr_is_valid_name(const char *str)
 
     for (size_t i = 1; i < len; ++i)
     {
-        char c = str[i];
+        char c    = str[i];
         char prev = str[i - 1];
 
         if (!(isalnum((unsigned char) str[i]) || str[i] == DASH || str[i] == UNDERSCORE))
@@ -380,7 +400,7 @@ bool barr_is_valid_file_name(const char *str)
 
     for (size_t i = start; i < len; ++i)
     {
-        char c = str[i];
+        char c    = str[i];
         char prev = (i > 0) ? str[i - 1] : 0;
 
         if (c == '.')
@@ -418,8 +438,11 @@ bool barr_is_valid_file_name(const char *str)
 }
 
 //----------------------------------------------------------------------------------------------------
-barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *ext, const char *header_ext,
-                                bool is_public)
+barr_i32 barr_create_pair_files(const char *name,
+                                const char *dir,
+                                const char *ext,
+                                const char *header_ext,
+                                bool        is_public)
 {
     if (name == NULL || dir == NULL || ext == NULL || header_ext == NULL)
     {
@@ -444,8 +467,8 @@ barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *e
         }
     }
 
-    char source_path[BARR_PATH_MAX];
-    char header_path[BARR_PATH_MAX];
+    char source_path[BARR_BUF_SIZE_4096];
+    char header_path[BARR_BUF_SIZE_4096];
 
     snprintf(source_path, sizeof(source_path), "%s/%s%s", dir, name, ext);
     snprintf(header_path, sizeof(header_path), "%s/%s%s", header_dir, name, header_ext);
@@ -460,12 +483,15 @@ barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *e
             *p = (char) toupper(*p);
         }
 
-        char header_contents[BARR_BUF_SIZE_16K];
-        snprintf(header_contents, sizeof(header_contents),
+        char header_contents[(sizeof(guard) * 3) + 64];
+        snprintf(header_contents,
+                 sizeof(header_contents),
                  "#ifndef %s\n"
                  "#define %s\n\n"
                  "#endif // %s\n",
-                 guard, guard, guard);
+                 guard,
+                 guard,
+                 guard);
 
         BARR_file_write(header_path, "%s", header_contents);
         BARR_log("Created: %s", header_path);
@@ -478,10 +504,12 @@ barr_i32 barr_create_pair_files(const char *name, const char *dir, const char *e
     if (!BARR_isfile(source_path))
     {
         char src_contents[BARR_BUF_SIZE_16K];
-        snprintf(src_contents, sizeof(src_contents),
+        snprintf(src_contents,
+                 sizeof(src_contents),
                  "// Created by Build Barrage\n"
                  "#include \"%s%s\"\n\n",
-                 name, header_ext);
+                 name,
+                 header_ext);
 
         BARR_file_write(source_path, "%s", src_contents);
         BARR_log("Created: %s", source_path);

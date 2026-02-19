@@ -8,7 +8,7 @@
 
 //----------------------------------------------------------------------------------------------------
 static BARR_Module g_barr_modules[BARR_MAX_MODULES];
-static size_t g_barr_module_count = 0;
+static size_t      g_barr_module_count = 0;
 
 BARR_Module *BARR_get_module_array(void)
 {
@@ -62,7 +62,11 @@ void BARR_print_modules(void)
     BARR_log("Total modules: %zu", g_barr_module_count);
     for (size_t i = 0; i < g_barr_module_count; ++i)
     {
-        BARR_log("\t%zu) %s at '%s/%s'", i + 1, g_barr_modules[i].name, BARR_getcwd(), g_barr_modules[i].path);
+        BARR_log("\t%zu) %s at '%s/%s'",
+                 i + 1,
+                 g_barr_modules[i].name,
+                 BARR_getcwd(),
+                 g_barr_modules[i].path);
     }
 }
 
@@ -82,26 +86,30 @@ static void barr_module_staging(const char *module)
     if (target == NULL)
     {
         target = "barr_default";
-        BARR_warnlog("%s(): TARGET not set in 'Barrfile' default %s will be used", __func__, target);
+        BARR_warnlog(
+            "%s(): TARGET not set in 'Barrfile' default %s will be used", __func__, target);
     }
 
     const char *version = OLM_get_var(OLM_VAR_VERSION);
     if (version == NULL)
     {
         version = "0.0.1";
-        BARR_warnlog("%s(): VERSION not set in 'Barrfile' default %s will be used", __func__, version);
+        BARR_warnlog(
+            "%s(): VERSION not set in 'Barrfile' default %s will be used", __func__, version);
     }
 
     const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
-    char out_dir[BARR_PATH_MAX];
+
+    char out_dir[BARR_BUF_SIZE_4096];
     if (out_dir_var == NULL)
     {
-        snprintf(out_dir, BARR_PATH_MAX, "%s/build/debug", BARR_getcwd());
-        BARR_warnlog("%s(): OUT_DIR not set in 'Barrfile' default %s will be used", __func__, out_dir);
+        snprintf(out_dir, sizeof(out_dir), "%s/build/debug", BARR_getcwd());
+        BARR_warnlog(
+            "%s(): OUT_DIR not set in 'Barrfile' default %s will be used", __func__, out_dir);
     }
     else
     {
-        snprintf(out_dir, BARR_PATH_MAX, "%s", out_dir_var);
+        snprintf(out_dir, sizeof(out_dir), "%s", out_dir_var);
     }
 
     char staging_dir[BARR_PATH_MAX];
@@ -109,24 +117,21 @@ static void barr_module_staging(const char *module)
 
     BARR_mkdir_p(staging_dir);
 
-    char module_dir[BARR_PATH_MAX];
+    char module_dir[BARR_PATH_MAX * 2];
     snprintf(module_dir, sizeof(module_dir), "%s/%s", staging_dir, module);
 
-    char stage_mod_bin_dir[BARR_PATH_MAX];
+    char stage_mod_bin_dir[BARR_PATH_MAX * 3];
     snprintf(stage_mod_bin_dir, sizeof(stage_mod_bin_dir), "%s/bin", module_dir);
 
-    char stage_mod_lib_dir[BARR_PATH_MAX];
+    char stage_mod_lib_dir[BARR_PATH_MAX * 3];
     snprintf(stage_mod_lib_dir, sizeof(stage_mod_lib_dir), "%s/lib", module_dir);
 
-    char stage_mod_inc_dir[BARR_PATH_MAX];
+    char stage_mod_inc_dir[BARR_PATH_MAX * 3];
     snprintf(stage_mod_inc_dir, sizeof(stage_mod_inc_dir), "%s/include", module_dir);
 
     BARR_mkdir_p(stage_mod_bin_dir);
     BARR_mkdir_p(stage_mod_lib_dir);
     BARR_mkdir_p(stage_mod_inc_dir);
-
-    BARR_printf("staging_dir: %s | module_dir: %s\nstage_mod_bin_dir: %s\nstage_mod_lib_dir: %s\nstage_mod_inc_dir: %s",
-                staging_dir, module_dir, stage_mod_bin_dir, stage_mod_lib_dir, stage_mod_inc_dir);
 
     char module_build_info[BARR_PATH_MAX];
     snprintf(module_build_info, sizeof(module_build_info), "%s/.barr/data/build_info", module);
@@ -168,7 +173,7 @@ static void barr_module_staging(const char *module)
             return;
         }
 
-        char dst_shared[BARR_PATH_MAX];
+        char dst_shared[BARR_PATH_MAX * 4];
         snprintf(dst_shared, sizeof(dst_shared), "%s/%s", stage_mod_lib_dir, basename(src_shared));
 
         BARR_printf("Copying: %s -> %s\n", src_shared, dst_shared);
@@ -176,7 +181,8 @@ static void barr_module_staging(const char *module)
         BARR_file_copy(src_shared, dst_shared);
     }
 
-    if (BARR_strmatch(mod_type, "library") || BARR_strmatch(mod_type, "shared") || BARR_strmatch(mod_type, "static"))
+    if (BARR_strmatch(mod_type, "library") || BARR_strmatch(mod_type, "shared") ||
+        BARR_strmatch(mod_type, "static"))
     {
         char *cflags_val = BARR_get_build_info_key(module_build_info, "cflags");
         if (cflags_val && cflags_val[0] != '\0')
@@ -189,11 +195,11 @@ static void barr_module_staging(const char *module)
                 if (strncmp(tok, "-I", 2) == 0)
                 {
                     const char *raw_path = tok + 2;
-                    char resolved[BARR_PATH_MAX];
+                    char        resolved[BARR_PATH_MAX];
 
                     if (BARR_path_resolve(module, raw_path, resolved, sizeof(resolved)))
                     {
-                        char dst[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
+                        char dst[sizeof(stage_mod_inc_dir) + 32];
                         snprintf(dst, sizeof(dst), "%s/%s", stage_mod_inc_dir, basename(resolved));
 
                         BARR_printf("DST: %s\n", dst);
@@ -235,7 +241,8 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
     bool is_required = false;
     if (required != NULL)
     {
-        if (BARR_strmatch(required, "true") || BARR_strmatch(required, "yes") || BARR_strmatch(required, "required"))
+        if (BARR_strmatch(required, "true") || BARR_strmatch(required, "yes") ||
+            BARR_strmatch(required, "required"))
         {
             is_required = true;
         }
@@ -244,7 +251,7 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
     char *self = BARR_get_self_exe();
 
     const char *args[] = {self, "build", "--dir", path, NULL};
-    barr_i32 result = BARR_run_process(args[0], (char **) args, false);
+    barr_i32    result = BARR_run_process(args[0], (char **) args, false);
 
     if (result != 0)
     {

@@ -1,6 +1,6 @@
 # Olmos (for `Barrfile`)
 
-Olmos is the scripting layer (AST) used by Build Barrage (`barr`) to configure project builds.  
+Olmos is the scripting config layer, used by Build Barrage (`barr`) to configure project builds.  
 It allows you to define compile flags, build type, output name,  
 and other build variables in a human-readable syntax.  
 
@@ -53,7 +53,7 @@ and other build variables in a human-readable syntax.
    # Define extra clean targets from the sub-project
    # NOTE: correct paths are important, wrong paths may delete unintended files
    dir1_clean_targets = "dir1/build dir1/.barr/cache/build.cache";
-   clean_targets = "${dir1_clean_targets}";
+   CLEAN_TARGETS = "${dir1_clean_targets}";
    # These targets will used when `barr clean` is called   
 ```
 - Useful for orchestrating multi-target builds, custom pre/post build steps, or invoking scripts.  
@@ -63,51 +63,52 @@ and other build variables in a human-readable syntax.
 
 | Variable | Description |
 |----------|-------------|
-|`target` | Name of the target, used to output binary and library name |
-|`target_type` | `"executable"` or `"library"` |
-|`version` | Target version string |
-|`cflags` | Compiler flags for debug builds |
-|`cflags_release` | Compiler flags for release builds |
-|`defines` | Preprocessor defines (`-D` flags) |
-|`includes` | Additional include directories (`-I` flags) |
-|`auto_include_discovery` | remains `on` by default (`append` or `off`) |
-|`gen_compile_commands` | `yes` or `no` by default |
-|`exclude_patterns` | Extra scanner exclude patterns |
-|`clean_targets` | Directories or files to be cleaned with `barr clean` command |
-|`sources` | Source files to compile |
-|`glob_sources` | Source directories to grab source files |
-|`build_type` | `"debug"` or `"release"` |
-|`compiler` | Compiler to use (`"gcc"` or `"clang"`)|
-|`linker` | Linker to use (`"lld"` or `"gold"`)|
-|`out_dir` | Base output directory for build artifacts |
-|`binary_out_path` | Overrides final binary output |
-|`lflags` | User defined `-l` libraries |
-|`lib_paths` | Additional (`-L`) paths | 
+|`TARGET` | Name of the target, used to output binary and library name |
+|`TARGET_TYPE` | `"executable"` or `"library"` |
+|`VERSION` | Target version string |
+|`CFLAGS` | Compiler flags for debug builds |
+|`CFLAGS_RELEASE` | Compiler flags for release builds |
+|`DEFINES` | Preprocessor defines (`-D` flags) |
+|`INCLUDES` | Additional include directories (`-I` flags) |
+|`AUTO_INCLUDE_DISCOVERY` | remains `on` by default (`append` or `off`) |
+|`GEN_COMPILE_COMMANDS` | `yes` or `no` by default |
+|`EXCLUDE_PATTERNS` | Extra scanner exclude patterns |
+|`CLEAN_TARGETS` | Directories or files to be cleaned with `barr clean` command |
+|`SOURCES` | Source files to compile |
+|`GLOB_SOURCES` | Source directories to grab source files |
+|`BUILD_TYPE` | `"debug"` or `"release"` |
+|`COMPILER` | Compiler to use (`"gcc"` or `"clang"`)|
+|`LINKER` | Linker to use (`"lld"` or `"gold"`)|
+|`OUT_DIR` | Base output directory for build artifacts |
+|`BINARY_OUT_PATH` | Overrides final binary output |
+|`LFLAGS` | User defined `-l` libraries |
+|`LIB_PATHS` | Additional (`-L`) paths | 
 
 ## Example Barrfile
 
 ```olmos
   print("Barrfile started");
 
-  project = "Aurora";
+  TARGET = "Build_Barrage";
 
-  cflags = "-Wall -Wextra -Werror -g";
-  cflags_release = "-O3 -Wall";
+  CFLAGS = "-Wall -Wextra -Werror -g";
+  CFLAGS_RELEASE = "-O3 -Wall";
 
-  defines = "-DDEBUG";
-  build_type = "debug";
+  DEFINES = "-DDEBUG";
+  BUILD_TYPE = "debug";
 
   # Optional include directories, NOTICE: using includes var will turn off barr auto dir detection!
-  # includes = "-Iinc";
+  # INCLUDES = "-Iinc";
 
   find_package("xxhash fmt");
 
   print("Barrfile ended");
 ```
 
-- `target` is used to generate the output binary path. 
-- `cflags` and `cflags_release` are automatically selected based on the `build_type`.  
-- `defines` and `includes` override the defaults and passed to the compiler.  
-- `target_type` library creates both shared and static lib.  
+- `TARGET` is used to generate the output binary path. 
+- `CFLAGS` and `CFLAGS_RELEASE` are automatically selected based on the `BUILD_TYPE`.  
+- `DEFINES` and `INCLUDES` override the defaults and passed to the compiler.  
+- `TARGET_TYPE` library creates both shared and static lib.  
+- `barr new --barrfile` generates a default Barrfile.  
 
 

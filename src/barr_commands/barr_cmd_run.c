@@ -19,13 +19,13 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     }
 
     char *target_name = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "name");
-    char *build_dir = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "build_dir");
+    char *build_dir   = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "build_dir");
 
     char exe_path[BARR_PATH_MAX];
     snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", build_dir, target_name);
 
     char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
-    exec_args[0] = exe_path;
+    exec_args[0]     = exe_path;
     for (barr_i32 i = 1; i < argc; ++i)
     {
         exec_args[i] = argv[i];
@@ -54,7 +54,8 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
 
     // -------------------------------------------------------------------------------
 
-    BARR_printf("================================================================================\n");
+    BARR_printf(
+        "================================================================================\n");
     BARR_log("Running: %s-v%s", exec_args[0], vers);
     BARR_printf("\n\n");
     barr_i32 ret = BARR_run_process(exec_args[0], exec_args, false);
@@ -72,8 +73,11 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     {
         snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[34;1m%d\033[32;1m", ret);
     }
-    BARR_log("Run %s exited with (%s) code: \033[34;1m %s", exec_args[0], ret_color_buf,
+    BARR_log("Run %s exited with (%s) code: \033[34;1m %s\033[0m",
+             exec_args[0],
+             ret_color_buf,
              BARR_fmt_time_elapsed(&start, &end));
-    BARR_printf("================================================================================\n");
+    BARR_printf(
+        "================================================================================\n");
     return ret;
 }

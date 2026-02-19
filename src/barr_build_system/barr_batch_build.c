@@ -16,9 +16,9 @@ static bool barr_is_merge_safe(const char *filepath, size_t max_lines)
         return false;
     }
 
-    char line[BARR_BUF_SIZE_512];
+    char   line[BARR_BUF_SIZE_512];
     size_t line_count = 0;
-    bool safe = true;
+    bool   safe       = true;
 
     while (fgets(line, sizeof(line), fp))
     {
@@ -52,7 +52,9 @@ static bool barr_is_merge_safe(const char *filepath, size_t max_lines)
     return safe;
 }
 
-void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_list, const char *out_dir)
+void BARR_create_batches(const BARR_SourceList *sources,
+                         BARR_SourceList       *batch_list,
+                         const char            *out_dir)
 {
     if (sources == NULL || batch_list == NULL || out_dir == NULL)
     {
@@ -74,29 +76,30 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
     {
         max_batch_size = 1UL << 20;
     }
-    if (max_batch_size > (64UL << 20))
+    if (max_batch_size > (128UL << 20))
     {
-        max_batch_size = 64UL << 20;
+        max_batch_size = 128UL << 20;
     }
 
-    size_t avg_line_bytes = 64;
+    size_t avg_line_bytes = 128;
     size_t max_file_lines = max_batch_size / avg_line_bytes;
-    if (max_file_lines < 2000)
-    {
-        max_file_lines = 2000;
-    }
-    if (max_file_lines > 20000)
+    if (max_file_lines < 20000)
     {
         max_file_lines = 20000;
     }
+    if (max_file_lines > 200000)
+    {
+        max_file_lines = 200000;
+    }
 
-    const size_t max_file_per_batch = (size_t) (cpu.threads * 256) <= 1024 ? (size_t) (cpu.threads * 256) : 1024;
+    const size_t max_file_per_batch =
+        (size_t) (cpu.threads * 1024) <= 1024 * 12 ? (size_t) (cpu.threads * 1024) : 1024;
 
-    size_t files_in_current_batch = 0;
-    barr_u32 current_batch_count = 0;
+    size_t   files_in_current_batch = 0;
+    barr_u32 current_batch_count    = 0;
 
     FILE *batch_fp = NULL;
-    char batch_path[BARR_PATH_MAX * 2];
+    char  batch_path[BARR_PATH_MAX + BARR_PATH_MAX];
 
     BARR_HashMap *includes_map = BARR_hashmap_create(BARR_BUF_SIZE_128);
 
@@ -143,7 +146,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
                     BARR_log("[turbo]: Skipping %s — marked with '// barr-batch-skip'", src);
                     fclose(batch_fp);
                     BARR_source_list_push(batch_list, batch_path);
-                    batch_fp = NULL;
+                    batch_fp               = NULL;
                     files_in_current_batch = 0;
 
                     BARR_destroy_hashmap(includes_map);
@@ -163,7 +166,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
             {
                 fclose(batch_fp);
                 BARR_source_list_push(batch_list, batch_path);
-                batch_fp = NULL;
+                batch_fp               = NULL;
                 files_in_current_batch = 0;
 
                 BARR_destroy_hashmap(includes_map);
@@ -176,7 +179,8 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
         if (!batch_fp)
         {
-            snprintf(batch_path, sizeof(batch_path), "%s/batch_%u.c", out_dir, current_batch_count++);
+            snprintf(
+                batch_path, sizeof(batch_path), "%s/batch_%u.c", out_dir, current_batch_count++);
             batch_fp = fopen(batch_path, "w");
             if (!batch_fp)
             {
@@ -191,7 +195,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
             {
                 BARR_destroy_hashmap(includes_map);
             }
-            includes_map = BARR_hashmap_create(BARR_BUF_SIZE_128);
+            includes_map           = BARR_hashmap_create(BARR_BUF_SIZE_128);
             files_in_current_batch = 0;
 
             // write deduplicated includes at top (initially empty)
@@ -236,7 +240,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
             }
 
             fputs(buf, batch_fp);
-            size_t len = strlen(buf);
+            size_t len   = strlen(buf);
             batch_bytes += len;
 
             if (batch_bytes > max_batch_size)
@@ -254,9 +258,9 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
 
                 fclose(batch_fp);
                 BARR_source_list_push(batch_list, batch_path);
-                batch_fp = NULL;
+                batch_fp               = NULL;
                 files_in_current_batch = 0;
-                batch_bytes = 0;
+                batch_bytes            = 0;
                 goto next_src_file;
             }
         }
@@ -269,7 +273,7 @@ void BARR_create_batches(const BARR_SourceList *sources, BARR_SourceList *batch_
         {
             fclose(batch_fp);
             BARR_source_list_push(batch_list, batch_path);
-            batch_fp = NULL;
+            batch_fp               = NULL;
             files_in_current_batch = 0;
 
             // reset includes for next batch

@@ -10,7 +10,7 @@
 
 static inline const char *barr_fmt_time_ago(time_t past_tm_stamp)
 {
-    time_t now = time(NULL);
+    time_t now  = time(NULL);
     double diff = difftime(now, past_tm_stamp);
 
     static char buf[BARR_BUF_SIZE_64];
@@ -57,7 +57,8 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 {
     barr_i32 result = 0;
 
-    BARR_printf("--------------------------------------------------------------------------------------\n");
+    BARR_printf(
+        "--------------------------------------------------------------------------------------\n");
 
     BARR_InitStatus res = BARR_check_initialized();
 
@@ -86,8 +87,11 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
         case BARR_INIT_OK:
         {
-            BARR_printf("Build Barrage version %d.%d.%d initialized in %s\n", BARR_VERSION_MAJOR, BARR_VERSION_MINOR,
-                        BARR_VERSION_PATCH, BARR_getcwd());
+            BARR_printf("Build Barrage version %d.%d.%d initialized in %s\n",
+                        BARR_VERSION_MAJOR,
+                        BARR_VERSION_MINOR,
+                        BARR_VERSION_PATCH,
+                        BARR_getcwd());
             break;
         }
 
@@ -114,12 +118,13 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
     //---------------------------------------------------
 
-    char obj_dir[BARR_PATH_MAX];
+    char        obj_dir[BARR_PATH_MAX];
     const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
 
     if (out_dir_var == NULL)
     {
-        BARR_warnlog("%s(): Failed to parse Barrfile 'OUT_DIR': fallback to %s", __func__, out_dir_var);
+        BARR_warnlog("%s(): Failed to parse Barrfile 'OUT_DIR': fallback to build/debug/obj",
+                     __func__);
         snprintf(obj_dir, sizeof(obj_dir), "build/debug/obj");
     }
     else
@@ -127,12 +132,13 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         snprintf(obj_dir, sizeof(obj_dir), "%s/obj", out_dir_var);
     }
 
-    char target_name[BARR_PATH_MAX];
+    char        target_name[BARR_PATH_MAX];
     const char *target = OLM_get_var(OLM_VAR_TARGET);
 
     if (target == NULL)
     {
-        BARR_warnlog("%s(): Failed to parse Barrfile 'TARGET': fallback to %s", __func__, basename(obj_dir));
+        BARR_warnlog(
+            "%s(): Failed to parse Barrfile 'TARGET': fallback to %s", __func__, basename(obj_dir));
         snprintf(target_name, sizeof(target_name), "%s", obj_dir);
     }
     else
@@ -198,9 +204,9 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         }
     }
 
-    size_t total = obj_list.count;
-    size_t modified = 0;
-    size_t unknown = 0;
+    size_t total      = obj_list.count;
+    size_t modified   = 0;
+    size_t unknown    = 0;
     size_t up_to_date = 0;
 
     printf("\n\t=== FILE STATUS ===\n");
@@ -223,7 +229,10 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
                 bool changed = BARR_is_newer(src_file, obj_file);
                 if (print_all)
                 {
-                    printf("\t%s -> %s\t%s\n", src_base, obj_base, changed ? "\033[31;1mmodified\033[0m" : "");
+                    printf("\t%s -> %s\t%s\n",
+                           src_base,
+                           obj_base,
+                           changed ? "\033[31;1mmodified\033[0m" : "");
                 }
 
                 if (changed)
@@ -255,14 +264,19 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         printf("\tAll files are up to date\n");
     }
 
-    BARR_printf("\n--------------------------------------------------------------------------------------\n");
-    printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n", total, modified, unknown, up_to_date);
+    BARR_printf("\n--------------------------------------------------------------------------------"
+                "------\n");
+    printf("[summary]: %zu total, %zu modified, %zu unknown, %zu up-to-date\n",
+           total,
+           modified,
+           unknown,
+           up_to_date);
 
     char *timestamp_str = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "timestamp");
     if (timestamp_str)
     {
-        time_t past = (time_t) strtoll(timestamp_str, NULL, 10);
-        const char *ago = barr_fmt_time_ago(past);
+        time_t      past = (time_t) strtoll(timestamp_str, NULL, 10);
+        const char *ago  = barr_fmt_time_ago(past);
         BARR_printf("\033[90mLatest build: %s\n\n", ago);
     }
 

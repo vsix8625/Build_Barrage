@@ -58,7 +58,7 @@ static void barr_fo_wait_unlock(void)
 
 barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 {
-    bool is_exec = false;
+    bool is_exec       = false;
     bool internal_call = (argc == 0 || argv == NULL);
 
     struct timespec build_start, build_end, compile_start, compile_end;
@@ -93,10 +93,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_BuildProgressCTX progress_ctx = {.failed = false};
 
-    bool dry_run_compile = false;
-    bool is_batch_build = false;
-    bool select_dir = false;
-    char *select_dir_path = NULL;
+    bool     dry_run_compile      = false;
+    bool     is_batch_build       = false;
+    bool     select_dir           = false;
+    char    *select_dir_path      = NULL;
     barr_u32 user_defined_threads = 0;
 
     barr_fo_wait_lock();
@@ -129,19 +129,22 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                     else
                     {
                         user_defined_threads = 0;
-                        BARR_warnlog("Missing value after --threads, system detected number of cores will be used");
+                        BARR_warnlog("Missing value after --threads, system detected number of "
+                                     "cores will be used");
                     }
                 }
                 else
                 {
                     if (cmd[2] != '\0')
                     {
-                        char *endptr = NULL;
+                        char *endptr         = NULL;
                         user_defined_threads = strtol(&cmd[2], &endptr, 10);
                         if (*endptr != '\0')
                             if (!user_defined_threads && BARR_strmatch(&cmd[2], "0"))
                             {
-                                BARR_warnlog("Invalid thread count after -j: %s. Default cores will be used", &cmd[2]);
+                                BARR_warnlog(
+                                    "Invalid thread count after -j: %s. Default cores will be used",
+                                    &cmd[2]);
                                 user_defined_threads = 0;
                             }
                     }
@@ -153,7 +156,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                         }
                         else
                         {
-                            BARR_warnlog("Provided -j without a number. Default cores will be used");
+                            BARR_warnlog(
+                                "Provided -j without a number. Default cores will be used");
                         }
                     }
                 }
@@ -164,7 +168,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 if (argv[i + 1])
                 {
                     select_dir_path = BARR_gc_strdup(argv[i + 1]);
-                    size_t len = strlen(select_dir_path);
+                    size_t len      = strlen(select_dir_path);
                     if (len > 0 && select_dir_path[len - 1] == '/')
                     {
                         select_dir_path[len - 1] = '\0';
@@ -240,8 +244,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     BARR_Arena olm_eval_arena;
-    size_t total_nodes = BARR_count_nodes(olmos_ast);
-    size_t olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_AST_Node *);
+    size_t     total_nodes         = BARR_count_nodes(olmos_ast);
+    size_t     olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_AST_Node *);
     BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
 
     barr_i32 eval_return = OLM_eval_node(olmos_ast, &olm_eval_arena);
@@ -337,11 +341,18 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     //----------------------------------------------------------------------------------------------------
     // scan exclude
-    printf("\n----------------------------------------------------------------------------------------------------\n");
-    BARR_log("BUILD BEGINS: %s", root_dir);
-    printf("----------------------------------------------------------------------------------------------------\n\n");
+    if (g_barr_verbose)
+    {
+        printf("\n---------------------------------------------------------------------------------"
+               "----"
+               "---------------\n");
+        BARR_log("BUILD BEGINS: %s", root_dir);
+        printf("-----------------------------------------------------------------------------------"
+               "----"
+               "-------------\n\n");
+    }
 
-    const char *exclude_raw = OLM_get_var(OLM_VAR_EXCLUDE_PATTERNS);
+    const char  *exclude_raw    = OLM_get_var(OLM_VAR_EXCLUDE_PATTERNS);
     const char **exclude_tokens = NULL;
     if (exclude_raw && exclude_raw[0] != '\0')
     {
@@ -356,9 +367,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // prepare source files
 
     const char *sources_glob_raw = OLM_get_var(OLM_VAR_GLOB_SOURCES);
-    const char *sources_raw = OLM_get_var(OLM_VAR_SOURCES);
+    const char *sources_raw      = OLM_get_var(OLM_VAR_SOURCES);
 
-    bool has_manual_sources = sources_raw && sources_raw[0] != '\0';
+    bool has_manual_sources      = sources_raw && sources_raw[0] != '\0';
     bool has_manual_sources_glob = sources_glob_raw && sources_glob_raw[0] != '\0';
 
     if (has_manual_sources_glob)
@@ -407,12 +418,17 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         for (size_t i = 0; i < modules_count; ++i)
         {
             const char *mod_path = BARR_get_module_array()[i].path;
-            char build_info_path[BARR_PATH_MAX];
-            snprintf(build_info_path, sizeof(build_info_path), "%s/%s", mod_path, BARR_DATA_BUILD_INFO_PATH);
+            char        build_info_path[BARR_PATH_MAX];
+            snprintf(build_info_path,
+                     sizeof(build_info_path),
+                     "%s/%s",
+                     mod_path,
+                     BARR_DATA_BUILD_INFO_PATH);
 
             if (!BARR_isfile(build_info_path))
             {
-                BARR_warnlog("Module '%s' has no build.info, skipping", BARR_get_module_array()[i].name);
+                BARR_warnlog("Module '%s' has no build.info, skipping",
+                             BARR_get_module_array()[i].name);
                 continue;
             }
 
@@ -432,7 +448,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
                         if (!BARR_path_resolve(mod_path, raw_path, resolved, sizeof(resolved)))
                         {
-                            BARR_warnlog("Failed to resolve module include path: %s/%s", mod_path, raw_path);
+                            BARR_warnlog(
+                                "Failed to resolve module include path: %s/%s", mod_path, raw_path);
                             continue;
                         }
 
@@ -486,7 +503,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // get the out dir from Barrfile
     const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
-    char out_dir[BARR_PATH_MAX];
+    char        out_dir[BARR_PATH_MAX];
 
     if (out_dir_var == NULL)
     {
@@ -547,12 +564,15 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     if (g_barr_verbose)
     {
         BARR_log("[cpu]: model='%s', cores=%d, threads=%d, freq=%.2f MHz, cache=%.2f MB",
-                 cpu.model[0] ? cpu.model : "unknown", cpu.cores, cpu.threads, cpu.mhz,
+                 cpu.model[0] ? cpu.model : "unknown",
+                 cpu.cores,
+                 cpu.threads,
+                 cpu.mhz,
                  (double) cpu.cache_size / (1024.0 * 1024.0));
     }
 
     // Create thread pool
-    barr_u32 n_threads = cpu.threads;
+    barr_u32 n_threads     = cpu.threads;
     barr_u32 max_n_threads = BARR_MATH_DOUBLE(n_threads);
 
     if (max_n_threads < 8)
@@ -572,7 +592,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     {
         BARR_warnlog("Requested threads (%u) exceed max allowed (%u)."
                      "Using default: %u ()",
-                     user_defined_threads, max_n_threads, n_threads);
+                     user_defined_threads,
+                     max_n_threads,
+                     n_threads);
     }
 
     if (g_barr_verbose)
@@ -589,8 +611,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     BARR_WriteSourceArgs *wr_src_args = BARR_gc_alloc(sizeof(BARR_WriteSourceArgs));
-    wr_src_args->sources = &sources;
-    wr_src_args->filepath = BARR_DATA_SOURCE_FILES_LOG;
+    wr_src_args->sources              = &sources;
+    wr_src_args->filepath             = BARR_DATA_SOURCE_FILES_LOG;
 
     BARR_thread_pool_add(pool, BARR_write_sources_job, wr_src_args);
 
@@ -609,12 +631,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     for (size_t i = 0; i < sources.count; i++)
     {
-        const char *file = sources.entries[i];
+        const char    *file         = sources.entries[i];
         const barr_u8 *current_hash = BARR_hashmap_get(current_map, file);
-        const barr_u8 *cached_hash = cached_map ? BARR_hashmap_get(cached_map, file) : NULL;
+        const barr_u8 *cached_hash  = cached_map ? BARR_hashmap_get(cached_map, file) : NULL;
 
         // Only compare if both hashes are valid
-        bool changed = (!current_hash) || (!cached_hash) || (memcmp(current_hash, cached_hash, BARR_XXHASH_LEN) != 0);
+        bool changed = (!current_hash) || (!cached_hash) ||
+                       (memcmp(current_hash, cached_hash, BARR_XXHASH_LEN) != 0);
 
         if (changed)
         {
@@ -687,8 +710,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     //----------------------------------------------------------------------------------------------------
     // compile args stage
 
-    const char *compiler = OLM_get_var(OLM_VAR_COMPILER);
-    char *resolved_compiler = NULL;
+    const char *compiler          = OLM_get_var(OLM_VAR_COMPILER);
+    char       *resolved_compiler = NULL;
     if (compiler == NULL)
     {
         resolved_compiler = BARR_which("gcc");
@@ -716,7 +739,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_log("Compiler: %s", resolved_compiler);
     }
 
-    char build_dir_path[BARR_MATH_DOUBLE(BARR_BUF_SIZE_4096)];
+    char build_dir_path[sizeof(out_dir) + BARR_PATH_MAX];
     snprintf(build_dir_path, sizeof(build_dir_path), "%s/bin", out_dir);
 
     if (!BARR_isdir(build_dir_path))
@@ -751,12 +774,12 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_List merged_includes;
     BARR_list_init(&merged_includes, 16);
 
-    const char *includes_raw[] = {"-Iinc", "-Iinclude", "-Isrc", NULL};
+    const char  *includes_raw[]   = {"-Iinc", "-Iinclude", "-Isrc", NULL};
     const char **project_includes = NULL;
 
-    const char *olmos_includes_raw = OLM_get_var(OLM_VAR_INCLUDES);
-    const char *auto_inc_mode = OLM_get_var(OLM_VAR_AUTO_INC_DISCOVERY);
-    bool has_manual_includes = olmos_includes_raw && olmos_includes_raw[0] != '\0';
+    const char *olmos_includes_raw  = OLM_get_var(OLM_VAR_INCLUDES);
+    const char *auto_inc_mode       = OLM_get_var(OLM_VAR_AUTO_INC_DISCOVERY);
+    bool        has_manual_includes = olmos_includes_raw && olmos_includes_raw[0] != '\0';
 
     enum
     {
@@ -781,7 +804,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
         else
         {
-            BARR_warnlog("Unknown auto_include_discovery value '%s', using default (on)", auto_inc_mode);
+            BARR_warnlog("Unknown auto_include_discovery value '%s', using default (on)",
+                         auto_inc_mode);
         }
     }
     else if (has_manual_includes)
@@ -790,7 +814,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         BARR_log("auto_include_discovery not set, disabling auto-scan (manual includes detected)");
     }
 
-    if (has_manual_includes && (mode == BARR_AUTO_INC_MODE_OFF || mode == BARR_AUTO_INC_MODE_APPEND))
+    if (has_manual_includes &&
+        (mode == BARR_AUTO_INC_MODE_OFF || mode == BARR_AUTO_INC_MODE_APPEND))
     {
         const char **manual = (const char **) BARR_tokenize_string(olmos_includes_raw);
         for (const char **p = manual; p && *p; ++p)
@@ -820,13 +845,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     switch (mode)
     {
         case BARR_AUTO_INC_MODE_OFF:
-            BARR_log("include discovery: manual only (auto-scan disabled)");
+            BARR_dbglog("include discovery: manual only (auto-scan disabled)");
             break;
         case BARR_AUTO_INC_MODE_APPEND:
-            BARR_log("include discovery: append mode (manual + auto)");
+            BARR_dbglog("include discovery: append mode (manual + auto)");
             break;
         case BARR_AUTO_INC_MODE_ON:
-            BARR_log("include discovery: auto mode");
+            BARR_dbglog("include discovery: auto mode");
             break;
     }
 
@@ -853,9 +878,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     project_includes = BARR_dedup_flags_array((const char **) merged_includes.items);
 
     size_t project_count_inc = BARR_count_tokens_in_array(project_includes);
-    size_t module_count_inc = modules_includes_list.count;
+    size_t module_count_inc  = modules_includes_list.count;
 
-    char **includes_final = BARR_gc_alloc((project_count_inc + module_count_inc + 1) * sizeof(char *));
+    char **includes_final =
+        BARR_gc_alloc((project_count_inc + module_count_inc + 1) * sizeof(char *));
     size_t includes_final_idx = 0;
 
     for (size_t i = 0; i < module_count_inc; ++i)
@@ -889,25 +915,25 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     //--------------------------------------------------------------
 
-    BARR_CompileInfoCTX compile_ctx = {.compiler = resolved_compiler,
-                                       .flags = (const char **) flags,
-                                       .out_dir = out_dir,
-                                       .includes = (const char **) includes_final,
-                                       .defines = (const char **) defines,
+    BARR_CompileInfoCTX compile_ctx = {.compiler    = resolved_compiler,
+                                       .flags       = (const char **) flags,
+                                       .out_dir     = out_dir,
+                                       .includes    = (const char **) includes_final,
+                                       .defines     = (const char **) defines,
                                        .debug_build = debug_build};
 
     progress_ctx.completed = 0;
-    progress_ctx.total = compile_list.count;
+    progress_ctx.total     = compile_list.count;
     pthread_mutex_init(&progress_ctx.log_mutex, NULL);
     progress_ctx.ccmds_json_entries_list = NULL;
 
     compile_ctx.gen_compile_cmds = false;
-    const char *olm_ccmds = OLM_get_var(OLM_VAR_GEN_CCMDS);
+    const char *olm_ccmds        = OLM_get_var(OLM_VAR_GEN_CCMDS);
     if (olm_ccmds != NULL)
     {
         if (BARR_strmatch(olm_ccmds, "yes") || BARR_strmatch(olm_ccmds, "on"))
         {
-            compile_ctx.gen_compile_cmds = true;
+            compile_ctx.gen_compile_cmds         = true;
             progress_ctx.ccmds_json_entries_list = BARR_gc_alloc(sizeof(BARR_List));
             BARR_list_init(progress_ctx.ccmds_json_entries_list, compile_list.count);
         }
@@ -915,12 +941,16 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     // get the precompile file from olmos
     const char *precompile_file = "src/common.h";
-    compile_ctx.pch_file = precompile_file;
+    compile_ctx.pch_file        = precompile_file;
 
     if (BARR_isfile(compile_ctx.pch_file))
     {
         char out_pch[BARR_PATH_MAX];
-        snprintf(out_pch, sizeof(out_pch), "%s/%s.pch", compile_ctx.out_dir, basename((char *) compile_ctx.pch_file));
+        snprintf(out_pch,
+                 sizeof(out_pch),
+                 "%s/%s.pch",
+                 compile_ctx.out_dir,
+                 basename((char *) compile_ctx.pch_file));
 
         if (BARR_compile_pch(&compile_ctx))
         {
@@ -942,26 +972,30 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_Arena producer_arena;
     BARR_arena_init(&producer_arena, producer_arena_size, "producer_arena", 16);
 
-    snprintf(compile_ctx.ccmds_path, sizeof(compile_ctx.ccmds_path), "%s/compile_commands.json", out_dir);
+    snprintf(compile_ctx.ccmds_path,
+             sizeof(compile_ctx.ccmds_path),
+             "%s/compile_commands.json",
+             out_dir);
 
     // job producer
     for (size_t i = 0; i < compile_list.count; i++)
     {
         const char *src = compile_list.entries[i];
 
-        BARR_CompileJob *job = (BARR_CompileJob *) BARR_arena_alloc(&producer_arena, sizeof(BARR_CompileJob));
+        BARR_CompileJob *job =
+            (BARR_CompileJob *) BARR_arena_alloc(&producer_arena, sizeof(BARR_CompileJob));
         if (job == NULL)
         {
             BARR_errlog("%s(): failed to allocate memory for compile job", __func__);
             continue;
         }
 
-        job->src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
-        job->ctx = &compile_ctx;
+        job->src          = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
+        job->ctx          = &compile_ctx;
         job->progress_ctx = &progress_ctx;
-        job->dry_run = dry_run_compile;
+        job->dry_run      = dry_run_compile;
 
-        char *tmp_src = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
+        char *tmp_src       = BARR_arena_strdup(&producer_arena, BARR_gc_strdup(src));
         char *base_with_ext = basename(tmp_src);
         // root_dir + out_dir
         snprintf(job->out_file, sizeof(job->out_file), "%s/%s.o", obj_dir_buf, base_with_ext);
@@ -1029,7 +1063,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                     fprintf(f, "    \"directory\": \"%s\",\n", entry->directory);
                     fprintf(f, "    \"command\": \"%s\",\n", entry->command);
                     fprintf(f, "    \"file\": \"%s\"\n", entry->file);
-                    fprintf(f, "  }%s\n", (i + 1 < progress_ctx.ccmds_json_entries_list->count) ? "," : "");
+                    fprintf(f,
+                            "  }%s\n",
+                            (i + 1 < progress_ctx.ccmds_json_entries_list->count) ? "," : "");
                 }
                 fprintf(f, "]\n");
                 fclose(f);
@@ -1061,7 +1097,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             {
                 BARR_log("Failed compiles: \033[31;1m%zu", progress_ctx.failed);
             }
-            BARR_warnlog("NOTICE: No object files produced, the build cache will not update, and the linker stage will "
+            BARR_warnlog("NOTICE: No object files produced, the build cache will not update, and "
+                         "the linker stage will "
                          "be skipped");
             BARR_warnlog("This check validates compilation only.");
         }
@@ -1099,7 +1136,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         target_name = "barr_target";
     }
 
-    char output_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
+    char        output_path[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
     const char *bin_out_path = OLM_get_var(OLM_VAR_BIN_OUT_PATH);
 
     if (bin_out_path)
@@ -1140,8 +1177,17 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
             module_includes = "-Iinclude";
         }
 
-        if (BARR_link_target(target_type, target_name, out_dir, &object_list, &pkg_list, n_threads, resolved_compiler,
-                             linker, module_includes, target_version, olmos_main_source) != 0)
+        if (BARR_link_target(target_type,
+                             target_name,
+                             out_dir,
+                             &object_list,
+                             &pkg_list,
+                             n_threads,
+                             resolved_compiler,
+                             linker,
+                             module_includes,
+                             target_version,
+                             olmos_main_source) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
@@ -1157,20 +1203,31 @@ exit:
 {
     //----------------------------------------------------------------------------------------------------
     // performance
-    BARR_log("Compile time: \033[34;1m %s", BARR_fmt_time_elapsed(&compile_start, &compile_end));
+    BARR_log("Compile time: \033[34;1m %s\033[0m",
+             BARR_fmt_time_elapsed(&compile_start, &compile_end));
 
     clock_gettime(CLOCK_MONOTONIC, &build_end);
-    BARR_log("Total: \033[34;1m %s", BARR_fmt_time_elapsed(&build_start, &build_end));
+    BARR_log("Total: \033[34;1m %s\033[0m", BARR_fmt_time_elapsed(&build_start, &build_end));
     //----------------------------------------------------------------------------------------------------
 
-    printf("\n----------------------------------------------------------------------------------------------------\n");
-    BARR_log("BUILD ENDS: %s", root_dir);
-    printf("----------------------------------------------------------------------------------------------------\n");
+    if (g_barr_verbose)
+    {
+        printf("\n---------------------------------------------------------------------------------"
+               "----"
+               "---------------\n");
+        BARR_log("BUILD ENDS: %s", root_dir);
+        printf("-----------------------------------------------------------------------------------"
+               "----"
+               "-------------\n");
+    }
 
     if (is_exec)
     {
-        BARR_printf("\033[90m[Tip]: To run the binary: 'barr run'\n");
-        BARR_printf("\033[90m[Tip]: To view project status: 'barr status'\n");
+        if (g_barr_verbose)
+        {
+            BARR_printf("\033[90m[Tip]: To run the binary: 'barr run'\033[0m\n");
+            BARR_printf("\033[90m[Tip]: To view project status: 'barr status'\033[0m\n");
+        }
     }
 
     // cleanup

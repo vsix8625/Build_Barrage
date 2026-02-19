@@ -37,39 +37,10 @@ System Install Support:
     - Options are subject to change.
 - When it successfully builds and data gets updated `fo` relaxes.  
 - TBA: `barr fo reload` or make it smarter if certain files do not exists at the time of launched. 
-### Changed
-### Fixed 
-### Removed
-
----
-
-## [0.22.1] – 2025-11-18
-### Added
-- Forward Observer `fo`, prototype, monitors project directory and its sub-directories for changes,
-  and runs `barr build` if needed.
-    - Can be turn on with `barr fo on`, and off with `barr fo off`.
-    - For status report `barr fo report`.  
-    - To watch live log in terminal `barr fo watch`.
-    - `notify-send` integrated, for various information.
-    - Options are subject to change.
-- Known bugs: if a build fails `fo` keeps calling `barr build` every iteration, build fails and no data gets updated.
-- When it successfully builds and data gets updated `fo` relaxes.  
-- TBA: `barr fo reload` or make it smarter if certain files do not exists at the time of launched. 
-### Changed
-### Fixed 
-### Removed
-
----
-
-## [0.22.1] – 2025-11-18
-### Added
-### Changed
-### Fixed 
 ### Removed
 - Planned Windows/cross-platform support — Barr is now Linux-only.  
 - Directory structure and file names from cross-platform code retained for convenience.
 
----
 
 ## [0.19.1] – 2025-11-12
 ### Added
@@ -79,15 +50,10 @@ System Install Support:
 - `barr status` command now also reads `.barr/data/source_files_log` and compares source files
    and objects files, modification time.  
    - Printing information of modified source files at time of command run.
-### Fixed 
-### Removed
 
 ---
 
 ## [0.18.1] – 2025-11-12
-### Added
-### Changed
-### Fixed 
 ### Removed
 - Focusing on project-local configuration with `Barrfile` and `Olmos-scripting layer`,
   global config parser and `$PATH` modifications hacks was removed.
@@ -114,8 +80,6 @@ barr_i32 BARR_link_target(const char *target_type,
 ```
 ### Changed
 - Full redesign of link stage process. 
-### Fixed 
-### Removed
 
 ---
 
@@ -147,14 +111,12 @@ barr_i32 BARR_link_target(const char *target_type,
    - Fully compatible with incremental builds and other `barr` build features.
    - Added support for per-file batching control:`// barr-no-batch` and `// barr-batch-skip`.  
    - Experimental: may have edge cases with includes and dependency tracking.
-### Changed
 ### Fixed 
 - Corrected usage of `BARR_gc` heap allocations across most systems. 
 - Fixed source list reallocation issues on large projects;
     - Properly grow path buffer and entries array when capacity is zero.  
     - Prevent buffer shrink that caused crashes for large number of source files.  
     - Ensures all `src_path` pointers remain valid after realloc.  
-### Removed
 
 ---
 
@@ -166,16 +128,12 @@ barr_i32 BARR_link_target(const char *target_type,
 - Renamed `Crux` to `Olmos`
 ### Fixed 
 - Fixed some issues with detecting directories to include in `-I` flags
-### Removed
 
 ---
 
 ## [0.11.1] – 2025-10-19
 ### Added
 - Add `barr_gc.c/.h` Garbage collector for memory allocations
-### Changed
-### Fixed 
-### Removed
 
 ---
 
@@ -187,8 +145,6 @@ barr_i32 BARR_link_target(const char *target_type,
 - Add `barr_thread_pool.c/.h` basic thread pool created that runs based on amount of physical cores found by `sysconf`.  
 ### Changed
 - Moved from `SHA-256` hashing to `xxhash` for faster hashing.  
-### Fixed 
-### Removed
 
 ---
 
@@ -201,9 +157,6 @@ barr_i32 BARR_link_target(const char *target_type,
     - And finally it runs the compiler building object files for changed source files.  
     - NOTE: compile flags passed on the function are a placeholder for now until the  would be ready.  
     - NOTE: This is the pre-alpha stage for the build system as a whole and changes will happen.   
-### Changed
-### Fixed 
-### Removed
 
 ---
 
@@ -211,8 +164,6 @@ barr_i32 BARR_link_target(const char *target_type,
 ### Added
 - Began design of **custom Olmos scripting layer** (C-like syntax) to replace Lua for defining projects.
 - Will integrate natively with BARR’s core — no VM or script bridge required.
-### Changed
-### Fixed 
 ### Removed
 - **Lua DSL integration**: all Lua dependencies and bindings removed.
   - `barr_lua_rt` directory deprecated.
@@ -229,8 +180,6 @@ barr_i32 BARR_link_target(const char *target_type,
 - Projects can be created with `barr.project.create { name=..., source_files=... }` and retrieved by name or ID.  
 - ID tracking and `root_dir`, `build_type`, `compile_flags` storage per project.  
     - More to be included in future updates  
-### Changed
-### Fixed 
 ### Removed
 - `BARR_Arena` allocations from `lists`.  
     - Source list and all upcoming lists will be heap based with `malloc`, `realloc`.  
@@ -245,8 +194,6 @@ barr_i32 BARR_link_target(const char *target_type,
     - A `CreateProcess()` version for `Windows` can be added in future.  
 ### Changed
 - Replaced `system(cmd)` calls with `BARR_run_process()`
-### Fixed 
-### Removed
 
 ---
 
@@ -265,15 +212,12 @@ barr_i32 BARR_link_target(const char *target_type,
 - Command `barr build` will now check for `barr_build.lua` and initialize Lua states and fields.   
 ### Fixed 
 
-### Removed
-
 ---
 
 ## [0.4.1] – 2025-10-04
 ### Added
 ### Changed
 - `barr_debug.c/.h` moved `barr_dbglock` function there 
-### Fixed 
 ### Removed
 - `barr_dbg_file_append` had a bug with locks and hanged to infinty 
 

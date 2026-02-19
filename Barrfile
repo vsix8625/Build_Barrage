@@ -1,5 +1,7 @@
 #Build Barrage v0.17.1
 
+# NOTE: You can run 'barr status --vars', for a list of all builtin and user variables 
+
 # -------------------------------------------------------------
 # build & run detect_features tool for barr_config.h
 # -------------------------------------------------------------
@@ -24,21 +26,23 @@ run_cmd("mkdir -p ${BARR_DATA_DIR}");
 fo_clean = "tools/fo/build tools/fo/.barr/cache/build.cache";
 add_module("fo","tools/fo","no");
 
-# Copy fo to Barr_HQ
-# run_cmd("cp tools/fo/build/fo/debug/bin/fo ${barr_hq_bin}");
-
-# ----------------------------------------------------------------------
-
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.23.1";
+VERSION = "0.24.0";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-COMPILER = "${BARR_COMPILER_CLANG}";
-LINKER = "lld";
+
+# auto detected by barr
+print("Compiler: ${BARR_COMPILER_CLANG}");
+COMPILER = "${BARR_COMPILER_CLANG}"; # full paths advised Eg: /usr/bin/clang
+
+
+linker = "mold"; # will be injected to -fuse-ld=mold (gold, lld)
+print("Linker: ${BARR_COMPILER_CLANG}");
+LINKER = "${linker}";
 
 BUILD_TYPE = "release";
 OUT_DIR = "build/${BUILD_TYPE}";
@@ -48,14 +52,14 @@ CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
 extra_opts = "-fomit-frame-pointer -funroll-loops -fno-common";
 CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx ${extra_opts}";
 
-EXCLUDE_PATTERNS = "tools";
+EXCLUDE_PATTERNS = "tools"; 
 
 DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 
 pkgs = "xxhash";
 find_package("${pkgs}");
 
-LFLAGS = "-Wl,--gc-sections";
+LFLAGS = "-lpthread -Wl,--gc-sections, -s";
 
 # ----------------------------------------------------------------------
 # Write barr_hq
@@ -69,6 +73,6 @@ file_write("build_dir=${build_dir}", "${barr_hq_file}","true");
 
 # ----------------------------------------------------------------------
 
-CLEAN_TARGETS = "${fo_clean}";
+CLEAN_TARGETS = "${fo_clean}"; # extra targets for 'barr clean' command 
 
 print("Build script ends!");

@@ -16,7 +16,7 @@
 #include <time.h>
 
 static atomic_flag barr_io_file_write_lock = ATOMIC_FLAG_INIT;
-static atomic_flag barr_io_log_lock = ATOMIC_FLAG_INIT;
+static atomic_flag barr_io_log_lock        = ATOMIC_FLAG_INIT;
 
 struct timespec barr_ts = {.tv_sec = 0, .tv_nsec = 100 * 100};
 
@@ -26,21 +26,12 @@ void BARR_printf(const char *format, ...)
     {
         nanosleep(&barr_ts, NULL);
     }
-    barr_i32 is_tty = isatty(fileno(stdout));
-    if (is_tty)
-    {
-        printf("\033[34;1m");
-    }
 
     va_list args;
     va_start(args, format);
     vprintf(format, args);
     va_end(args);
 
-    if (is_tty)
-    {
-        printf("\033[0m");
-    }
     fflush(stdout);
     atomic_flag_clear(&barr_io_log_lock);
 }
@@ -54,7 +45,7 @@ void BARR_log(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        printf("\033[32;1m[barr_log]: ");
+        printf("\033[32;1m[barr_log]:\033[0m ");
     }
     else
     {
@@ -66,14 +57,7 @@ void BARR_log(const char *format, ...)
     vprintf(format, args);
     va_end(args);
 
-    if (is_tty)
-    {
-        printf("\033[0m\n");
-    }
-    else
-    {
-        printf("\n");
-    }
+    printf("\n");
     atomic_flag_clear(&barr_io_log_lock);
 }
 
@@ -86,7 +70,7 @@ void BARR_warnlog(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        fprintf(stderr, "\033[38;2;255;165;0m[barr_warning]: ");
+        fprintf(stderr, "\033[38;2;255;165;0m[barr_warning]:\033[0m ");
     }
     else
     {
@@ -98,14 +82,7 @@ void BARR_warnlog(const char *format, ...)
     vfprintf(stderr, format, args);
     va_end(args);
 
-    if (is_tty)
-    {
-        fprintf(stderr, "\033[0m\n");
-    }
-    else
-    {
-        fprintf(stderr, "\n");
-    }
+    fprintf(stderr, "\n");
     fflush(stderr);
     atomic_flag_clear(&barr_io_log_lock);
 }
@@ -119,7 +96,7 @@ void BARR_errlog(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        fprintf(stderr, "\033[31;1m[barr_error]: ");
+        fprintf(stderr, "\033[31;1m[barr_error]:\033[0m ");
     }
     else
     {
@@ -136,14 +113,8 @@ void BARR_errlog(const char *format, ...)
         fprintf(stderr, " | \033[31;1m[stderr]: %s: %d", strerror(errno), errno);
         errno = 0;
     }
-    if (is_tty)
-    {
-        fprintf(stderr, "\033[0m\n");
-    }
-    else
-    {
-        fprintf(stderr, "\n");
-    }
+
+    fprintf(stderr, "\n");
     fflush(stderr);
     atomic_flag_clear(&barr_io_log_lock);
 }
@@ -192,7 +163,7 @@ char *BARR_file_read(const char *filepath)
     }
 
     size_t read_size = fread(buf, 1, (size_t) size, f);
-    buf[read_size] = '\0';
+    buf[read_size]   = '\0';
 
     fclose(f);
     return buf;
@@ -273,7 +244,7 @@ barr_i32 BARR_file_copy(const char *src, const char *dst)
         return 1;
     }
 
-    char buf[BARR_BUF_SIZE_4096];
+    char   buf[BARR_BUF_SIZE_4096];
     size_t n;
 
     while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
@@ -312,7 +283,7 @@ static barr_i32 barr_copy_file_contents(barr_i32 infd, barr_i32 outfd)
 
     while ((nr = read(infd, buf, sizeof(buf))) > 0)
     {
-        char *p = buf;
+        char   *p         = buf;
         ssize_t remaining = nr;
 
         while (remaining > 0)
@@ -328,7 +299,7 @@ static barr_i32 barr_copy_file_contents(barr_i32 infd, barr_i32 outfd)
             }
 
             remaining -= nw;
-            p += nw;
+            p         += nw;
         }
     }
 
@@ -337,7 +308,7 @@ static barr_i32 barr_copy_file_contents(barr_i32 infd, barr_i32 outfd)
 
 static barr_i32 barr_ensure_parent_dir(const char *path)
 {
-    char tmp[BARR_PATH_MAX];
+    char        tmp[BARR_PATH_MAX];
     const char *slash = strrchr(path, BARR_PATH_SEPARATOR_CHAR);
 
     if (slash == NULL || slash == path)
@@ -359,10 +330,10 @@ static barr_i32 barr_ensure_parent_dir(const char *path)
 barr_i32 BARR_fs_copy(const char *src, const char *dst)
 {
     struct barr_stat st;
-    barr_i32 infd = -1;
-    barr_i32 outfd = -1;
-    barr_i32 ret = -1;
-    int copied = 0;
+    barr_i32         infd   = -1;
+    barr_i32         outfd  = -1;
+    barr_i32         ret    = -1;
+    int              copied = 0;
 
     if (src == NULL || dst == NULL)
     {
@@ -376,7 +347,7 @@ barr_i32 BARR_fs_copy(const char *src, const char *dst)
     /* --- symlinks --- */
     if (S_ISLNK(st.st_mode))
     {
-        char link_target[BARR_PATH_MAX];
+        char    link_target[BARR_PATH_MAX];
         ssize_t len = readlink(src, link_target, sizeof(link_target) - 1);
         if (len < 0)
         {
@@ -414,7 +385,8 @@ barr_i32 BARR_fs_copy(const char *src, const char *dst)
         off64_t off_in = 0, off_out = 0;
         while (off_in < st.st_size)
         {
-            ssize_t n = copy_file_range(infd, &off_in, outfd, &off_out, (size_t) (st.st_size - off_in), 0);
+            ssize_t n =
+                copy_file_range(infd, &off_in, outfd, &off_out, (size_t) (st.st_size - off_in), 0);
             if (n > 0)
             {
                 continue;
@@ -533,10 +505,11 @@ cleanup:
 
 //--------------------------------------------------------------------------
 
-static barr_i32 barr_copy_tree_entry(const char *src_base, const char *dst_base, const struct dirent *ent)
+static barr_i32
+barr_copy_tree_entry(const char *src_base, const char *dst_base, const struct dirent *ent)
 {
-    char src_path[BARR_PATH_MAX];
-    char dst_path[BARR_PATH_MAX];
+    char             src_path[BARR_PATH_MAX];
+    char             dst_path[BARR_PATH_MAX];
     struct barr_stat st;
 
     barr_i32 n1 = snprintf(src_path, sizeof(src_path), "%s/%s", src_base, ent->d_name);
@@ -567,8 +540,8 @@ static barr_i32 barr_copy_tree_entry(const char *src_base, const char *dst_base,
 
 barr_i32 BARR_fs_copy_tree(const char *src_dir, const char *dst_dir)
 {
-    DIR *d = NULL;
-    struct dirent *ent = NULL;
+    DIR             *d   = NULL;
+    struct dirent   *ent = NULL;
     struct barr_stat st;
 
     if (src_dir == NULL || dst_dir == NULL)

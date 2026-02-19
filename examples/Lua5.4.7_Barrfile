@@ -1,0 +1,30 @@
+# To use it rename it to Barrfile.  
+
+print("Building Lua 5.4.7");
+
+TARGET       = "lua";
+VERSION      = "5.4.7";
+TARGET_TYPE  = "executable";
+
+MAIN_SOURCE = "lua.c";
+
+COMPILER     = "${BARR_COMPILER_CLANG}";
+LINKER       = "lld";
+BUILD_TYPE   = "release";
+
+STD          = "-std=c17";
+
+# All core sources (exact list from official makefile)
+SOURCES ="lapi.c lauxlib.c lbaselib.c lcode.c lcorolib.c lctype.c ldblib.c ldebug.c ldo.c ldump.c lfunc.c lgc.c linit.c liolib.c llex.c lmathlib.c lmem.c loadlib.c lobject.c lopcodes.c loslib.c lparser.c lstate.c lstring.c lstrlib.c ltable.c ltablib.c ltm.c lundump.c lutf8lib.c lvm.c lzio.c lua.c";
+
+# Kill everything that is not part of the actual interpreter
+# EXCLUDE_PATTERNS = "testes onelua.c luac.c";
+
+CFLAGS   = "-g -O0 -Wall -Wextra";
+CFLAGS_RELEASE = "-O3 -march=native -DNDEBUG";
+
+DEFINES = "-DLUA_USE_LINUX -DLUA_USE_READLINE";
+LFLAGS  = "-lreadline -lm -ldl";
+
+print("Lua done");
+

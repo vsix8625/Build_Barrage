@@ -1,4 +1,5 @@
 #include "barr_package_scan_dir.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 
@@ -19,11 +20,22 @@ static inline bool barr_is_pc_file(const char *path)
 
 static inline bool barr_skip_dir_pkg(const char *path)
 {
-    static const char *skip_names[] = {"build", "bin",        "obj",   ".git",    "cache", ".vs", ".idea",
-                                       "test",  "CMakeFiles", "Debug", "Release", ".barr", NULL};
+    static const char *skip_names[] = {"build",
+                                       "bin",
+                                       "obj",
+                                       ".git",
+                                       "cache",
+                                       ".vs",
+                                       ".idea",
+                                       "test",
+                                       "CMakeFiles",
+                                       "Debug",
+                                       "Release",
+                                       ".barr",
+                                       NULL};
 
     const char *base = strrchr(path, '/');
-    base = base ? base + 1 : path;
+    base             = base ? base + 1 : path;
 
     for (const char **p = skip_names; *p; ++p)
     {
@@ -37,11 +49,16 @@ static inline bool barr_skip_dir_pkg(const char *path)
 
 //----------------------------------------------------------------------------------------------------
 
-static void barr_expand_pc_vars(const char *input, char *output, size_t out_size, const char *prefix,
-                                const char *exec_prefix, const char *libdir, const char *sharedlibdir,
+static void barr_expand_pc_vars(const char *input,
+                                char       *output,
+                                size_t      out_size,
+                                const char *prefix,
+                                const char *exec_prefix,
+                                const char *libdir,
+                                const char *sharedlibdir,
                                 const char *includedir)
 {
-    output[0] = '\0';
+    output[0]     = '\0';
     const char *p = input;
     while (*p)
     {
@@ -91,11 +108,17 @@ static void barr_expand_pc_vars(const char *input, char *output, size_t out_size
     }
 }
 
-static void barr_expand_var(const char *input, char *output, size_t out_size, const char *prefix,
-                            const char *exec_prefix, const char *libdir, const char *sharedlibdir,
+static void barr_expand_var(const char *input,
+                            char       *output,
+                            size_t      out_size,
+                            const char *prefix,
+                            const char *exec_prefix,
+                            const char *libdir,
+                            const char *sharedlibdir,
                             const char *includedir)
 {
-    barr_expand_pc_vars(input, output, out_size, prefix, exec_prefix, libdir, sharedlibdir, includedir);
+    barr_expand_pc_vars(
+        input, output, out_size, prefix, exec_prefix, libdir, sharedlibdir, includedir);
 }
 
 static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
@@ -113,10 +136,10 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
     }
 
     char line[BARR_BUF_SIZE_1024];
-    char prefix[BARR_BUF_SIZE_256] = "";
-    char exec_prefix[BARR_BUF_SIZE_256] = "";
-    char libdir[BARR_BUF_SIZE_256] = "";
-    char includedir[BARR_BUF_SIZE_256] = "";
+    char prefix[BARR_BUF_SIZE_256]       = "";
+    char exec_prefix[BARR_BUF_SIZE_256]  = "";
+    char libdir[BARR_BUF_SIZE_256]       = "";
+    char includedir[BARR_BUF_SIZE_256]   = "";
     char sharedlibdir[BARR_BUF_SIZE_256] = "";
     char temp[BARR_BUF_SIZE_256];
 
@@ -136,7 +159,7 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
         char *equal = strchr(line, '=');
         if (equal)
         {
-            *equal = '\0';
+            *equal    = '\0';
             char *key = line;
             char *val = equal + 1;
 
@@ -147,25 +170,29 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
             }
             else if (BARR_strmatch(key, "exec_prefix"))
             {
-                barr_expand_var(val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
+                barr_expand_var(
+                    val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
                 strncpy(exec_prefix, temp, sizeof(exec_prefix) - 1);
                 exec_prefix[sizeof(exec_prefix) - 1] = '\0';
             }
             else if (BARR_strmatch(key, "libdir"))
             {
-                barr_expand_var(val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
+                barr_expand_var(
+                    val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
                 strncpy(libdir, temp, sizeof(libdir) - 1);
                 libdir[sizeof(libdir) - 1] = '\0';
             }
             else if (BARR_strmatch(key, "includedir"))
             {
-                barr_expand_var(val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
+                barr_expand_var(
+                    val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
                 strncpy(includedir, temp, sizeof(includedir) - 1);
                 includedir[sizeof(includedir) - 1] = '\0';
             }
             else if (BARR_strmatch(key, "sharedlibdir"))
             {
-                barr_expand_var(val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
+                barr_expand_var(
+                    val, temp, sizeof(temp), prefix, exec_prefix, libdir, sharedlibdir, includedir);
                 strncpy(sharedlibdir, temp, sizeof(sharedlibdir) - 1);
                 sharedlibdir[sizeof(sharedlibdir) - 1] = '\0';
             }
@@ -178,7 +205,7 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
             continue;
         }
 
-        *colon = '\0';
+        *colon      = '\0';
         char *field = line;
         char *value = colon + 1;
         while (*value == ' ' || *value == '\t')
@@ -187,7 +214,8 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
         }
 
         char buf[BARR_BUF_SIZE_1024];
-        barr_expand_pc_vars(value, buf, sizeof(buf), prefix, exec_prefix, libdir, sharedlibdir, includedir);
+        barr_expand_pc_vars(
+            value, buf, sizeof(buf), prefix, exec_prefix, libdir, sharedlibdir, includedir);
 
         if (BARR_strmatch(field, "Name"))
         {
@@ -211,9 +239,9 @@ static void barr_parse_pc_file(const char *filepath, BARR_PackageInfo *out)
         }
     }
 
-    out->libdir = BARR_gc_strdup(libdir);
+    out->libdir       = BARR_gc_strdup(libdir);
     out->sharedlibdir = BARR_gc_strdup(sharedlibdir);
-    out->includedir = BARR_gc_strdup(includedir);
+    out->includedir   = BARR_gc_strdup(includedir);
 
     fclose(f);
 }
@@ -230,16 +258,16 @@ void BARR_package_scan_dir(BARR_PackageInfo *out, const char *dirpath, const cha
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    size_t cap = BARR_BUF_SIZE_64;
-    char **queue = BARR_gc_alloc(cap * sizeof(char *));
-    size_t que_size = 0;
-    size_t que_cap = cap;
+    size_t cap        = BARR_BUF_SIZE_64;
+    char **queue      = BARR_gc_alloc(cap * sizeof(char *));
+    size_t que_size   = 0;
+    size_t que_cap    = cap;
     queue[que_size++] = BARR_gc_strdup(dirpath);
 
     while (que_size)
     {
         char *current = queue[--que_size];
-        DIR *dir = opendir(current);
+        DIR  *dir     = opendir(current);
         if (!dir)
         {
             continue;
@@ -262,8 +290,8 @@ void BARR_package_scan_dir(BARR_PackageInfo *out, const char *dirpath, const cha
                 {
                     if (que_size >= que_cap)
                     {
-                        que_cap *= 2;
-                        char **new_que = BARR_gc_realloc(queue, que_cap * sizeof(char *));
+                        que_cap        *= 2;
+                        char **new_que  = BARR_gc_realloc(queue, que_cap * sizeof(char *));
                         if (!new_que)
                         {
                             BARR_errlog("%s(): failed to realloc", __func__);
@@ -281,7 +309,7 @@ void BARR_package_scan_dir(BARR_PackageInfo *out, const char *dirpath, const cha
 
                 if (!target_pkg || BARR_strmatch(temp.name, target_pkg))
                 {
-                    *out = temp;
+                    *out          = temp;
                     out->pkg_path = BARR_gc_strdup(current);
                     break;
                 }
@@ -292,6 +320,11 @@ void BARR_package_scan_dir(BARR_PackageInfo *out, const char *dirpath, const cha
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
-    double elapsed = (double) (end.tv_sec - start.tv_sec) + (double) (end.tv_nsec - start.tv_nsec) / 1e9;
-    BARR_printf("Package scan done in %.6f sec\n", elapsed);
+    double elapsed =
+        (double) (end.tv_sec - start.tv_sec) + (double) (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    if (g_barr_verbose)
+    {
+        BARR_printf("Package scan done in %.6f sec\n", elapsed);
+    }
 }

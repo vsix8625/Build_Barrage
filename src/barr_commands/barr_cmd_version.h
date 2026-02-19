@@ -25,16 +25,16 @@
 
 typedef enum
 {
-    BARR_INIT_NOT_FOUND = -1,
+    BARR_INIT_NOT_FOUND  = -1,
     BARR_INIT_LOCK_NEWER = -2,
     BARR_INIT_LOCK_OLDER = 0,
-    BARR_INIT_OK = 1,
+    BARR_INIT_OK         = 1,
 } BARR_InitStatus;
 
-barr_i32 BARR_command_version(barr_i32 argc, char **argv);
-barr_i32 BARR_read_version_code(const char *init_lock_file);
+barr_i32        BARR_command_version(barr_i32 argc, char **argv);
+barr_i32        BARR_read_version_code(const char *init_lock_file);
 BARR_InitStatus BARR_check_initialized(void);
-bool BARR_init(void);
+bool            BARR_init(void);
 
 /* @brief: Returns version as a string.
  * Utilizes BARR_gc_strdup, manual free is not required.

@@ -21,7 +21,7 @@ void BARR_dumb_backtrace(void)
 #ifndef BARR_DEBUG
     return;
 #endif
-    void *buf[BARR_BUF_SIZE_32];
+    void    *buf[BARR_BUF_SIZE_32];
     barr_i32 nptrs = backtrace(buf, 32);
 
     BARR_warnlog("---- Backtrace (%d frames) ----", nptrs);
@@ -50,7 +50,7 @@ void BARR_dbglog(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        printf("\033[36;1m[barr_debug]: ");
+        printf("\033[36;1m[barr_debug]:\033[0m ");
     }
     else
     {
@@ -62,14 +62,7 @@ void BARR_dbglog(const char *format, ...)
     vprintf(format, args);
     va_end(args);
 
-    if (is_tty)
-    {
-        printf("\033[0m\n");
-    }
-    else
-    {
-        printf("\n");
-    }
+    printf("\n");
     atomic_flag_clear(&barr_dbg_log_lock);
 #else
     BARR_VOID(format);

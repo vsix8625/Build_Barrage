@@ -15,7 +15,8 @@ barr_i32 BARR_create_project(const char *project_name)
     BARR_dbglog("Created: %s directory", project_name);
 
     char buffer[BARR_BUF_SIZE_1024];
-    snprintf(buffer, sizeof(buffer), "%s%s%s", project_name, BARR_PATH_SEPARATOR_STR, BARR_MARKER_DIR);
+    snprintf(
+        buffer, sizeof(buffer), "%s%s%s", project_name, BARR_PATH_SEPARATOR_STR, BARR_MARKER_DIR);
     BARR_dbglog("Generating %s sub directories", project_name);
     BARR_dbglog("\t--> 1: %s", buffer);
 
@@ -30,22 +31,44 @@ barr_i32 BARR_create_project(const char *project_name)
     minor = BARR_VERSION_MINOR;
     patch = BARR_VERSION_PATCH;
     char init_lock_path[BARR_BUF_SIZE_2048];
-    snprintf(init_lock_path, sizeof(init_lock_path), "%s%s%s", buffer, BARR_PATH_SEPARATOR_STR, "init.lock");
-    BARR_file_write(init_lock_path, "version=%d.%d.%d\nversion_code=%d\ndate=%s", major, minor, patch,
-                    BARR_VERSION_ENCODE(major, minor, patch), BARR_VERSION_DATE);
+    snprintf(init_lock_path,
+             sizeof(init_lock_path),
+             "%s%s%s",
+             buffer,
+             BARR_PATH_SEPARATOR_STR,
+             "init.lock");
+    BARR_file_write(init_lock_path,
+                    "version=%d.%d.%d\nversion_code=%d\ndate=%s",
+                    major,
+                    minor,
+                    patch,
+                    BARR_VERSION_ENCODE(major, minor, patch),
+                    BARR_VERSION_DATE);
     BARR_setperm(init_lock_path, "read-only");
 
     char barr_marker_data_dir_buf[BARR_BUF_SIZE_1024];
-    snprintf(barr_marker_data_dir_buf, sizeof(barr_marker_data_dir_buf), "%s%s%s%s", BARR_PATH_SEPARATOR_STR,
-             BARR_MARKER_DIR, BARR_PATH_SEPARATOR_STR, BARR_MARKER_DATA_DIR);
+    snprintf(barr_marker_data_dir_buf,
+             sizeof(barr_marker_data_dir_buf),
+             "%s%s%s%s",
+             BARR_PATH_SEPARATOR_STR,
+             BARR_MARKER_DIR,
+             BARR_PATH_SEPARATOR_STR,
+             BARR_MARKER_DATA_DIR);
 
     char barr_marker_cache_dir_buf[BARR_BUF_SIZE_1024];
-    snprintf(barr_marker_cache_dir_buf, sizeof(barr_marker_cache_dir_buf), "%s%s%s%s", BARR_PATH_SEPARATOR_STR,
-             BARR_MARKER_DIR, BARR_PATH_SEPARATOR_STR, BARR_MARKER_CACHE_DIR);
+    snprintf(barr_marker_cache_dir_buf,
+             sizeof(barr_marker_cache_dir_buf),
+             "%s%s%s%s",
+             BARR_PATH_SEPARATOR_STR,
+             BARR_MARKER_DIR,
+             BARR_PATH_SEPARATOR_STR,
+             BARR_MARKER_CACHE_DIR);
 
-    const char *dirs[] = {barr_marker_data_dir_buf, barr_marker_cache_dir_buf, BARR_PATH_SEPARATOR_STR "src",
-                          BARR_PATH_SEPARATOR_STR "inc"};
-    size_t count_dirs = sizeof(dirs) / sizeof(dirs[0]);
+    const char *dirs[]     = {barr_marker_data_dir_buf,
+                              barr_marker_cache_dir_buf,
+                              BARR_PATH_SEPARATOR_STR "src",
+                              BARR_PATH_SEPARATOR_STR "inc"};
+    size_t      count_dirs = sizeof(dirs) / sizeof(dirs[0]);
 
     for (size_t i = 0; i < count_dirs; ++i)
     {
@@ -67,7 +90,7 @@ barr_i32 BARR_create_project(const char *project_name)
     BARR_log("\tbarr build          # Auto build the project");
     BARR_log("\tbarr run            # Run the latest executable created\n");
     BARR_log("NOTE: you can also chain commands with `...` or '---'");
-    BARR_log("\t(e.g): barr new --barrfile ... new --main ... build --turbo ... run");
+    BARR_log("\t(e.g): barr new --barrfile ... new --main ... build ... run");
 
     return 0;
 }

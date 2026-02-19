@@ -15,7 +15,7 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
         return 1;
     }
 
-    for (size_t i = 1; i < argc; ++i)
+    for (barr_i32 i = 1; i < argc; ++i)
     {
         const char *opt = argv[i];
 
@@ -30,12 +30,12 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             struct tm t;
             t = *localtime(&now);
 
-            barr_i32 year = t.tm_year + 1900;
+            barr_i32 year  = t.tm_year + 1900;
             barr_i32 month = t.tm_mon + 1;
-            barr_i32 day = t.tm_mday;
-            barr_i32 h = t.tm_hour;
-            barr_i32 min = t.tm_min;
-            barr_i32 sec = t.tm_sec;
+            barr_i32 day   = t.tm_mday;
+            barr_i32 h     = t.tm_hour;
+            barr_i32 min   = t.tm_min;
+            barr_i32 sec   = t.tm_sec;
 
             if (!BARR_isdir("build"))
             {
@@ -52,7 +52,15 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             BARR_mkdir_p(BARR_RECOVERY_DIR);
 
             char saved_dir[BARR_BUF_SIZE_1024];
-            snprintf(saved_dir, sizeof(saved_dir), "%s/%d-%d-%d-%dh-%d%d", BARR_RECOVERY_DIR, year, month, day, h, min,
+            snprintf(saved_dir,
+                     sizeof(saved_dir),
+                     "%s/%d-%d-%d-%dh-%d%d",
+                     BARR_RECOVERY_DIR,
+                     year,
+                     month,
+                     day,
+                     h,
+                     min,
                      sec);
 
             BARR_mkdir_p(saved_dir);
@@ -116,7 +124,7 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             BARR_rmrf("build");
             BARR_rmrf(".barr");
 
-            for (size_t j = i; j < argc; ++j)
+            for (barr_i32 j = i; j < argc; ++j)
             {
                 const char *target_path = NULL;
 
@@ -137,7 +145,8 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
 
                 if (target_path)
                 {
-                    BARR_printf("This option overrides build and .barr directories, and Barrfile as well!\n");
+                    BARR_printf("This option overrides build and .barr directories, and Barrfile "
+                                "as well!\n");
                     BARR_printf("Are you sure you want to restore (%s)? [y/N]: ", target_path);
                     barr_i32 c = getchar();
                     if (c != 'y' && c != 'Y')
@@ -164,7 +173,8 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            BARR_printf("Are you sure you want to delete recovery files for (%s)? [y/N]: ", BARR_getcwd());
+            BARR_printf("Are you sure you want to delete recovery files for (%s)? [y/N]: ",
+                        BARR_getcwd());
             barr_i32 c = getchar();
             if (c != 'y' && c != 'Y')
             {
@@ -196,11 +206,11 @@ barr_i32 BARR_command_recovery(barr_i32 argc, char **argv)
             for (size_t j = 0; j < recovery_list.count; ++j)
             {
                 char *dir = recovery_list.items[j];
-                char notes_file[BARR_PATH_MAX];
+                char  notes_file[BARR_PATH_MAX];
                 snprintf(notes_file, sizeof(notes_file), "%s/.notes", dir);
 
-                char notes[BARR_BUF_SIZE_64 + 1] = "";
-                FILE *cf = fopen(notes_file, "r");
+                char  notes[BARR_BUF_SIZE_64 + 1] = "";
+                FILE *cf                          = fopen(notes_file, "r");
                 if (cf)
                 {
                     fgets(notes, sizeof(notes), cf);

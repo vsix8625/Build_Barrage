@@ -42,10 +42,23 @@ static inline bool barr_is_project_root(const char *dirpath)
         return false;
     }
 
-    static const char *excludes[] = {"Barrfile",     "Makefile",   "pyproject.toml", "CMakeLists.txt", "setup.py",
-                                     "package.json", "Cargo.toml", "meson.build",    "SConstruct",     "go.md",
-                                     ".csproj",      "WORKSPACE",  "WORSPACE.baze",  "BUILD",          "BUILD.bazel",
-                                     "configure.ac", NULL};
+    static const char *excludes[] = {"Barrfile",
+                                     "Makefile",
+                                     "pyproject.toml",
+                                     "CMakeLists.txt",
+                                     "setup.py",
+                                     "package.json",
+                                     "Cargo.toml",
+                                     "meson.build",
+                                     "SConstruct",
+                                     "go.md",
+                                     ".csproj",
+                                     "WORKSPACE",
+                                     "WORSPACE.baze",
+                                     "BUILD",
+                                     "BUILD.bazel",
+                                     "configure.ac",
+                                     NULL};
 
     char config_path[BARR_PATH_MAX + 32];
     for (const char **filename = excludes; *filename; ++filename)
@@ -64,9 +77,10 @@ static inline bool barr_is_project_root(const char *dirpath)
 static inline bool barr_exclude(const char *path, const char **exclude_patterns)
 {
     static const char *skip_names[] = {
-        "build",   "bin",     "obj",   ".git",   "cache",  ".vs",     ".idea",  "test",           "CMakeFiles",
-        "Debug",   "Release", ".barr", "docs",   "assets", "scripts", "modes",  ".barr_recovery", "pycache",
-        ".vscode", "objects", "out",   "target", ".svn",   ".hg",     "vendor", ".trash",         NULL};
+        "build",          "bin",     "obj",     ".git",    "cache", ".vs",    ".idea",   "test",
+        "CMakeFiles",     "Debug",   "Release", ".barr",   "docs",  "assets", "scripts", "modes",
+        ".barr_recovery", "pycache", ".vscode", "objects", "out",   "target", ".svn",    ".hg",
+        "vendor",         ".trash",  NULL};
 
     if (strstr(path, "/.") != NULL)
     {
@@ -80,7 +94,7 @@ static inline bool barr_exclude(const char *path, const char **exclude_patterns)
         {
             /* make sure it's a directory component, not substring of another name */
             char before = (found == path) ? '/' : *(found - 1);
-            char after = *(found + strlen(*p));
+            char after  = *(found + strlen(*p));
             if ((before == '/' || before == '\0') && (after == '/' || after == '\0'))
             {
                 return true;
@@ -96,7 +110,7 @@ static inline bool barr_exclude(const char *path, const char **exclude_patterns)
             if (found)
             {
                 char before = (found == path) ? '/' : *(found - 1);
-                char after = *(found + strlen(*p));
+                char after  = *(found + strlen(*p));
                 if ((before == '/' || before == '\0') && (after == '/' || after == '\0'))
                 {
                     return true;
@@ -107,7 +121,7 @@ static inline bool barr_exclude(const char *path, const char **exclude_patterns)
 
     /* last segment guard */
     const char *base = strrchr(path, '/');
-    base = base ? base + 1 : path;
+    base             = base ? base + 1 : path;
 
     if (base[0] == '.')
     {
@@ -117,7 +131,9 @@ static inline bool barr_exclude(const char *path, const char **exclude_patterns)
     return false;
 }
 
-void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const char **exclude_tokens)
+void BARR_source_list_scan_dir(BARR_SourceList *list,
+                               const char      *dirpath,
+                               const char     **exclude_tokens)
 {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -137,10 +153,10 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
     }
 
     size_t files_count = 0;
-    size_t dir_count = 0;
+    size_t dir_count   = 0;
 
     size_t que_size = 0;
-    size_t que_cap = BARR_SCAN_QUEUE_CAP;
+    size_t que_cap  = BARR_SCAN_QUEUE_CAP;
 
     queue[que_size++] = strdup(dirpath);
     if (queue[0] == NULL)
@@ -201,8 +217,8 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
 
                 if (que_size >= que_cap)
                 {
-                    que_cap *= 2;
-                    char **new_queue = realloc(queue, que_cap * sizeof(char *));
+                    que_cap          *= 2;
+                    char **new_queue  = realloc(queue, que_cap * sizeof(char *));
                     if (!new_queue)
                     {
                         BARR_errlog("%s(): failed to realloc", __func__);
@@ -224,8 +240,8 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
                 files_count++;
 
                 if ((dent->d_type == DT_REG && barr_is_source_file(fullpath)) ||
-                    (dent->d_type != DT_REG && barr_stat(fullpath, &st) == 0 && S_ISREG(st.st_mode) &&
-                     barr_is_source_file(fullpath)))
+                    (dent->d_type != DT_REG && barr_stat(fullpath, &st) == 0 &&
+                     S_ISREG(st.st_mode) && barr_is_source_file(fullpath)))
                 {
                     if (!BARR_source_list_push(list, fullpath))
                     {
@@ -247,7 +263,7 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
         //----------------------------------------------------------------------------------------------------
         // CLOCK
         clock_gettime(CLOCK_MONOTONIC, &end);
-        barr_i64 sec = (barr_i64) (end.tv_sec - start.tv_sec);
+        barr_i64 sec  = (barr_i64) (end.tv_sec - start.tv_sec);
         barr_i64 nsec = (barr_i64) (end.tv_nsec - start.tv_nsec);
         if (nsec < 0)
         {
@@ -255,8 +271,15 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
             nsec += 1000000000LL;
         }
         double elapsed = (double) sec + (double) nsec / 1e9;
-        BARR_printf("\rScanned: %zu files in %zu dirs (%.2f files per sec) in \033[34;1m%.6fsec", files_count,
-                    dir_count, (double) list->count / elapsed, elapsed);
+        if (g_barr_verbose)
+        {
+            BARR_printf(
+                "\rScanned: %zu files in %zu dirs (%.2f files per sec) in \033[34;1m%.6fsec",
+                files_count,
+                dir_count,
+                (double) list->count / elapsed,
+                elapsed);
+        }
     }
     for (size_t j = 0; j < que_size; ++j)
     {
@@ -270,8 +293,10 @@ void BARR_source_list_scan_dir(BARR_SourceList *list, const char *dirpath, const
     }
 }
 
-void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_SourceList *inc_dir_list,
-                               const char **exclude_tokens)
+void BARR_header_list_scan_dir(BARR_SourceList *list,
+                               const char      *dirpath,
+                               BARR_SourceList *inc_dir_list,
+                               const char     **exclude_tokens)
 {
     if (list == NULL || dirpath == NULL)
     {
@@ -287,7 +312,7 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
     }
 
     size_t que_size = 0;
-    size_t que_cap = BARR_SCAN_QUEUE_CAP;
+    size_t que_cap  = BARR_SCAN_QUEUE_CAP;
 
     queue[que_size++] = BARR_gc_strdup(dirpath);
     if (queue[0] == NULL)
@@ -300,7 +325,7 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
     for (size_t i = 0; i < que_size; ++i)
     {
         char *current = queue[i];
-        DIR *dir = opendir(current);
+        DIR  *dir     = opendir(current);
         if (dir == NULL)
         {
             continue;
@@ -333,8 +358,8 @@ void BARR_header_list_scan_dir(BARR_SourceList *list, const char *dirpath, BARR_
                     }
                     if (que_size >= que_cap)
                     {
-                        que_cap *= 2;
-                        char **new_queue = BARR_gc_realloc(queue, que_cap * sizeof(char *));
+                        que_cap          *= 2;
+                        char **new_queue  = BARR_gc_realloc(queue, que_cap * sizeof(char *));
                         if (!new_queue)
                         {
                             BARR_errlog("%s(): failed to realloc", __func__);
