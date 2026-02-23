@@ -56,7 +56,7 @@ CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx ${extra_opts}";
 
 EXCLUDE_PATTERNS = "tools"; 
 
-DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
+DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD"; # BARR_SAFE for public
 
 pkgs = "xxhash";
 find_package("${pkgs}");

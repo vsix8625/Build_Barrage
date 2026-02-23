@@ -277,12 +277,11 @@ barr_i32 main(barr_i32 argc, char **argv)
         "new", BARR_command_new, "Create new project or files", new_aliases, new_opts, new_details);
 
     // config
-    static const char *config_details =
-        "   open        Open local Barrfile with your $EDITOR (requires barr initialized project)\n"
-        "   cpu-perf    Change cpu governor to performance (requires sudo)\n"
-        "   cpu-norm    Change cpu governor to schedutil (requires sudo)\n";
+    static const char *config_details = "   open        Open local Barrfile with your $EDITOR "
+                                        "(requires barr initialized project)\n";
+
     static const char *config_aliases[] = {"-C", NULL};
-    static const char *config_opts[]    = {"open | -O", "cpu-perf", "cpu-norm", NULL};
+    static const char *config_opts[]    = {"open | -O", NULL};
     barr_register_command("config",
                           BARR_cmd_config,
                           "Manage configuration",
@@ -302,16 +301,6 @@ barr_i32 main(barr_i32 argc, char **argv)
                           status_aliases,
                           status_opts,
                           status_details);
-
-    // recovery
-    static const char *recovery_aliases[] = {"-ry", NULL};
-    static const char *recovery_opts[]    = {"save", "restore", "list", "destroy", NULL};
-    barr_register_command("recovery",
-                          BARR_command_recovery,
-                          "Project save and restore state",
-                          recovery_aliases,
-                          recovery_opts,
-                          NULL);
 
     // fo
     static const char *fo_alias[] = {NULL};

@@ -32,7 +32,7 @@ echo [build.sh]: Using $COMPILER...
 $COMPILER -std=c23 -O2 -fPIE \
     -I. -Isrc -Isrc/barr_build_system -Isrc/barr_commands -Isrc/barr_platform/linux -Isrc/olmos \
     $(find src -name "*.c") \
-    -D_GNU_SOURCE -DNDEBUG -mavx \
+    -D_GNU_SOURCE -DNDEBUG -mavx \ 
     -o bootstrap/barr -lxxhash -lpthread $L_STRAT
 
 echo [build.sh]: Rebuilding with barr...
