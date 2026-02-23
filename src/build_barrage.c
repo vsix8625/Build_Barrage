@@ -137,7 +137,7 @@ barr_i32 main(barr_i32 argc, char **argv)
 {
     if (argc < 2)
     {
-        BARR_errlog("Usage: barr <command>");
+        BARR_errlog("Usage: barr <command> | barr help");
         return 1;
     }
 
@@ -256,9 +256,9 @@ barr_i32 main(barr_i32 argc, char **argv)
 
     // new
     static const char *new_details =
-        "  --project <project_name>      # Creates <project_name> directory with Build Barrage "
+        " --project <name>      # Creates <name> directory with Build Barrage "
         "initialized (can run "
-        "anywhere)\n"
+        "anywhere)\n\n"
         "  --file <name> [dirpath]       # Creates <name> file with optional directory\n"
         "  --barrfile                    # Creates a default Barrfile\n"
         "  --main                        # Creates src/main.c with Hello,from barr\n"
@@ -315,23 +315,17 @@ barr_i32 main(barr_i32 argc, char **argv)
 
     // fo
     static const char *fo_alias[] = {NULL};
-    static const char *fo_opts[]  = {"ON", "OFF", "REPORT", NULL};
+    static const char *fo_opts[]  = {"deploy | -d", "dismiss | -s", "report", "watch | -w", NULL};
     barr_register_command(
-        "fo", BARR_command_fo, "Project forward observer: Reaper 1-6", fo_alias, fo_opts, NULL);
+        "fo", BARR_command_fo, "Project forward observer", fo_alias, fo_opts, NULL);
 
     // debug
-    static const char *debug_details =
-        "\t--fsinfo       # Show a summary of all project dirs and files\n"
-        "\t--cache        # Print project cached files\n";
+    static const char *debug_details   = "\t--fsinfo       # Show project dirs and files\n"
+                                         "\t--cache        # Print project cached files\n";
     static const char *debug_aliases[] = {"-db", NULL};
     static const char *debug_opts[]    = {"--fsinfo", "--cache", NULL};
     barr_register_command(
         "debug", BARR_cmd_debug, "Debug and information", debug_aliases, debug_opts, debug_details);
-
-    // test
-    static const char *test_aliases[] = {"-t", NULL};
-    static const char *test_opts[]    = {"--create", "--no-confirm | -nc", NULL};
-    barr_register_command("test", BARR_command_test, "Test helpers", test_aliases, test_opts, NULL);
 
     static const char *install_aliases[] = {"-i", NULL};
     static const char *install_opts[]    = {"--destdir", "--prefix", NULL};
@@ -341,11 +335,6 @@ barr_i32 main(barr_i32 argc, char **argv)
     static const char *uninstall_aliases[] = {"-uni", NULL};
     barr_register_command(
         "uninstall", BARR_command_uninstall, "System uninstall", uninstall_aliases, NULL, NULL);
-
-    // play
-    static const char *play_aliases[] = {"-pl", NULL};
-    static const char *play_opts[]    = {"--shuffle", "--video", NULL};
-    barr_register_command("play", BARR_command_play, "Play music", play_aliases, play_opts, NULL);
 
     //----------------------------------------------------------------------------------------------------
     // Dispatch

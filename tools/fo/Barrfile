@@ -2,18 +2,6 @@
 # Latest update: 2025-11-17
 
 # ------------------------------------------------------------------
-#
-#   • All constant values must be written in ALL_CAPS_WITH_UNDERSCORES.
-#   • lowercase / camelCase      → Your custom variables (free to define)
-#   • Lines that start with '#' are comments and are ignored.
-#   • Use ${VAR_NAME} to reference another variable.
-#   • Variables not defined keep their built-in defaults.
-#
-# ------------------------------------------------------------------
-
-print("Barrfile execution started");
-
-# ------------------------------------------------------------------
 # 1. PROJECT METADATA                                                
 # ------------------------------------------------------------------
 TARGET        = "fo";          # Name of the final binary / library
@@ -25,76 +13,22 @@ print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 # ------------------------------------------------------------------
 # 2. TOOLCHAIN                                                       
 # ------------------------------------------------------------------
-COMPILER      = "${BARR_COMPILER}";         # C compiler (full path recommended)
-LINKER        = "lld";                  # Linker (ld, gold, lld, …)
+COMPILER      = "${BARR_COMPILER}";     # The compiler used to build barr
+LINKER        = "mold";                  # Linker (ld, gold, lld, …)
 
 # ------------------------------------------------------------------
 # 3. BUILD TYPE & OUTPUT                                             
 # ------------------------------------------------------------------
-BUILD_TYPE    = "debug";                          # "debug" (default) | "release"
+BUILD_TYPE    = "release";                          # "debug" (default) | "release"
 OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";  # Directory for objects & final binary
 
 # ------------------------------------------------------------------
 # 4. COMPILATION FLAGS                                               
 # ------------------------------------------------------------------
 # You can define your own variables like the line below.
-std           = "-std=c23";             # C standard (c11, c17, c23, …)
-CFLAGS        = "${std} -Wall -Werror -Wextra -g -pthread";   # Debug flags
-CFLAGS_RELEASE = "${std} -Wall -O3";                # Release flags (used when BUILD_TYPE=release)
+std            = "-std=c23";             # C standard (c11, c17, c23, …)
+CFLAGS         = "${std} -Wall -Werror -Wextra -g -pthread";   # Debug flags
+CFLAGS_RELEASE = "${std} -Wall -O3 -flto";                # Release flags (used when BUILD_TYPE=release)
+DEFINES        = "-DNDEBUG -D_GNU_SOURCE";              # Additional -D flags
+LFLAGS         = "-flto -Wl,--gc-sections,-s"; 
 
-# ------------------------------------------------------------------
-# 5. SOURCE & INCLUDE DISCOVERY                                      
-# ------------------------------------------------------------------
-# AUTO_INCLUDE_DISCOVERY = "on";   # "on" (default) | "append" | "off"
-#   • "on"  – automatically scan the project root for headers.
-#   • "append" – scan + keep manually added INCLUDES.
-#   • "off" – disable scanning; only use explicit INCLUDES.
-#
-# INCLUDES = "-Iinc";             # Manually added include directories
-#   • Adding this variable automatically sets AUTO_INCLUDE_DISCOVERY = "off".
-
-# GLOB_SOURCES = "src dir1 dir2"; # Recursive glob patterns (turns off auto-source discovery)
-# SOURCES = "main.c file1.c src/file3.c"; # Explicit source list
-
-# ------------------------------------------------------------------
-# 6. PREPROCESSOR DEFINES                                            
-# ------------------------------------------------------------------
-DEFINES       = "-DDEBUG -D_GNU_SOURCE";              # Additional -D flags
-
-# ------------------------------------------------------------------
-# 7. LINKING & LIBRARIES                                             
-# ------------------------------------------------------------------
-# LFLAGS      = "-lpthread";            # Linker flags
-# LIB_PATHS   = "-L/usr/local/lib";     # Library search paths
-
-# ------------------------------------------------------------------
-# 8. MISCELLANEOUS                                                   
-# ------------------------------------------------------------------
-# GEN_COMPILE_COMMANDS = "on";           # Generate compile_commands.json (on/off)
-# EXCLUDE_PATTERNS = "build test";        # Patterns excluded from glob scanning
-
-# ------------------------------------------------------------------
-# 9. MODULE SUPPORT
-# ------------------------------------------------------------------
-# To build a module for ${TARGET} you can add this function.
-# barr build will run it, before building the ${TARGET}
-# add_module("engine","engine","required");
-# engine_includes = "-Iinclude -Iengine_public_inc";
-# engine_clean_targets = "engine/build engine/.barr/cache/build.cache";
-
-# Finalize the module includes in case of multiple modules
-# MODULES_INCLUDES = "${engine_includes}"; # Aggregated includes from modules
-# CLEAN_TARGETS = "${engine_clean_targets} ${other_clean_targets}...";       # Extra paths removed by 'barr clean'
-
-# ------------------------------------------------------------------
-# 10. PACKAGES SUPPORT
-# ------------------------------------------------------------------
-# Finding a system package eg: "xxhash" and "zlib"
-# pkgs = "xxhash zlib";
-# find_package("${pkgs}");
-
-# ------------------------------------------------------------------
-# End of Barrfile                                                    
-# ------------------------------------------------------------------
-
-print("Barrfile execution finished");

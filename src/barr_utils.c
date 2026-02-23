@@ -46,7 +46,8 @@ void BARR_safecpy(char *dst, const char *src, size_t dst_size)
     dst[dst_size - 1] = BARR_NULL_TERM_CHAR;
 }
 
-static barr_i32 remove_cb(const char *fpath, const struct stat *sb, barr_i32 typeflag, struct FTW *ftwbuf)
+static barr_i32
+remove_cb(const char *fpath, const struct stat *sb, barr_i32 typeflag, struct FTW *ftwbuf)
 {
     (void) sb;
     (void) ftwbuf;
@@ -158,7 +159,7 @@ void BARR_update_Barrfile_stamp(void)
 
 bool BARR_is_newer(const char *src, const char *target)
 {
-    time_t src_t = barr_get_mtime(src);
+    time_t src_t    = barr_get_mtime(src);
     time_t target_t = barr_get_mtime(target);
     return src_t > target_t;
 }
@@ -252,7 +253,7 @@ char *BARR_find_in_path(const char *app)
         return NULL;
     }
 
-    char *path = BARR_gc_strdup(env_path);
+    char *path    = BARR_gc_strdup(env_path);
     char *saveptr = NULL;
     char *dir = strtok_r(path, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
 
@@ -282,7 +283,7 @@ bool BARR_is_installed(const char *app)
         return false;
     }
 
-    char *path = strdup(env_path);
+    char *path    = strdup(env_path);
     char *saveptr = NULL;
     char *dir = strtok_r(path, (const char[]) {BARR_PATH_DELIMITER, BARR_NULL_TERM_CHAR}, &saveptr);
 
@@ -393,7 +394,8 @@ static bool barr_token_exists_in_out(char **out, size_t n, const char *tok)
     return false;
 }
 
-static void barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_count, const char *src)
+static void
+barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_count, const char *src)
 {
     if (out == NULL || out_count == 0 || src == NULL)
     {
@@ -441,8 +443,8 @@ static void barr_tokenize_and_append_unique(char **out, size_t cap, size_t *out_
         {
             if (*out_count < cap)
             {
-                out[*out_count] = tok;
-                *out_count += 1;
+                out[*out_count]  = tok;
+                *out_count      += 1;
             }
             else
             {
@@ -465,7 +467,7 @@ const char *barr_normalize_include_flag(const char *flag)
     }
 
     const char *path = flag + 2;
-    char real[BARR_PATH_MAX];
+    char        real[BARR_PATH_MAX];
     if (realpath(path, real) != NULL)
     {
         char buf[BARR_PATH_MAX + 3];
@@ -526,8 +528,8 @@ char **BARR_tokenize_string(const char *str)
         return NULL;
     }
 
-    size_t token_count = 0;
-    const char *p = str;
+    size_t      token_count = 0;
+    const char *p           = str;
 
     while (*p)
     {
@@ -555,7 +557,7 @@ char **BARR_tokenize_string(const char *str)
         return NULL;
     }
 
-    size_t idx = 0;
+    size_t      idx   = 0;
     const char *start = str;
     while (*start)
     {
@@ -575,7 +577,7 @@ char **BARR_tokenize_string(const char *str)
         }
 
         size_t len = (size_t) (end - start);
-        char *tok = BARR_gc_alloc(len + 1);
+        char  *tok = BARR_gc_alloc(len + 1);
         if (tok == NULL)
         {
             start = end;
@@ -583,7 +585,7 @@ char **BARR_tokenize_string(const char *str)
         }
 
         memcpy(tok, start, len);
-        tok[len] = '\0';
+        tok[len]   = '\0';
         arr[idx++] = tok;
 
         start = end;
@@ -602,7 +604,7 @@ static double barr_time_elapsed(const struct timespec *start, const struct times
         return 0.0;
     }
 
-    barr_i64 sec = end->tv_sec - start->tv_sec;
+    barr_i64 sec  = end->tv_sec - start->tv_sec;
     barr_i64 nsec = end->tv_nsec - start->tv_nsec;
     if (nsec < 0)
     {
@@ -619,7 +621,7 @@ const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct tim
     }
 
     static char buf[BARR_BUF_SIZE_32];
-    double s = barr_time_elapsed(start, end);
+    double      s = barr_time_elapsed(start, end);
     if (s < 0)
     {
         s = 0;
@@ -650,7 +652,7 @@ const char *BARR_fmt_time_elapsed(const struct timespec *start, const struct tim
 
 barr_i32 BARR_mkdir_p(const char *path)
 {
-    char tmp[BARR_PATH_MAX];
+    char   tmp[BARR_PATH_MAX];
     size_t len = strlen(path);
 
     if (len == 0 || len >= sizeof(tmp))
@@ -692,14 +694,52 @@ barr_i32 BARR_mkdir_p(const char *path)
 
 //----------------------------------------------------------------------------------------------------
 
-bool BARR_is_valid_tool(const char *tool)
+static const char *compiler_list[] =
+    {"gcc", "g++", "clang", "clang++", "cc", "c++", "clang-18", "clang-17", "tcc", "zig", NULL};
+
+bool BARR_is_valid_tool(const char *tool_path)
 {
-    if (tool == NULL)
+    if (tool_path == NULL)
     {
         return false;
     }
 
-    const char *args[] = {tool, "--version", NULL};
+    char resolved_path[BARR_PATH_MAX];
+    if (realpath(tool_path, resolved_path) == NULL)
+    {
+        return false;
+    }
+
+    char path_cp[BARR_PATH_MAX];
+    strncpy(path_cp, resolved_path, BARR_PATH_MAX);
+    path_cp[BARR_PATH_MAX - 1] = '\0';
+
+    char *name = basename(path_cp);
+
+    bool in_whitelist = false;
+    for (barr_i32 i = 0; compiler_list[i] != NULL; i++)
+    {
+        if (strcmp(name, compiler_list[i]) == 0)
+        {
+            in_whitelist = true;
+            break;
+        }
+    }
+
+    if (!in_whitelist)
+    {
+        if (strstr(name, "gcc") || strstr(name, "clang") || strstr(name, "zig"))
+        {
+            in_whitelist = true;
+        }
+    }
+
+    if (!in_whitelist)
+    {
+        return false;
+    }
+
+    const char *args[] = {tool_path, "--version", NULL};
     if (g_barr_verbose)
     {
         return BARR_run_process(args[0], (char **) args, false) == 0;
@@ -765,17 +805,18 @@ static char *barr_trim_s(char *str)
 bool BARR_update_build_info_timestamp(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r+");
+
     if (fp == NULL)
     {
-        BARR_errlog("Cannot open build_info: %s", file_path);
+        BARR_warnlog("Cannot open build_info: %s", file_path);
         return false;
     }
 
-    char line[BARR_BUF_SIZE_1024];
-    size_t ts_len = strlen("timestamp");
-    barr_i64 new_ts = time(NULL);
-    barr_i64 pos = 0;
-    bool updated = false;
+    char     line[BARR_BUF_SIZE_1024];
+    size_t   ts_len  = strlen("timestamp");
+    barr_i64 new_ts  = time(NULL);
+    barr_i64 pos     = 0;
+    bool     updated = false;
 
     while (fgets(line, sizeof(line), fp))
     {
@@ -786,7 +827,7 @@ bool BARR_update_build_info_timestamp(const char *file_path)
             continue;
         }
 
-        *eq = 0;
+        *eq            = 0;
         char *line_key = barr_trim_s(line);
 
         if (strncmp(line_key, "timestamp", ts_len) == 0)
@@ -819,7 +860,7 @@ char *BARR_get_build_info_key(const char *file_path, const char *key)
         return NULL;
     }
 
-    char line[BARR_BUF_SIZE_1024];
+    char   line[BARR_BUF_SIZE_1024];
     size_t key_len = strlen(key);
 
     while (fgets(line, sizeof(line), fp))
@@ -903,7 +944,7 @@ bool BARR_path_resolve(const char *base, const char *rel, char *out, size_t out_
 
 char *BARR_get_self_exe(void)
 {
-    char current_barr_path[BARR_PATH_MAX];
+    char    current_barr_path[BARR_PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", current_barr_path, sizeof(current_barr_path) - 1);
     if (len != 1)
     {
@@ -1047,8 +1088,8 @@ void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type)
         return;
     }
 
-    size_t que_size = 0;
-    size_t que_cap = 64;
+    size_t que_size   = 0;
+    size_t que_cap    = 64;
     queue[que_size++] = strdup(dirpath);
 
     while (que_size > 0)
@@ -1087,8 +1128,8 @@ void BARR_scan_dir(BARR_List *list, const char *dirpath, BARR_ScanType type)
 
                 if (que_size >= que_cap)
                 {
-                    que_cap *= 2;
-                    char **new_que = realloc(queue, que_cap * sizeof(char *));
+                    que_cap        *= 2;
+                    char **new_que  = realloc(queue, que_cap * sizeof(char *));
 
                     if (new_que == NULL)
                     {
@@ -1124,10 +1165,10 @@ static void BARR_fsinfo_fill(BARR_FSInfo *info, const char *path, const struct b
     info->modified_time = st->st_atime;
 
     info->hard_links = st->st_nlink;
-    info->mode = st->st_mode;
+    info->mode       = st->st_mode;
 
-    info->owner_id = st->st_uid;
-    info->group_id = st->st_gid;
+    info->owner_id  = st->st_uid;
+    info->group_id  = st->st_gid;
     info->device_id = st->st_dev;
 
     info->blocks_allocated = st->st_blocks;
@@ -1148,8 +1189,8 @@ void BARR_fsinfo_collect_stats_dir_r(BARR_List *list, const char *dirpath)
         return;
     }
 
-    size_t que_size = 0;
-    size_t que_cap = 64;
+    size_t que_size   = 0;
+    size_t que_cap    = 64;
     queue[que_size++] = strdup(dirpath);
 
     while (que_size > 0)
@@ -1201,8 +1242,8 @@ void BARR_fsinfo_collect_stats_dir_r(BARR_List *list, const char *dirpath)
             {
                 if (que_size >= que_cap)
                 {
-                    que_cap *= 2;
-                    char **new_que = realloc(queue, que_cap * sizeof(char *));
+                    que_cap        *= 2;
+                    char **new_que  = realloc(queue, que_cap * sizeof(char *));
                     if (new_que == NULL)
                     {
                         BARR_errlog("%s(): failed to realloc queue", __func__);
@@ -1313,12 +1354,12 @@ void BARR_list_fsinfo_print(const BARR_List *list)
         return;
     }
 
-    size_t total_dirs = 0;
-    size_t total_files = 0;
-    size_t total_symlinks = 0;
-    size_t total_exec = 0;
-    size_t total_size = 0;
-    BARR_FSInfo *largest = NULL;
+    size_t       total_dirs     = 0;
+    size_t       total_files    = 0;
+    size_t       total_symlinks = 0;
+    size_t       total_exec     = 0;
+    size_t       total_size     = 0;
+    BARR_FSInfo *largest        = NULL;
 
     for (size_t i = 0; i < list->count; ++i)
     {
@@ -1352,7 +1393,10 @@ void BARR_list_fsinfo_print(const BARR_List *list)
         }
     }
 
-    printf("[summary]: Dirs %zu, Files %zu, Symlinks %zu, Executables %zu\n", total_dirs, total_files, total_symlinks,
+    printf("[summary]: Dirs %zu, Files %zu, Symlinks %zu, Executables %zu\n",
+           total_dirs,
+           total_files,
+           total_symlinks,
            total_exec);
     char hsize[BARR_BUF_SIZE_32];
     BARR_bytes_to_human(total_size, hsize, sizeof(hsize));

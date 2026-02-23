@@ -5,7 +5,7 @@
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "barr_modules.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 
 #include <stdlib.h>

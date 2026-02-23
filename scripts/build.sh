@@ -1,35 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CMAKE_BUILD_DIR="bootstrap"
+BUILD_DIR="bootstrap"
 
-mkdir -p $CMAKE_BUILD_DIR 
+mkdir -p $BUILD_DIR # tmp dir for bootstrap
 
-echo [build.sh]: Configurating cmake... 
-echo 
+for cmd in clang gcc cc; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        COMPILER="$cmd"
+        break
+    fi
+done
 
-if command -v ninja &> /dev/null; then
-	GEN="-G Ninja"
-    echo "[build.sh]: Ninja found, using Ninja generator"
-else
-	GEN=""
-    echo "[build.sh]: Ninja not found, using make"
+if ! $COMPILER -std=c23 -dM -E - < /dev/null > /dev/null 2>&1; then
+    echo "------------------------------------------------------------"
+    echo "ERROR: Prehistoric compiler: ($COMPILER) detected."
+    echo "Aborting!!"
+    echo "------------------------------------------------------------"
+    exit 1
 fi
 
-echo 
-echo [build.sh]: Building with cmake...
-echo 
+L_STRAT=""
+if command -v mold >/dev/null 2>&1; then
+    L_STRAT="-fuse-ld=mold"
+elif command -v ld.lld >/dev/null 2>&1; then
+    L_STRAT="-fuse-ld=lld"
+fi
 
-cmake -S . -B $CMAKE_BUILD_DIR $GEN
-cmake --build $CMAKE_BUILD_DIR
 
-echo 
+echo [build.sh]: Using $COMPILER...
+$COMPILER -std=c23 -O2 -fPIE \
+    -I. -Isrc -Isrc/barr_build_system -Isrc/barr_commands -Isrc/barr_platform/linux -Isrc/olmos \
+    $(find src -name "*.c") \
+    -D_GNU_SOURCE -DNDEBUG -mavx \
+    -o bootstrap/barr -lxxhash -lpthread $L_STRAT
+
 echo [build.sh]: Rebuilding with barr...
 echo 
 
-./$CMAKE_BUILD_DIR/bin/Release/barr-cmake -c -nc
-./$CMAKE_BUILD_DIR/bin/Release/barr-cmake build
+rm -rf .barr             # removing any previous barr stale state 
+./$BUILD_DIR/barr -I     # initializing the cmake created barr
+./$BUILD_DIR/barr -rb    # rebuild barr 
 
-echo [build.sh]: Done
+echo [build.sh]: Done, cleaning up...
+rm -rf $BUILD_DIR 
 
-rm -rf $CMAKE_BUILD_DIR
+

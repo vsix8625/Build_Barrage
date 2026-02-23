@@ -1,4 +1,4 @@
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "barr_debug.h"
 #include "barr_env.h"
 #include "barr_gc.h"
@@ -193,7 +193,7 @@ static char *olm_expand_vars(const char *input)
 
 //--------------------------------------------------------------------------------------------------
 
-void OLM_parse_vars(OLM_AST_Node *root)
+void OLM_parse_vars(OLM_Node *root)
 {
     if (root == NULL)
     {
@@ -202,7 +202,7 @@ void OLM_parse_vars(OLM_AST_Node *root)
 
     for (size_t i = 0; i < root->child_count; i++)
     {
-        OLM_AST_Node *node = root->children[i];
+        OLM_Node *node = root->children[i];
         if (!node)
         {
             continue;
@@ -380,7 +380,7 @@ static char *barr_find_unquoted_eq(const char *s)
     return NULL;
 }
 
-OLM_AST_Node *OLM_parse_file(const char *file_path)
+OLM_Node *OLM_parse_file(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
     if (!fp)
@@ -389,7 +389,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
         return NULL;
     }
 
-    OLM_AST_Node *root = BARR_gc_alloc(sizeof(OLM_AST_Node));
+    OLM_Node *root = BARR_gc_alloc(sizeof(OLM_Node));
 
     if (!root)
     {
@@ -433,7 +433,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
             continue;
         }
 
-        OLM_AST_Node *node = BARR_gc_alloc(sizeof(OLM_AST_Node));
+        OLM_Node *node = BARR_gc_alloc(sizeof(OLM_Node));
         if (!node)
         {
             fclose(fp);
@@ -638,7 +638,6 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
                 return NULL;
             }
 
-            // temporarily terminate the substring
             *end = '\0';
             start++;
 
@@ -703,8 +702,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
         }
 
         root->child_count++;
-        root->children =
-            BARR_gc_realloc(root->children, sizeof(OLM_AST_Node *) * root->child_count);
+        root->children = BARR_gc_realloc(root->children, sizeof(OLM_Node *) * root->child_count);
         if (!root->children)
         {
             fclose(fp);
@@ -719,7 +717,7 @@ OLM_AST_Node *OLM_parse_file(const char *file_path)
 
 //--------------------------------------------------------------------------------------------------
 
-size_t BARR_count_nodes(OLM_AST_Node *node)
+size_t BARR_count_nodes(OLM_Node *node)
 {
     if (node == NULL)
     {
@@ -737,19 +735,21 @@ size_t BARR_count_nodes(OLM_AST_Node *node)
     return count;
 }
 
-barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
+barr_i32 OLM_eval_config_node(OLM_Node *root, BARR_Arena *arena)
 {
-    time_t       start       = time(NULL);
-    const time_t max_seconds = 5;
+    time_t start = time(NULL);
+
+    const time_t max_seconds = 60;
 
     if (root == NULL || arena == NULL)
     {
         return 1;
     }
 
-    size_t         stack_capacity = BARR_count_nodes(root);
-    OLM_AST_Node **stack =
-        (OLM_AST_Node **) BARR_arena_alloc(arena, sizeof(OLM_AST_Node *) * stack_capacity);
+    size_t stack_capacity = BARR_count_nodes(root);
+
+    OLM_Node **stack = (OLM_Node **) BARR_arena_alloc(arena, sizeof(OLM_Node *) * stack_capacity);
+
     if (stack == NULL)
     {
         return 1;
@@ -775,7 +775,7 @@ barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
             return 1;
         }
 
-        OLM_AST_Node *node = stack[--top];
+        OLM_Node *node = stack[--top];
         if (node == NULL)
         {
             continue;
@@ -805,6 +805,19 @@ barr_i32 OLM_eval_node(OLM_AST_Node *root, BARR_Arena *arena)
                 if (BARR_strmatch(node->name, "run_cmd"))
                 {
                     const char *cmd = node->args[0];
+
+#if defined(BARR_SAFE)
+
+                    BARR_printf("Barr wants to run: \033[38;5;202m%s\033[0m. Allow? (y/N): ", cmd);
+                    fflush(stdout);
+
+                    char ans[4];
+                    if (fgets(ans, sizeof(ans), stdin) == NULL || (ans[0] != 'y' && ans[0] != 'Y'))
+                    {
+                        BARR_warnlog("run_cmd skipped by user: %s", cmd);
+                        return 1;
+                    }
+#endif
 
                     char cmd_copy[1024];
                     strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
@@ -975,30 +988,8 @@ static char *olm_barr_build_compiler(void)
 
 static void olm_detect_compilers(void)
 {
-    static const char *compiler_list[] = {"gcc",
-                                          "g++",
-                                          "clang",
-                                          "clang++",
-                                          "cc",
-                                          "clang-18",
-                                          "clang-17",
-                                          "cl.exe",
-                                          "clang.exe",
-                                          "clang-cl.exe",
-                                          "clang++.exe",
-                                          "gcc.exe",
-                                          "g++.exe",
-                                          "tcc.exe",
-                                          "icl.exe",
-                                          "icx.exe",
-                                          "tcc",
-                                          "x86_64-w64-mingw32-gcc.exe",
-                                          "x86_64-w64-mingw32-g++.exe",
-                                          "i686-w64-mingw32-gcc.exe",
-                                          "i686-w64-mingw32-g++.exe",
-                                          "musl-gcc",
-                                          "zig",
-                                          NULL};
+    static const char *compiler_list[] = {
+        "gcc", "g++", "clang", "clang++", "cc", "c++", "clang-18", "clang-17", "tcc", "zig", NULL};
 
     for (size_t i = 0; compiler_list[i]; ++i)
     {
@@ -1011,6 +1002,16 @@ static void olm_detect_compilers(void)
             size_t len = strlen(str);
 
             for (size_t j = 0; j < len; ++j)
+            {
+                if (str[j] == '+' && str[j + 1] == '+')
+                {
+                    str[j]     = 'p';
+                    str[j + 1] = 'p';
+                    j++;
+                }
+            }
+
+            for (size_t j = 0; str[j]; ++j)
             {
                 str[j] = (char) toupper((barr_u8) str[j]);
             }
@@ -1063,7 +1064,7 @@ bool OLM_init(void)
     olm_reset_vars();
     if (g_barr_verbose)
     {
-        BARR_log("Olmos system initialized");
+        BARR_log("Olmos parser system initialized");
     }
     olm_load_constants();
     return true;

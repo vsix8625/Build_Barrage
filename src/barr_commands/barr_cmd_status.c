@@ -1,7 +1,7 @@
 #include "barr_cmd_status.h"
 #include "barr_gc.h"
 #include "barr_io.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,7 +87,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
         case BARR_INIT_OK:
         {
-            BARR_printf("Build Barrage version %d.%d.%d initialized in %s\n",
+            BARR_printf("Build Barrage version %d.%d.%d | Working directory: %s\n",
                         BARR_VERSION_MAJOR,
                         BARR_VERSION_MINOR,
                         BARR_VERSION_PATCH,
@@ -107,7 +107,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     // init olmos and parse Barrfile variables
 
     OLM_init();
-    OLM_AST_Node *root = OLM_parse_file("Barrfile");
+    OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
         BARR_errlog("%s(): failed to parse Barrfile", __func__);
@@ -173,7 +173,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
         fclose(fp);
     }
 
-    BARR_printf("Status for %s:\n\n", target_name);
+    BARR_printf("Status for (%s):\n\n", target_name);
 
     bool print_all = false;
     for (barr_i32 i = 0; i < argc; ++i)

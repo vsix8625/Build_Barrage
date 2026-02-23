@@ -139,7 +139,7 @@ barr_i32 BARR_link_target(const char *target_type,
 
 ## [0.10.1] – 2025-10-15
 ### Added
-- `modes` added unnecessary `barr mode` command.  
+- `modes` added experimental `barr mode` command.  
     - Example: `barr mode WAR` will initiate war mode.  
     - `barr mode OFF` will turn off any active modes.   
 - Add `barr_thread_pool.c/.h` basic thread pool created that runs based on amount of physical cores found by `sysconf`.  

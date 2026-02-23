@@ -24,7 +24,7 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         return 1;
     }
 
-    char buffer[BARR_BUF_SIZE_1024];
+    char        buffer[BARR_BUF_SIZE_1024];
     const char *last_slash = strrchr(cwd, BARR_PATH_SEPARATOR_CHAR);
     if (last_slash)
     {
@@ -35,7 +35,8 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         BARR_safecpy(buffer, cwd, sizeof(buffer));
     }
 
-    const char *not_allowed_list[] = {BARR_GET_HOME(), "/", "/var", "/ect", "/usr", "/root", ".config"};
+    const char *not_allowed_list[] = {
+        BARR_GET_HOME(), "/", "/var", "/ect", "/usr", "/root", ".config"};
     size_t na_list_count = sizeof(not_allowed_list) / sizeof(not_allowed_list[0]);
     for (size_t i = 0; i < na_list_count; ++i)
     {
@@ -46,7 +47,8 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         }
     }
 
-    if (!BARR_isdir("src") && !BARR_isfile("CMakeLists") && !BARR_isfile("build.barr") && !BARR_isfile("Makefile"))
+    if (!BARR_isdir("src") && !BARR_isfile("CMakeLists") && !BARR_isfile("build.barr") &&
+        !BARR_isfile("Makefile"))
     {
         BARR_warnlog("No project structure detected: %s", cwd);
     }
@@ -71,14 +73,21 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         patch = BARR_VERSION_PATCH;
         char init_lock_path[BARR_BUF_SIZE_2048];
         snprintf(init_lock_path, sizeof(init_lock_path), "%s/init.lock", BARR_MARKER_DIR);
-        BARR_file_write(init_lock_path, "version=%d.%d.%d\nversion_code=%d\ndate=%s", major, minor, patch,
-                        BARR_VERSION_ENCODE(major, minor, patch), BARR_VERSION_DATE);
+        BARR_file_write(init_lock_path,
+                        "version=%d.%d.%d\nversion_code=%d\ndate=%s",
+                        major,
+                        minor,
+                        patch,
+                        BARR_VERSION_ENCODE(major, minor, patch),
+                        BARR_VERSION_DATE);
         BARR_setperm(init_lock_path, "read-only");
 
-        const char *barr_data_dir_path = BARR_MARKER_DIR BARR_PATH_SEPARATOR_STR BARR_MARKER_DATA_DIR;
-        const char *barr_cache_dir_path = BARR_MARKER_DIR BARR_PATH_SEPARATOR_STR BARR_MARKER_CACHE_DIR;
-        const char *dirs[] = {barr_data_dir_path, barr_cache_dir_path};
-        size_t count_dirs = sizeof(dirs) / sizeof(dirs[0]);
+        const char                                 *barr_data_dir_path =
+            BARR_MARKER_DIR BARR_PATH_SEPARATOR_STR BARR_MARKER_DATA_DIR;
+        const char                                 *barr_cache_dir_path =
+            BARR_MARKER_DIR BARR_PATH_SEPARATOR_STR BARR_MARKER_CACHE_DIR;
+        const char *dirs[]     = {barr_data_dir_path, barr_cache_dir_path};
+        size_t      count_dirs = sizeof(dirs) / sizeof(dirs[0]);
 
         for (size_t i = 0; i < count_dirs; ++i)
         {

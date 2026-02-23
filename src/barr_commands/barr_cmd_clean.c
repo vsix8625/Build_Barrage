@@ -1,7 +1,7 @@
 #include "barr_cmd_clean.h"
 #include "barr_env.h"
 #include "barr_io.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 #include <stdio.h>
 
@@ -44,7 +44,7 @@ barr_i32 BARR_command_clean(barr_i32 argc, char **argv)
     // Clean dirs specified in Barrfile clean_dirs variable
 
     OLM_init();
-    OLM_AST_Node *root = OLM_parse_file("Barrfile");
+    OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
         BARR_errlog("%s(): failed to parse Barrfile", __func__);

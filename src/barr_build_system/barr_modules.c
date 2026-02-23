@@ -2,7 +2,7 @@
 #include "barr_debug.h"
 #include "barr_gc.h"
 #include "barr_io.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 #include <string.h>
 
@@ -73,7 +73,7 @@ void BARR_print_modules(void)
 static void barr_module_staging(const char *module)
 {
     // parse Barrfile vars
-    OLM_AST_Node *root = OLM_parse_file("Barrfile");
+    OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
         BARR_errlog("%s(): failed to parse Barrfile", __func__);

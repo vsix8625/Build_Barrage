@@ -2,7 +2,7 @@
 #include "barr_cmd_version.h"
 #include "barr_gc.h"
 #include "barr_io.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 
 #include <stdio.h>
@@ -35,7 +35,7 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     // -------------------------------------------------------------------------------
 
     OLM_init();
-    OLM_AST_Node *root = OLM_parse_file("Barrfile");
+    OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
         BARR_errlog("%s(): failed to parse Barrfile", __func__);
@@ -67,16 +67,13 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     char ret_color_buf[BARR_BUF_SIZE_32];
     if (ret)
     {
-        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[31;1m%d\033[32;1m", ret);
+        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[31;1m%d\033[0m", ret);
     }
     else
     {
-        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[34;1m%d\033[32;1m", ret);
+        snprintf(ret_color_buf, sizeof(ret_color_buf), "\033[34;1m%d\033[0m", ret);
     }
-    BARR_log("Run %s exited with (%s) code: \033[34;1m %s\033[0m",
-             exec_args[0],
-             ret_color_buf,
-             BARR_fmt_time_elapsed(&start, &end));
+    BARR_log("Exited with (%s) code: %s", ret_color_buf, BARR_fmt_time_elapsed(&start, &end));
     BARR_printf(
         "================================================================================\n");
     return ret;

@@ -18,7 +18,7 @@
 #include "barr_src_list.h"
 #include "barr_src_scan.h"
 #include "barr_thread_jobs.h"
-#include "olmos_ast.h"
+#include "olmos.h"
 #include "olmos_variables.h"
 
 #include <inttypes.h>
@@ -235,7 +235,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    OLM_AST_Node *olmos_ast = OLM_parse_file(BARRFILE);
+    OLM_Node *olmos_ast = OLM_parse_file(BARRFILE);
     if (!olmos_ast)
     {
         BARR_errlog("Fatal: failed to parse %s", BARRFILE);
@@ -245,10 +245,10 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     BARR_Arena olm_eval_arena;
     size_t     total_nodes         = BARR_count_nodes(olmos_ast);
-    size_t     olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_AST_Node *);
+    size_t     olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_Node *);
     BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
 
-    barr_i32 eval_return = OLM_eval_node(olmos_ast, &olm_eval_arena);
+    barr_i32 eval_return = OLM_eval_config_node(olmos_ast, &olm_eval_arena);
     if (eval_return != 0)
     {
         BARR_errlog("OLM_eval_node fatal error: %d", eval_return);
@@ -673,7 +673,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     for (size_t i = 0; i < olmos_ast->child_count; i++)
     {
-        OLM_AST_Node *node = olmos_ast->children[i];
+        OLM_Node *node = olmos_ast->children[i];
 
         if (node->type == OLM_NODE_FN_CALL && BARR_strmatch(node->name, "find_package"))
         {

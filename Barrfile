@@ -6,9 +6,14 @@
 # build & run detect_features tool for barr_config.h
 # -------------------------------------------------------------
 
+cc="${BARR_COMPILER_CLANG}";
+print("Compiler: ${cc}");
+COMPILER = "${cc}"; # full paths advised Eg: /usr/bin/clang
+MAIN_SOURCE="build_barrage.c";
+
 detect_features_dir = "tools/linux/detect_features";
 detect_feats_out = "tools/bin/detect_feats";
-run_cmd("gcc ${detect_features_dir}/src/main.c -Wall -O2 -g -D_GNU_SOURCE -o ${detect_feats_out}");
+run_cmd("${cc} ${detect_features_dir}/src/main.c -Wall -O2 -g -D_GNU_SOURCE -o ${detect_feats_out}");
 run_cmd("./${detect_feats_out}");
 
 # ----------------------------------------------------------------------
@@ -29,19 +34,16 @@ add_module("fo","tools/fo","no");
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "0.24.0";
+VERSION = "0.25.0";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
 
 # auto detected by barr
-print("Compiler: ${BARR_COMPILER_CLANG}");
-COMPILER = "${BARR_COMPILER_CLANG}"; # full paths advised Eg: /usr/bin/clang
-
 
 linker = "mold"; # will be injected to -fuse-ld=mold (gold, lld)
-print("Linker: ${BARR_COMPILER_CLANG}");
+print("Linker: ${linker}");
 LINKER = "${linker}";
 
 BUILD_TYPE = "release";
@@ -59,7 +61,7 @@ DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 pkgs = "xxhash";
 find_package("${pkgs}");
 
-LFLAGS = "-lpthread -Wl,--gc-sections, -s";
+LFLAGS = "-lpthread -Wl,--gc-sections,-s";
 
 # ----------------------------------------------------------------------
 # Write barr_hq

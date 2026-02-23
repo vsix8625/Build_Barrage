@@ -13,10 +13,10 @@ typedef struct BARR_Command
     const char *name;
     barr_cmd_fn fn;
 
-    const char *help;
+    const char  *help;
     const char **aliases;  // null terminated list
     const char **options;
-    const char *detailed;
+    const char  *detailed;
 } BARR_Command;
 
 // include all commands
@@ -27,12 +27,10 @@ typedef struct BARR_Command
 #include "barr_cmd_init.h"
 #include "barr_cmd_install.h"
 #include "barr_cmd_new.h"
-#include "barr_cmd_play.h"
 #include "barr_cmd_rebuild.h"
 #include "barr_cmd_recovery.h"
 #include "barr_cmd_run.h"
 #include "barr_cmd_status.h"
-#include "barr_cmd_test.h"
 #include "barr_cmd_tool.h"
 #include "barr_cmd_uninstall.h"
 #include "barr_cmd_version.h"

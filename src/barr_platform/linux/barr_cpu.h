@@ -16,18 +16,15 @@ typedef enum
 
 typedef struct BARR_InfoCPU
 {
-    barr_u32 cores;
-    barr_u32 threads;
-    double mhz;
-    size_t cache_size;
-    char model[BARR_BUF_SIZE_128];
+    barr_u32          cores;
+    barr_u32          threads;
+    double            mhz;
+    size_t            cache_size;
+    char              model[BARR_BUF_SIZE_128];
     barr_simd_level_t simd;
 } BARR_InfoCPU;
 
 void BARR_get_cpu_info(BARR_InfoCPU *info);
 void BARR_init_simd(void);
-
-bool BARR_cpu_perf(void);
-bool BARR_cpu_norm(void);
 
 #endif  // BARR_CPU_H_
