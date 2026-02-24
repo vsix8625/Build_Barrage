@@ -6,13 +6,16 @@ You write a `Barrfile`, barr evaluates it, and invokes the compiler accordingly.
 
 **Version:** 0.25.0  
 **Platform:** Linux
+**LICENSE** Apache 2.0 
 
 # State: Stable Milestone
 
-**Build Barrage** is now considered a complete milestone project.  
+Notice: This project is a personal milestone and a functional snapshot of my daily workflow.  
+- Support: I do not offer active support or feature requests.  
 - Current status: Stable and functional.  
-- Maintenance: This repository is a snapshot of my first self-hosted build tool. While I use it in my daily workflow, active feature development (including the "Planned" items in the changelog) is currently paused.
+- Maintenance: Development is currently paused.  
 - The Goal: This project served as a playground to implement and understand core systems concepts
+- Feel free to fork it and adapt it to your needs.  
 
 ---
 
@@ -20,7 +23,7 @@ You write a `Barrfile`, barr evaluates it, and invokes the compiler accordingly.
 
 - GCC or Clang
 - `libxxhash` (system package)
-- `mold` or `lld` linker (optional but recommended)
+- `mold` or `lld` linker (optional but highly recommended)
 
 ---
 
@@ -269,8 +272,5 @@ barr help <command>   # detailed options for any command
 - `barr status` uses modification time for quick checks. In some cases (e.g., edit + undo + save), a file may appear “modified” even if content hasn’t changed. The actual build (`barr build`) uses content hashing and will correctly skip unchanged files.
 - `--turbo` batch build is experimental. Gains are situational: many small files with no globals/static data may benefit, but in real projects it often provides little advantage.
 
-## Note
-
-I explored many ideas while building Barr. This version is stable, fully functional, and serves my daily workflow. I’m very happy with how it turned out — it’s my first completed project and a personal reference for my approach to building a self-hosted build tool.
 
 For a deeper dive into Barr’s compilation stages, modules, and internal workflow, see [docs/technical.md](docs/technical.md).

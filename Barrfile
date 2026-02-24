@@ -39,12 +39,7 @@ TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-
-# auto detected by barr
-
-linker = "mold"; # will be injected to -fuse-ld=mold (gold, lld)
-print("Linker: ${linker}");
-LINKER = "${linker}";
+# LINKER = "mold"; # comment this 
 
 BUILD_TYPE = "release";
 OUT_DIR = "build/${BUILD_TYPE}";
