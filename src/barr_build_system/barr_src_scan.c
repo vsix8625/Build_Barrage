@@ -21,7 +21,8 @@ static inline barr_i32 barr_is_header_file(const char *path)
         return 0;
     }
 
-    return BARR_strmatch(ext, ".h") || BARR_strmatch(ext, ".hpp");
+    return BARR_strmatch(ext, ".h") || BARR_strmatch(ext, ".hpp") || BARR_strmatch(ext, ".hh") ||
+           BARR_strmatch(ext, ".hxx");
 }
 
 static inline barr_i32 barr_is_source_file(const char *path)
@@ -32,7 +33,8 @@ static inline barr_i32 barr_is_source_file(const char *path)
         return 0;
     }
 
-    return BARR_strmatch(ext, ".c") || BARR_strmatch(ext, ".cpp");
+    return BARR_strmatch(ext, ".c") || BARR_strmatch(ext, ".cpp") || BARR_strmatch(ext, ".cxx") ||
+           BARR_strmatch(ext, ".cc") || BARR_strmatch(ext, ".C");
 }
 
 static inline bool barr_is_project_root(const char *dirpath)

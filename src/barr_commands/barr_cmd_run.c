@@ -56,7 +56,7 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
 
     BARR_printf(
         "================================================================================\n");
-    BARR_log("Running: %s-v%s", exec_args[0], vers);
+    BARR_log("Running: %s | v%s", exec_args[0], vers);
     BARR_printf("\n\n");
     barr_i32 ret = BARR_run_process(exec_args[0], exec_args, false);
 

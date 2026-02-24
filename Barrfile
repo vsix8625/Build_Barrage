@@ -9,7 +9,7 @@
 cc="${BARR_COMPILER_CLANG}";
 print("Compiler: ${cc}");
 COMPILER = "${cc}"; # full paths advised Eg: /usr/bin/clang
-MAIN_SOURCE="build_barrage.c";
+MAIN_ENTRY="build_barrage.c";
 
 detect_features_dir = "tools/linux/detect_features";
 detect_feats_out = "tools/bin/detect_feats";
@@ -77,4 +77,4 @@ file_write("build_dir=${build_dir}", "${barr_hq_file}","true");
 
 CLEAN_TARGETS = "${fo_clean}"; # extra targets for 'barr clean' command 
 
-print("Build script ends!");
+print("Forward Observer build script ends!");

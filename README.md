@@ -1,15 +1,24 @@
 # Build Barrage (barr)
 
-A build tool for C that talks directly to compilers — no Makefile magic, no CMake abstraction. You write a `Barrfile`, barr reads it, barr calls the compiler. That's it.
+A build tool for C that interfaces directly with the system compiler.  
 
-**Version:** 0.25.0 · **Linux only**
+You write a `Barrfile`, barr evaluates it, and invokes the compiler accordingly.
+
+**Version:** 0.25.0  
+**Platform:** Linux
+
+# State: Stable Milestone
+
+**Build Barrage** is now considered a complete milestone project.  
+- Current status: Stable and functional.  
+- Maintenance: This repository is a snapshot of my first self-hosted build tool. While I use it in my daily workflow, active feature development (including the "Planned" items in the changelog) is currently paused.
+- The Goal: This project served as a playground to implement and understand core systems concepts
 
 ---
 
 ## Requirements
 
 - GCC or Clang
-- CMake (bootstrap only — used once to build barr, then barr takes over)
 - `libxxhash` (system package)
 - `mold` or `lld` linker (optional but recommended)
 
@@ -23,7 +32,7 @@ cd Build_Barrage
 ./scripts/build.sh
 ```
 
-The script uses CMake to compile an initial `barr` binary, then immediately uses that binary to rebuild itself with full optimizations. You'll see some warnings during the bootstrap — they're expected on a fresh run.
+The bootstrap process uses your system compiler to build a minimal version of `barr`, which then takes over to build the final, optimized production binary.
 
 Once built, install it:
 
@@ -39,41 +48,22 @@ sudo ./build/release/bin/barr install   # installs to /usr/local/bin
 
 ## Quick Start
 
-Create a new project and get to a running binary in one command:
+Create a new project and get to a running binary:
 
 ```bash
 barr new --project demo
 cd demo
-barr new --barrfile ... new --main ... build ... run
+barr new --barrfile      # creates a default Barrfile in cwd 
+barr new --main          # creates a main.c with "Hello from barr" main function in src
+barr build               # read the Barrfile and build the sources
+barr run                 # run the resulting binary
 ```
 
-`...` chains commands sequentially. Output:
+Commands can be chained with `...` or `---`, both separators are equivalent:
 
-```
-[barr_log]: Barrfile created
-[barr_log]: Created src/main.c
-Building barr_default-v0.0.1 | Type: executable
-[1/1] >>>> src/main.c
-[barr_log]: Total: 215.7 ms
-[barr_log]: Running: build/barr_default/debug/bin/barr_default-v0.0.1
-Hello, from barr
-```
-
-The resulting project structure:
-
-```
-demo/
-├── .barr/              # barr internal state (cache, metadata)
-├── Barrfile            # build configuration script
-├── build/
-│   └── barr_default/
-│       └── debug/
-│           ├── bin/barr_default
-│           ├── libbarr.a
-│           └── obj/
-├── inc/
-└── src/
-    └── main.c
+```bash
+barr build ... run
+barr rebuild --- run
 ```
 
 ---
@@ -94,15 +84,15 @@ print("Barrfile execution started");
 
 TARGET        = "myapp";
 VERSION       = "0.0.1";
-TARGET_TYPE   = "executable";   # "executable" | "static" | "shared"
+TARGET_TYPE   = "executable"; 
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
 COMPILER      = "/usr/bin/clang";
 LINKER        = "lld";
 
-BUILD_TYPE    = "debug";                          # "debug" | "release"
-OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";
+BUILD_TYPE    = "debug";     
+OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";  
 
 std           = "-std=c23";
 CFLAGS        = "${std} -Wall -Werror -Wextra -g";
@@ -110,23 +100,27 @@ CFLAGS_RELEASE = "${std} -Wall -O3";
 
 DEFINES       = "-DDEBUG";
 
-# LFLAGS      = "-lpthread";
+# LFLAGS      = "-lpthread";       
 # LIB_PATHS   = "-L/usr/local/lib";
-# GEN_COMPILE_COMMANDS = "on";
-# EXCLUDE_PATTERNS = "build test";
+# GEN_COMPILE_COMMANDS = "on";    
+# EXCLUDE_PATTERNS = "build test"; 
 ```
 
-**Specifying a single entry point** instead of full source discovery:
-
 ```bash
-MAIN_SOURCE = "barr.c";   # barr builds this file and discovers the rest automatically
+MAIN_ENTRY = "barr.c";   # file containing the entry point for your executable.
 ```
 
- — barr scans the project root recursively for `.c` files. You can override this:
+**File discovery**:
+
+`barr` scans the project root recursively for:
+- C/C++ Sources: `.c`, `.cpp`,`.cc`, `.cxx`, `.C`. You can override this with `GLOB_SOURCES` or `SOURCES`.
+- Headers: `.h`, `.hpp`,`.hh`, `.hxx`. You can override this with `AUTO_INCLUDE_DISCOVERY="off"`.
 
 ```bash
-GLOB_SOURCES = "src engine/core";    # scan specific directories
-SOURCES = "src/main.c src/util.c";   # explicit file list
+GLOB_SOURCES = "src engine/core";  # scan specific directories
+SOURCES = "src/main.c src/util.c"; # explicit file list
+AUTO_INCLUDE_DISCOVERY = "on"      # controls header scanning (`on` [default], `append`, `off`).
+INCLUDES = "-I. -Iinc -Isrc";      # defining this will set AUTO_INCLUDE_DISCOVERY to "off" unless it was set to "append"
 ```
 
 **System packages** via pkg-config:
@@ -139,7 +133,7 @@ find_package("${pkgs}");
 **Modules** let you build a dependency before the main target:
 
 ```bash
-add_module("engine", "engine", "required");
+add_module("engine", "engine", "required");   # name, path/to/dir, relevance
 engine_includes = "-Iengine/include";
 MODULES_INCLUDES = "${engine_includes}";
 ```
@@ -174,28 +168,6 @@ barr new --pair graphics --dir src --ext .cpp --public true
 # → src/graphics.cpp, inc/graphics.hpp
 ```
 
----
-
-## Building & Running
-
-```bash
-barr build          # compile changed files only (content + flags hashing)
-barr rebuild        # clean then full build
-barr run            # run the latest binary
-barr clean          # remove build directory and cache
-```
-
-`barr build --turbo` enables unity builds (merges sources before compiling). Faster for large projects but experimental — results may vary.
-
-Commands can be chained with `...` or `---`:
-
-```bash
-barr build ... run
-barr rebuild --- run
-```
-
----
-
 ## Inspecting Your Project
 
 ```bash
@@ -209,23 +181,6 @@ barr status --binfo     # show stored build info (name, type, version, paths, ti
 barr debug --cache      # show content hashes for all tracked source files
 barr debug --fsinfo     # directory summary: file count, sizes, executables
 ```
-
----
-
-## Recovery
-
-Save and restore project state (build artifacts + barr metadata + Barrfile):
-
-```bash
-barr recovery save "pre-big-change"
-barr recovery list        # shows numbered index of all saved states
-barr recovery restore 1   # restore by index (e.g. barr recovery restore 6)
-barr recovery destroy 1
-```
-
-Useful before risky refactors or config changes. Restore by the index shown in `list`.
-
----
 
 ## Forward Observer (fo)
 
@@ -259,7 +214,7 @@ barr fo dismiss   # dismiss (stop) the watcher
 
 ## Installing Your Project
 
-`barr install` works for any project, not just barr itself. It reads your build info and installs to the appropriate system directories under a prefix (default `/usr/local`):
+`barr install` works for any project. It reads your build info and installs to the appropriate system directories under a prefix (default `/usr/local`):
 
 - **Executables** → `<prefix>/bin/<name>`
 - **Shared libraries** → `<prefix>/lib/<name>.so`
@@ -281,8 +236,6 @@ barr tracks what it installed so `uninstall` knows exactly what to clean up.
 barr config open        # open the local Barrfile in $EDITOR (requires initialized project)
 ```
 
-The CPU governor commands are a convenience for squeezing out faster build times on machines where the governor defaults to a power-saving mode.
-
 ---
 
 ## Commands Reference
@@ -297,7 +250,6 @@ deinit       -D     Remove barr from current directory
 new          -n     Create project, files, or scaffolding
 config       -C     Manage configuration
 status       -s     Project status and variable inspection
-recovery     -ry    Save and restore project state
 fo                  Forward observer (file watcher)
 debug        -db    Cache, filesystem, and build diagnostics
 install      -i     Install project to system (executables → bin/, libraries → lib/, headers → include/)
@@ -310,6 +262,15 @@ barr help <command>   # detailed options for any command
 
 ## Limitations & Known Issues
 
-- **Linux only.** No macOS or Windows support at this time.
+- **Linux only.** No macOS or Windows support.  
 - **`fo` is experimental.** Treat it as a convenience tool, not a stable feature.
-- **Corrupted metadata edge case.** If `.barr/data/source_files_log` is missing, `barr build` may report "nothing to compile" instead of erroring and rebuilding. Use `barr recovery restore` if your build state gets into a bad place.
+- Changing `BUILD_TYPE` in the Barrfile does not automatically trigger a rebuild. Barr logs a warning advising a rebuild, but you need to manually run `barr rebuild`.
+- When running a target with `barr run` (`-r`), flags intended for the executable may sometimes be interpreted by barr itself (e.g., `--verbose`). Works in most cases and does not affect normal usage.
+- `barr status` uses modification time for quick checks. In some cases (e.g., edit + undo + save), a file may appear “modified” even if content hasn’t changed. The actual build (`barr build`) uses content hashing and will correctly skip unchanged files.
+- `--turbo` batch build is experimental. Gains are situational: many small files with no globals/static data may benefit, but in real projects it often provides little advantage.
+
+## Note
+
+I explored many ideas while building Barr. This version is stable, fully functional, and serves my daily workflow. I’m very happy with how it turned out — it’s my first completed project and a personal reference for my approach to building a self-hosted build tool.
+
+For a deeper dive into Barr’s compilation stages, modules, and internal workflow, see [docs/technical.md](docs/technical.md).

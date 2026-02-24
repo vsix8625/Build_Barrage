@@ -20,7 +20,7 @@ System Install Support:
     - Example:
         - `barr build --release` forcing release build. 
         - `barr build --target <name>` overrides `TARGET` from `Barrfile`.
-- Conditional logic in `Olmos-DLS` for `Barrfile`
+- Conditional logic in `Olmos` for `Barrfile`
 ### Removed
 - Planned Windows/cross-platform support — `Build Barrage` is now Linux-only (since: `v.23.1`).
 

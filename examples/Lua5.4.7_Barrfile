@@ -6,7 +6,7 @@ TARGET       = "lua";
 VERSION      = "5.4.7";
 TARGET_TYPE  = "executable";
 
-MAIN_SOURCE = "lua.c";
+MAIN_ENTRY = "lua.c";
 
 COMPILER     = "${BARR_COMPILER_CLANG}";
 LINKER       = "lld";

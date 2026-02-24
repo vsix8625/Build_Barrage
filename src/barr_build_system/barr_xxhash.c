@@ -19,15 +19,17 @@ static bool BARR_str_endswith(const char *str, const char *suffix)
 {
     if (!str || !suffix)
         return false;
-    size_t lenstr = strlen(str);
+    size_t lenstr    = strlen(str);
     size_t lensuffix = strlen(suffix);
     if (lensuffix > lenstr)
         return false;
     return strcmp(str + lenstr - lensuffix, suffix) == 0;
 }
 
-static bool barr_resolve_include_from_list(const BARR_SourceList *headers, const char *current_file,
-                                           const char *include_file, char out_path[BARR_PATH_MAX])
+static bool barr_resolve_include_from_list(const BARR_SourceList *headers,
+                                           const char            *current_file,
+                                           const char            *include_file,
+                                           char                   out_path[BARR_PATH_MAX])
 {
     if (!headers || !current_file || !include_file || !out_path)
     {
@@ -39,7 +41,7 @@ static bool barr_resolve_include_from_list(const BARR_SourceList *headers, const
 
     strncpy(cwd_copy, current_file, sizeof(cwd_copy) - 1);
     cwd_copy[sizeof(cwd_copy) - 1] = '\0';
-    char *dir = dirname(cwd_copy);
+    char *dir                      = dirname(cwd_copy);
 
     snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, include_file);
     if (barr_access(fullpath, F_OK) == 0)
@@ -72,13 +74,13 @@ static bool barr_filestack_push(BARR_Filestack *flstack, const char *file)
     if (flstack->count >= flstack->capacity)
     {
         size_t new_cap = flstack->capacity * 2;
-        char **tmp = realloc(flstack->files, new_cap * sizeof(char *));
+        char **tmp     = realloc(flstack->files, new_cap * sizeof(char *));
         if (!tmp)
         {
             return false;
         }
 
-        flstack->files = tmp;
+        flstack->files    = tmp;
         flstack->capacity = new_cap;
     }
     flstack->files[flstack->count++] = strdup(file);
@@ -149,8 +151,8 @@ bool BARR_hash_file_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN]
     }
 
     barr_u8 buf[16 * BARR_BUF_SIZE_1024];
-    size_t n;
-    bool success = true;
+    size_t  n;
+    bool    success = true;
 
     while ((n = fread(buf, 1, sizeof(buf), fp)) > 0)
     {
@@ -182,7 +184,9 @@ bool BARR_hash_file_xxh3(const char *filepath, barr_u8 out_hash[BARR_XXHASH_LEN]
     return success;
 }
 
-bool BARR_hash_includes_xxh3(const BARR_SourceList *headers, const char *file_path, barr_u8 out_hash[BARR_XXHASH_LEN])
+bool BARR_hash_includes_xxh3(const BARR_SourceList *headers,
+                             const char            *file_path,
+                             barr_u8                out_hash[BARR_XXHASH_LEN])
 {
     if (!file_path || !headers || !out_hash)
     {
@@ -197,8 +201,8 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers, const char *file_pa
     }
 
     BARR_Filestack fstack = {0};
-    fstack.capacity = BARR_BUF_SIZE_64;
-    fstack.files = calloc(fstack.capacity, sizeof(char *));
+    fstack.capacity       = BARR_BUF_SIZE_64;
+    fstack.files          = calloc(fstack.capacity, sizeof(char *));
     if (!fstack.files)
     {
         BARR_destroy_hashmap(seen);
@@ -273,7 +277,7 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers, const char *file_pa
             p++;
 
             char include_file[BARR_BUF_SIZE_512] = {0};
-            int i = 0;
+            int  i                               = 0;
             while (*p && *p != '\"' && i < (int) (sizeof(include_file) - 1))
             {
                 include_file[i++] = *p++;
@@ -286,7 +290,8 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers, const char *file_pa
             char resolved[BARR_PATH_MAX] = {0};
             if (!barr_resolve_include_from_list(headers, current_file, include_file, resolved))
             {
-                BARR_warnlog("%s(): cannot resolve include %s in %s", __func__, include_file, current_file);
+                BARR_warnlog(
+                    "%s(): cannot resolve include %s in %s", __func__, include_file, current_file);
                 continue;
             }
 
@@ -342,8 +347,10 @@ bool BARR_hash_flags_xxh3(const char *flags, barr_u8 out_hash[BARR_XXHASH_LEN])
     return true;
 }
 
-bool BARR_hashes_merge_xxh3(barr_u8 file_hash[BARR_XXHASH_LEN], barr_u8 include_hash[BARR_XXHASH_LEN],
-                            barr_u8 flags_hash[BARR_XXHASH_LEN], barr_u8 out_hash[BARR_XXHASH_LEN])
+bool BARR_hashes_merge_xxh3(barr_u8 file_hash[BARR_XXHASH_LEN],
+                            barr_u8 include_hash[BARR_XXHASH_LEN],
+                            barr_u8 flags_hash[BARR_XXHASH_LEN],
+                            barr_u8 out_hash[BARR_XXHASH_LEN])
 {
     XXH3_state_t *state = XXH3_createState();
     if (!state)

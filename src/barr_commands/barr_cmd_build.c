@@ -270,10 +270,11 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         olmos_defines = "-DDEBUG";
     }
 
-    const char *olmos_main_source = OLM_get_var(OLM_VAR_MAIN_SOURCE);
-    if (olmos_main_source == NULL)
+    const char *olmos_main_entry = OLM_get_var(OLM_VAR_MAIN_ENTRY);
+
+    if (olmos_main_entry == NULL)
     {
-        olmos_main_source = "main.c";
+        olmos_main_entry = "main.c";
     }
 
     //----------------------------------------------------------------------------------------------------
@@ -703,7 +704,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
     if (target_version == NULL)
     {
-        BARR_warnlog("%s == NULL", OLM_VAR_VERSION);
         target_version = "0.0.1";
     }
 
@@ -965,7 +965,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     // PREP
     // keep the main.c.o out of the archive
     char tmp_main_co[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
-    snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/%s.o", out_dir, olmos_main_source);
+    snprintf(tmp_main_co, sizeof(tmp_main_co), "%s/obj/%s.o", out_dir, olmos_main_entry);
 
     size_t producer_arena_size =
         compile_list.count * (sizeof(BARR_CompileJob) + (BARR_PATH_MAX << 1) + BARR_BUF_SIZE_256);
@@ -1187,7 +1187,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                              linker,
                              module_includes,
                              target_version,
-                             olmos_main_source) != 0)
+                             olmos_main_entry) != 0)
         {
             BARR_errlog("Failed to build");
             goto exit;
