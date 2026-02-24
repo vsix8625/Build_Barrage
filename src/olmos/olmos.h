@@ -2,7 +2,6 @@
 #define OLMOS_H_
 
 #include "barr_arena.h"
-#include "barr_hashmap.h"
 
 #include <stddef.h>
 

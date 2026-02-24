@@ -108,12 +108,6 @@ void BARR_errlog(const char *format, ...)
     vfprintf(stderr, format, args);
     va_end(args);
 
-    if (errno)
-    {
-        fprintf(stderr, " | \033[31;1m[stderr]: %s: %d", strerror(errno), errno);
-        errno = 0;
-    }
-
     fprintf(stderr, "\n");
     fflush(stderr);
     atomic_flag_clear(&barr_io_log_lock);
@@ -272,7 +266,6 @@ barr_i32 BARR_file_copy(const char *src, const char *dst)
 
 //-----------------------------------------------------------------------
 
-// TODO: optimize fs_copy
 #define BARR_COPY_BUF_SIZE (256 * 1024)
 
 static barr_i32 barr_copy_file_contents(barr_i32 infd, barr_i32 outfd)

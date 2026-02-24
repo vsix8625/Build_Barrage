@@ -1,5 +1,6 @@
 #include "barr_cmd_install.h"
 #include "barr_cmd_version.h"
+#include "barr_env.h"
 #include "barr_io.h"
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +13,7 @@ static const char *barr_path_filename(const char *path)
     }
 
     const char *last = path;
-    const char *p = path;
+    const char *p    = path;
 
     while (*p)
     {
@@ -37,6 +38,15 @@ static void barr_install_target(const char *install_prefix)
 
     const char *name = BARR_get_build_info_key(info, "name");
     const char *type = BARR_get_build_info_key(info, "type");
+
+    if (BARR_isfile(BARR_DATA_INSTALL_INFO_PATH))
+    {
+        BARR_errlog("Existing installation detected for: %s", name);
+        BARR_errlog(
+            "You are trying to install %s, to avoid system pollution run `sudo barr unistall`",
+            type);
+        return;
+    }
 
     const char *shared_art = BARR_get_build_info_key(info, "shared");
     const char *static_art = BARR_get_build_info_key(info, "static");
@@ -71,7 +81,12 @@ static void barr_install_target(const char *install_prefix)
     }
     else if (BARR_strmatch(type, "shared") && shared_art && shared_art[0] != '\0')
     {
-        snprintf(dst_path, sizeof(dst_path), "%s/lib/%s", install_prefix, barr_path_filename(shared_art));
+        // NOTE: need to run ldconfig after installation
+        snprintf(dst_path,
+                 sizeof(dst_path),
+                 "%s/lib/%s",
+                 install_prefix,
+                 barr_path_filename(shared_art));
         BARR_log("Installing shared library: %s -> %s", shared_art, dst_path);
         if (BARR_fs_copy(shared_art, dst_path) != 0)
         {
@@ -82,7 +97,11 @@ static void barr_install_target(const char *install_prefix)
     }
     else if (BARR_strmatch(type, "static") && static_art && static_art[0] != '\0')
     {
-        snprintf(dst_path, sizeof(dst_path), "%s/lib/%s", install_prefix, barr_path_filename(static_art));
+        snprintf(dst_path,
+                 sizeof(dst_path),
+                 "%s/lib/%s",
+                 install_prefix,
+                 barr_path_filename(static_art));
         if (BARR_fs_copy(static_art, dst_path) != 0)
         {
             BARR_errlog("Failed to copy static library");
@@ -90,34 +109,9 @@ static void barr_install_target(const char *install_prefix)
         }
         BARR_file_append(BARR_DATA_INSTALL_INFO_PATH, "%s\n", dst_path);
     }
-    else if (BARR_strmatch(type, "library"))
-    {
-        if (shared_art && shared_art[0] != '\0')
-        {
-            snprintf(dst_path, sizeof(dst_path), "%s/lib/%s", install_prefix, barr_path_filename(shared_art));
-            BARR_log("Installing shared library: %s -> %s", shared_art, dst_path);
-            if (BARR_fs_copy(shared_art, dst_path) != 0)
-            {
-                BARR_errlog("Failed to copy shared library");
-                return;
-            }
-            BARR_file_append(BARR_DATA_INSTALL_INFO_PATH, "%s\n", dst_path);
-        }
-
-        if (static_art && static_art[0] != '\0')
-        {
-            snprintf(dst_path, sizeof(dst_path), "%s/lib/%s", install_prefix, barr_path_filename(static_art));
-            if (BARR_fs_copy(static_art, dst_path) != 0)
-            {
-                BARR_errlog("Failed to copy static library");
-                return;
-            }
-            BARR_file_append(BARR_DATA_INSTALL_INFO_PATH, "%s\n", dst_path);
-        }
-    }
 
     // Public includes
-    if (BARR_strmatch(type, "library") || BARR_strmatch(type, "shared") || BARR_strmatch(type, "static"))
+    if (BARR_strmatch(type, "shared") || BARR_strmatch(type, "static"))
     {
         char *cflags_val = BARR_get_build_info_key(info, "cflags");
         if (cflags_val && cflags_val[0] != '\0')
@@ -130,12 +124,27 @@ static void barr_install_target(const char *install_prefix)
                 if (strncmp(tok, "-I", 2) == 0)
                 {
                     const char *raw_path = tok + 2;
+
                     char resolved[BARR_PATH_MAX];
 
                     if (BARR_path_resolve(BARR_getcwd(), raw_path, resolved, sizeof(resolved)))
                     {
                         char dst[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
-                        snprintf(dst, sizeof(dst), "%s/include/%s/%s", install_prefix, name, raw_path);
+
+                        if (strcmp(raw_path, "include") == 0)
+                        {
+                            snprintf(dst, sizeof(dst), "%s/include/%s", install_prefix, name);
+                        }
+                        else
+                        {
+                            snprintf(dst,
+                                     sizeof(dst),
+                                     "%s/include/%s/%s",
+                                     install_prefix,
+                                     name,
+                                     raw_path);
+                        }
+
                         if (BARR_isdir(raw_path))
                         {
                             BARR_mkdir_p(dst);
@@ -143,20 +152,27 @@ static void barr_install_target(const char *install_prefix)
                         BARR_log("Installing include directory: %s -> %s", resolved, dst);
                         if (BARR_fs_copy_tree(resolved, dst) != 0)
                         {
-                            BARR_warnlog("Failed to copy include dir: %s", resolved);
+                            BARR_warnlog("Failed to copy directory: %s", resolved);
                             continue;
                         }
                         BARR_file_append(BARR_DATA_INSTALL_INFO_PATH, "%s\n", dst);
                     }
                     else
                     {
-                        BARR_warnlog("Path does not exist, skipping: %s", raw_path);
+                        if (g_barr_verbose)
+                        {
+                            BARR_warnlog("Path does not exist, skipping: %s", raw_path);
+                        }
                     }
                 }
             }
 
             char top_level_include[BARR_MATH_DOUBLE(BARR_PATH_MAX)];
-            snprintf(top_level_include, sizeof(top_level_include), "%s/include/%s", install_prefix, name);
+            snprintf(top_level_include,
+                     sizeof(top_level_include),
+                     "%s/include/%s",
+                     install_prefix,
+                     name);
 
             if (BARR_isdir(top_level_include))
             {
@@ -169,7 +185,6 @@ static void barr_install_target(const char *install_prefix)
     BARR_log("Install complete to: %s", install_prefix);
 }
 
-// NOTE: WIP
 barr_i32 BARR_command_install(barr_i32 argc, char **argv)
 {
     if (!BARR_init())
@@ -183,13 +198,7 @@ barr_i32 BARR_command_install(barr_i32 argc, char **argv)
         return 1;
     }
 
-    if (getuid() != 0)
-    {
-        BARR_errlog("[%s]:%s(): sudo required", __TIME__, __func__);
-        return 1;
-    }
-
-    char *prefix = NULL;
+    char *prefix  = NULL;
     char *destdir = NULL;
 
     for (barr_i32 i = 1; i < argc; ++i)
@@ -227,18 +236,34 @@ barr_i32 BARR_command_install(barr_i32 argc, char **argv)
     if (prefix == NULL)
     {
         prefix = "/usr/local";
-        BARR_log("Prefix defaulted to: %s", prefix);
     }
 
     if (destdir == NULL)
     {
         destdir = "";
-        BARR_log("Destdir defaulted to empty (direct install under prefix)");
     }
 
     char target_path[BARR_PATH_MAX];
-    snprintf(target_path, sizeof(target_path), "%s%s", destdir, prefix);
+    if (strlen(destdir) > 0)
+    {
+        snprintf(target_path, sizeof(target_path), "%s%s", destdir, prefix);
+    }
+    else
+    {
+        snprintf(target_path, sizeof(target_path), "%s", prefix);
+    }
 
+    if (getuid() != 0)
+    {
+        if (access(destdir[0] != '\0' ? destdir : target_path, W_OK) != 0)
+        {
+            BARR_errlog("Permission denied for path: %s (Try sudo or a different --prefix)",
+                        target_path);
+            return 1;
+        }
+    }
+
+    BARR_log("Installing to: %s", target_path);
     barr_install_target(target_path);
 
     return 0;

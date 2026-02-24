@@ -17,6 +17,7 @@ static size_t        g_barr_cmds_count = 0;
 // from barr_env.h
 bool g_barr_silent_logs = false;
 bool g_barr_verbose     = false;
+bool g_barr_trust       = false;
 
 barr_i32 BARR_command_help(barr_i32 argc, char **argv);
 
@@ -116,13 +117,19 @@ static barr_i32 barr_dispatch_commands(barr_i32 argc, char **argv)
                 ret = barr_dispatch_single(sub_argc, &argv[start]);
                 if (ret != 0)
                 {
-                    BARR_errlog("Stopped at command (%d:%s)", chain_idx, argv[start]);
+                    if (g_barr_verbose)
+                    {
+                        BARR_errlog("Stopped at command (%d:%s)", chain_idx, argv[start]);
+                    }
                     return ret;  // stop chain if any command fails
                 }
             }
             else
             {
-                BARR_warnlog("Skipped empty segment between separators: %d-(%s)", i, argv[i]);
+                if (g_barr_verbose)
+                {
+                    BARR_warnlog("Skipped empty segment between separators: %d-(%s)", i, argv[i]);
+                }
             }
             start = i + 1;  // skip chain  marker
         }
@@ -157,6 +164,14 @@ barr_i32 main(barr_i32 argc, char **argv)
         else if (BARR_strmatch(argv[i], "--verbose"))
         {
             g_barr_verbose = true;
+        }
+        else if (BARR_strmatch(argv[i], "--trust"))
+        {
+            if (g_barr_silent_logs)
+            {
+                BARR_log("Barrfile run_cmd() will not ask for approval");
+            }
+            g_barr_trust = true;
         }
         else
         {
@@ -266,11 +281,14 @@ barr_i32 main(barr_i32 argc, char **argv)
         "Examples: barr new --project my_project\n"
         "          barr new --file main.c\n"
         "          barr new --file main.c src\n"
-        "          barr new --pair core --dir src                                # Creates: "
-        "src/core.c, scr/core.h\n"
-        "          barr new --pair graphics --dir src --ext .cpp --public true   # Creates: "
+        "          barr new --pair core --dir engine                   # Creates: "
+        "engine/core.c, engine/core.h\n"
+        "          barr new --pair graphics --ext .cpp --public true   # Creates: "
         "src/graphics.cpp, "
-        "inc/graphics.hpp\n";
+        "inc/graphics.hpp\n"
+        "Note: --pair creates the directory if does not exists\n"
+        "\t If --dir not specified it defaults to src directory\n"
+        "\t If --public true is set, creates an include directory for header\n";
     static const char *new_aliases[] = {"-n", NULL};
     static const char *new_opts[] = {"--project", "--file", "--pair", "--barrfile", "--main", NULL};
     barr_register_command(
@@ -534,7 +552,12 @@ barr_i32 BARR_command_help(barr_i32 argc, char **argv)
         }
     }
 
-    BARR_printf("\n");
+    BARR_printf("\nGlobal commands:\n"
+                "\t--verbose: More verbose logs \n"
+                "\t--silent: Mute logs\n"
+                "\t--trust: Executes run_cmd() without prompting\n"
+                "\t--gc-dump: Dump all memory allocations on process call\n"
+                "\n\n");
     BARR_printf("For more details run: %sbarr %shelp%s <command_name>\n", CYAN, YELLOW, RESET);
     return 0;
 }

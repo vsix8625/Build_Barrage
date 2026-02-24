@@ -85,7 +85,7 @@ barr_i32 BARR_create_project(const char *project_name)
     BARR_log("You can now:");
     BARR_log("\tcd %s", project_name);
     BARR_log("\tbarr new --barrfile # Create a default project config");
-    BARR_log("\tbarr config --local # Opens Barrfile with your $EDITOR");
+    BARR_log("\tbarr config open    # Opens Barrfile with your $EDITOR");
     BARR_log("\tbarr new --main     # Create a minimal src/main.c");
     BARR_log("\tbarr build          # Auto build the project");
     BARR_log("\tbarr run            # Run the latest executable created\n");

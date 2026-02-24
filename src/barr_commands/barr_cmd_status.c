@@ -110,7 +110,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
-        BARR_errlog("%s(): failed to parse Barrfile", __func__);
+        BARR_errlog("%s: failed to parse Barrfile", __func__);
         return 1;
     }
 
@@ -123,7 +123,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
 
     if (out_dir_var == NULL)
     {
-        BARR_warnlog("%s(): Failed to parse Barrfile 'OUT_DIR': fallback to build/debug/obj",
+        BARR_warnlog("%s: Failed to parse Barrfile 'OUT_DIR': fallback to build/debug/obj",
                      __func__);
         snprintf(obj_dir, sizeof(obj_dir), "build/debug/obj");
     }
@@ -138,7 +138,7 @@ barr_i32 BARR_cmd_status(barr_i32 argc, char **argv)
     if (target == NULL)
     {
         BARR_warnlog(
-            "%s(): Failed to parse Barrfile 'TARGET': fallback to %s", __func__, basename(obj_dir));
+            "%s: Failed to parse Barrfile 'TARGET': fallback to %s", __func__, basename(obj_dir));
         snprintf(target_name, sizeof(target_name), "%s", obj_dir);
     }
     else

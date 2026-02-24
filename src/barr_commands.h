@@ -4,7 +4,7 @@
 #include "barr_defs.h"
 #include "barr_os_layer.h"
 
-#define BARR_MAX_COMMANDS 64
+#define BARR_MAX_COMMANDS 128
 
 typedef barr_i32 (*barr_cmd_fn)(barr_i32 argc, char **argv);
 

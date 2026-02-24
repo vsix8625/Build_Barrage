@@ -52,7 +52,7 @@ quality       = "-Wdocumentation -Wunicode-whitespace -Wredundant-decls";
 
 CFLAGS_RELEASE = "${std} ${opts} ${extra_opts} ${bug_detection} ${safety} ${quality}";
 
-EXCLUDE_PATTERNS = "tools examples scripts"; 
+EXCLUDE_PATTERNS = "tools"; 
 
 DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 

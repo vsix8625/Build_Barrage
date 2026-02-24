@@ -9,6 +9,14 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
 {
     const char *cwd = BARR_getcwd();
 
+    if (geteuid() == 0)
+    {
+        fprintf(stderr,
+                "[barr_error]: Do not run 'init' as root/sudo. "
+                "This will mess up file permissions.\n");
+        return 1;
+    }
+
     for (barr_i32 i = 1; i < argc; ++i)
     {
         if (BARR_strmatch(argv[i], "--sync") || BARR_strmatch(argv[i], "-s"))
@@ -20,11 +28,12 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
 
     if (BARR_isdir(BARR_MARKER_DIR))
     {
-        BARR_log("It seems Build Barrage is already initialized in %s", cwd);
+        BARR_log("barr is already initialized in %s", cwd);
         return 1;
     }
 
-    char        buffer[BARR_BUF_SIZE_1024];
+    char buffer[BARR_BUF_SIZE_1024];
+
     const char *last_slash = strrchr(cwd, BARR_PATH_SEPARATOR_CHAR);
     if (last_slash)
     {
@@ -101,7 +110,7 @@ barr_i32 BARR_command_init(barr_i32 argc, char **argv)
         }
     }
 
-    BARR_log("Initialized Build Barrage %s in: %s", BARR_version_get_str(), cwd);
+    BARR_log("Initialized barr %s in: %s", BARR_version_get_str(), cwd);
     return 0;
 }
 
@@ -112,7 +121,7 @@ barr_i32 BARR_command_deinit(barr_i32 argc, char **argv)
     if (BARR_init())
     {
         BARR_rmrf(BARR_MARKER_DIR);
-        BARR_log("Uninitialized Build Barrage in %s directory", BARR_getcwd());
+        BARR_log("Uninitialized barr in: %s", BARR_getcwd());
         return 0;
     }
     return 1;

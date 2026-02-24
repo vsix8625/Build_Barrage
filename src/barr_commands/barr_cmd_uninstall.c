@@ -14,12 +14,6 @@ barr_i32 BARR_command_uninstall(barr_i32 argc, char **argv)
         return 1;
     }
 
-    if (getuid() != 0)
-    {
-        BARR_errlog("[%s]:%s(): sudo required", __TIME__, __func__);
-        return 1;
-    }
-
     FILE *f = fopen(BARR_DATA_INSTALL_INFO_PATH, "r");
     if (f == NULL)
     {
@@ -27,9 +21,37 @@ barr_i32 BARR_command_uninstall(barr_i32 argc, char **argv)
         return 1;
     }
 
-    bool success = true;
     char line[BARR_PATH_MAX];
+    bool needs_sudo = false;
 
+    while (fgets(line, sizeof(line), f))
+    {
+        line[strcspn(line, "\r\n")] = 0;
+        if (line[0] == '#' || line[0] == '\0')
+            continue;
+
+        // access(line, W_OK) checks if the current user has write permission.
+        // If it returns -1, and the file exists, we probably need sudo.
+        if (BARR_isfile(line) || BARR_isdir(line))
+        {
+            if (access(line, W_OK) != 0)
+            {
+                needs_sudo = true;
+                break;
+            }
+        }
+    }
+
+    if (needs_sudo && getuid() != 0)
+    {
+        BARR_errlog("Permission denied for installed files. Please run with sudo.");
+        fclose(f);
+        return 1;
+    }
+
+    rewind(f);
+
+    bool success = true;
     while (fgets(line, sizeof(line), f))
     {
         // trim newline

@@ -1,5 +1,6 @@
 #include "barr_modules.h"
 #include "barr_debug.h"
+#include "barr_env.h"
 #include "barr_gc.h"
 #include "barr_io.h"
 #include "olmos.h"
@@ -76,7 +77,7 @@ static void barr_module_staging(const char *module)
     OLM_Node *root = OLM_parse_file("Barrfile");
     if (root == NULL)
     {
-        BARR_errlog("%s(): failed to parse Barrfile", __func__);
+        BARR_errlog("%s: failed to parse Barrfile", __func__);
         return;
     }
 
@@ -86,16 +87,22 @@ static void barr_module_staging(const char *module)
     if (target == NULL)
     {
         target = "barr_default";
-        BARR_warnlog(
-            "%s(): TARGET not set in 'Barrfile' default %s will be used", __func__, target);
+        if (g_barr_verbose)
+        {
+            BARR_warnlog(
+                "%s: TARGET not set in 'Barrfile' default %s will be used", __func__, target);
+        }
     }
 
     const char *version = OLM_get_var(OLM_VAR_VERSION);
     if (version == NULL)
     {
         version = "0.0.1";
-        BARR_warnlog(
-            "%s(): VERSION not set in 'Barrfile' default %s will be used", __func__, version);
+        if (g_barr_verbose)
+        {
+            BARR_warnlog(
+                "%s: VERSION not set in 'Barrfile' default %s will be used", __func__, version);
+        }
     }
 
     const char *out_dir_var = OLM_get_var(OLM_VAR_OUT_DIR);
@@ -104,8 +111,11 @@ static void barr_module_staging(const char *module)
     if (out_dir_var == NULL)
     {
         snprintf(out_dir, sizeof(out_dir), "%s/build/debug", BARR_getcwd());
-        BARR_warnlog(
-            "%s(): OUT_DIR not set in 'Barrfile' default %s will be used", __func__, out_dir);
+        if (g_barr_verbose)
+        {
+            BARR_warnlog(
+                "%s: OUT_DIR not set in 'Barrfile' default %s will be used", __func__, out_dir);
+        }
     }
     else
     {
@@ -139,14 +149,14 @@ static void barr_module_staging(const char *module)
     char *mod_name = BARR_get_build_info_key(module_build_info, "name");
     if (mod_name == NULL)
     {
-        BARR_errlog("%s(): failed to parse '%s' module name", module, __func__);
+        BARR_errlog("%s: failed to parse '%s' module name", module, __func__);
         return;
     }
 
     char *mod_type = BARR_get_build_info_key(module_build_info, "type");
     if (mod_type == NULL)
     {
-        BARR_errlog("%s(): failed to parse '%s' module type", module, __func__);
+        BARR_errlog("%s: failed to parse '%s' module type", module, __func__);
         return;
     }
 
@@ -155,7 +165,7 @@ static void barr_module_staging(const char *module)
         char *mod_bdir = BARR_get_build_info_key(module_build_info, "build_dir");
         if (mod_bdir == NULL)
         {
-            BARR_errlog("%s(): failed to parse '%s' module build_dir", module, __func__);
+            BARR_errlog("%s: failed to parse '%s' module build_dir", module, __func__);
             return;
         }
         char bin_dir[BARR_PATH_MAX];
@@ -169,7 +179,7 @@ static void barr_module_staging(const char *module)
         char *src_shared = BARR_get_build_info_key(module_build_info, "shared");
         if (src_shared == NULL)
         {
-            BARR_errlog("%s(): failed to parse '%s' module shared path", module, __func__);
+            BARR_errlog("%s: failed to parse '%s' module shared path", module, __func__);
             return;
         }
 
@@ -181,8 +191,7 @@ static void barr_module_staging(const char *module)
         BARR_file_copy(src_shared, dst_shared);
     }
 
-    if (BARR_strmatch(mod_type, "library") || BARR_strmatch(mod_type, "shared") ||
-        BARR_strmatch(mod_type, "static"))
+    if (BARR_strmatch(mod_type, "shared") || BARR_strmatch(mod_type, "static"))
     {
         char *cflags_val = BARR_get_build_info_key(module_build_info, "cflags");
         if (cflags_val && cflags_val[0] != '\0')
@@ -202,8 +211,6 @@ static void barr_module_staging(const char *module)
                         char dst[sizeof(stage_mod_inc_dir) + 32];
                         snprintf(dst, sizeof(dst), "%s/%s", stage_mod_inc_dir, basename(resolved));
 
-                        BARR_printf("DST: %s\n", dst);
-
                         if (BARR_isdir(raw_path))
                         {
                             BARR_mkdir_p(dst);
@@ -211,13 +218,19 @@ static void barr_module_staging(const char *module)
 
                         if (BARR_fs_copy_tree(resolved, dst) != 0)
                         {
-                            BARR_warnlog("Failed to copy include dir: %s", resolved);
+                            if (g_barr_verbose)
+                            {
+                                BARR_warnlog("Failed to copy include dir: %s", resolved);
+                            }
                             continue;
                         }
                     }
                     else
                     {
-                        BARR_warnlog("Path does not exist, skipping: %s", raw_path);
+                        if (g_barr_verbose)
+                        {
+                            BARR_warnlog("Path does not exist, skipping: %s", raw_path);
+                        }
                     }
                 }
             }
@@ -268,7 +281,7 @@ bool BARR_add_module(const char *name, const char *path, const char *required)
     // this is for forward observer
     if (!BARR_update_build_info_timestamp(BARR_DATA_BUILD_INFO_PATH))
     {
-        BARR_warnlog("%s(): failed to update build info timestamp", __func__);
+        BARR_dbglog("%s(): failed to update build info timestamp", __func__);
     }
 
     if (!barr_add_module_to_registry(name, path))

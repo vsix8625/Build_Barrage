@@ -22,10 +22,27 @@ barr_i32 BARR_command_run(barr_i32 argc, char **argv)
     char *build_dir   = BARR_get_build_info_key(BARR_DATA_BUILD_INFO_PATH, "build_dir");
 
     char exe_path[BARR_PATH_MAX];
-    snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", build_dir, target_name);
+    snprintf(exe_path,
+             sizeof(exe_path),
+             "%s/bin/%s",
+             build_dir ? build_dir : ".",
+             target_name ? target_name : "");
+
+    if (access(exe_path, X_OK) != 0)
+    {
+        BARR_errlog("Executable not found: %s", exe_path);
+        return 1;
+    }
 
     char **exec_args = BARR_gc_alloc(sizeof(char *) * (argc + 1));
-    exec_args[0]     = exe_path;
+
+    if (*exec_args == NULL)
+    {
+        BARR_errlog("failed to allocate for exec_args");
+        return 1;
+    }
+
+    exec_args[0] = exe_path;
     for (barr_i32 i = 1; i < argc; ++i)
     {
         exec_args[i] = argv[i];

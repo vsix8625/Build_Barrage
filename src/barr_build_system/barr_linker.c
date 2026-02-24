@@ -210,15 +210,25 @@ barr_i32 BARR_link_target(const char      *target_type,
 
     BARR_link_args_add(la, resolved_compiler);
 
-    char fuse_ld[BARR_BUF_SIZE_32];
-    snprintf(fuse_ld, sizeof(fuse_ld), "-fuse-ld=%s", linker);
-    BARR_link_args_add(la, fuse_ld);
-
-    if (BARR_strmatch(linker, "lld"))
+    if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
     {
-        char lld_threads[BARR_BUF_SIZE_16];
-        snprintf(lld_threads, sizeof(lld_threads), "-Wl,--threads=%zu", n_threads);
-        BARR_link_args_add(la, lld_threads);
+        char main_co_buf[BARR_PATH_MAX * 2];
+        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/%s.o", out_dir, main_source);
+        BARR_link_args_add(la, main_co_buf);
+    }
+
+    if (linker && linker[0])
+    {
+        char fuse_ld[BARR_BUF_SIZE_32];
+        snprintf(fuse_ld, sizeof(fuse_ld), "-fuse-ld=%s", linker);
+        BARR_link_args_add(la, fuse_ld);
+
+        if (BARR_strmatch(linker, "lld"))
+        {
+            char lld_threads[BARR_BUF_SIZE_16];
+            snprintf(lld_threads, sizeof(lld_threads), "-Wl,--threads=%zu", n_threads);
+            BARR_link_args_add(la, lld_threads);
+        }
     }
 
     for (size_t i = 0; i < object_list->count; ++i)
@@ -264,7 +274,10 @@ barr_i32 BARR_link_target(const char      *target_type,
 
         if (!BARR_isfile(build_info_path))
         {
-            BARR_warnlog("Module '%s' has no build.info, skipping", mod->name);
+            if (g_barr_verbose)
+            {
+                BARR_warnlog("Module '%s' has no build.info, skipping", mod->name);
+            }
             continue;
         }
 
@@ -353,21 +366,10 @@ barr_i32 BARR_link_target(const char      *target_type,
     if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
     {
         BARR_mkdir_p(bin_dir);
-    }
 
-    char origin[BARR_PATH_MAX];
-    snprintf(origin, sizeof(origin), "-Wl,-rpath,$ORIGIN/../share/%s/lib", target_name);
-    BARR_link_args_add(la, origin);
-
-    if (BARR_strmatch(target_type, "executable") || BARR_strmatch(target_type, "exec"))
-    {
         char exe_path[BARR_PATH_MAX * 2];
         snprintf(exe_path, sizeof(exe_path), "%s/%s", bin_dir, target_name);
 
-        char main_co_buf[BARR_PATH_MAX * 2];
-        snprintf(main_co_buf, sizeof(main_co_buf), "%s/obj/%s.o", out_dir, main_source);
-
-        BARR_link_args_add(la, main_co_buf);
         BARR_link_args_add(la, "-o");
         BARR_link_args_add(la, exe_path);
 
@@ -482,6 +484,10 @@ barr_i32 BARR_link_target(const char      *target_type,
 
         BARR_file_write(BARR_DATA_BUILD_INFO_PATH, "%s", build_info_contents);
     }
+
+    char origin[BARR_PATH_MAX];
+    snprintf(origin, sizeof(origin), "-Wl,-rpath,$ORIGIN/../share/%s/lib", target_name);
+    BARR_link_args_add(la, origin);
 
     clock_gettime(CLOCK_MONOTONIC, &link_end);
     BARR_log("Link time: \033[34;1m %s\033[0m", BARR_fmt_time_elapsed(&link_start, &link_end));

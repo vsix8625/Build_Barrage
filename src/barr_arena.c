@@ -31,7 +31,7 @@ void BARR_arena_init(BARR_Arena *a, size_t capacity, const char *name, size_t al
         return;
     }
     a->magic_start = BARR_ARENA_MAGIC_START;
-    a->magic_end = BARR_ARENA_MAGIC_END;
+    a->magic_end   = BARR_ARENA_MAGIC_END;
 
     a->buffer = (char *) BARR_ALLOC(capacity);
     if (!a->buffer)
@@ -44,8 +44,8 @@ void BARR_arena_init(BARR_Arena *a, size_t capacity, const char *name, size_t al
     memset(a->buffer, 0, capacity);
 
     a->capacity = capacity;
-    a->offset = 0;
-    a->peak = 0;
+    a->offset   = 0;
+    a->peak     = 0;
     BARR_safecpy(a->name, name ? name : "unnamed", sizeof(a->name));
 
     align = align ? align : 8;
@@ -86,17 +86,17 @@ barr_ptr BARR_arena_alloc(BARR_Arena *a, size_t size)
 #endif
 
     size_t aligned_size = BARR_align_up(size, a->alignment);
-    size_t free_space = barr_arena_free_space(a);
+    size_t free_space   = barr_arena_free_space(a);
     if (aligned_size > free_space)
     {
-        BARR_errlog("Arena %s:%p is out of memory", a->name, (void *) a);
-        BARR_errlog("Requested: %zu", aligned_size);
-        BARR_errlog("Available: %zu", free_space);
+        BARR_errlog("%s: Arena %s:%p is out of memory", __func__, a->name, (void *) a);
+        BARR_errlog("%s: Requested: %zu", __func__, aligned_size);
+        BARR_errlog("%s: Available: %zu", __func__, free_space);
         return NULL;
     }
 
-    barr_ptr ptr = a->buffer + a->offset;
-    a->offset += aligned_size;
+    barr_ptr ptr  = a->buffer + a->offset;
+    a->offset    += aligned_size;
     if (a->offset > a->peak)
     {
         a->peak = a->offset;
@@ -115,8 +115,8 @@ char *BARR_arena_strdup(BARR_Arena *a, const char *s)
     assert(a->magic_start == BARR_ARENA_MAGIC_START && a->magic_end == BARR_ARENA_MAGIC_END);
 #endif
 
-    size_t len = strlen(s) + 1;
-    char *dest = BARR_arena_alloc(a, len);
+    size_t len  = strlen(s) + 1;
+    char  *dest = BARR_arena_alloc(a, len);
     if (!dest)
     {
         return NULL;
@@ -150,9 +150,9 @@ void BARR_destroy_arena(BARR_Arena *a)
 #endif
 
     free(a->buffer);
-    a->buffer = NULL;
+    a->buffer   = NULL;
     a->capacity = 0;
-    a->offset = 0;
+    a->offset   = 0;
     BARR_dbglog("Arena %s destroyed: %p", a->name, (void *) a);
 }
 
@@ -186,9 +186,9 @@ void BARR_arena_stats(const BARR_Arena *a)
     assert(a->magic_start == BARR_ARENA_MAGIC_START && a->magic_end == BARR_ARENA_MAGIC_END);
 #endif
 
-    size_t used = a->offset;
+    size_t used       = a->offset;
     size_t free_space = a->capacity - a->offset;
-    double percent = (a->capacity > 0) ? (100.0 * used / (double) a->capacity) : 0.0;
+    double percent    = (a->capacity > 0) ? (100.0 * used / (double) a->capacity) : 0.0;
 
     BARR_log("Arena Stats [%s-%p]: Usage: %.2f%%", a->name, (void *) a, percent);
     barr_print_human_size("\tUsed", used);

@@ -58,7 +58,7 @@ void OLM_store_var(const char *key, const char *value)
     {
         if (BARR_strmatch(g_olm_vars[i].key, key) && g_olm_vars[i].is_const)
         {
-            BARR_errlog("Cannot assign to constant: %s", key);
+            BARR_warnlog("Cannot assign to constant: %s", key);
             return;
         }
     }
@@ -393,7 +393,7 @@ OLM_Node *OLM_parse_file(const char *file_path)
 
     if (!root)
     {
-        BARR_errlog("Olmos parser returned NULL");
+        BARR_errlog("Config parser returned NULL");
         return NULL;
     }
 
@@ -806,18 +806,20 @@ barr_i32 OLM_eval_config_node(OLM_Node *root, BARR_Arena *arena)
                 {
                     const char *cmd = node->args[0];
 
-#if defined(BARR_SAFE)
-
-                    BARR_printf("Barr wants to run: \033[38;5;202m%s\033[0m. Allow? (y/N): ", cmd);
-                    fflush(stdout);
-
-                    char ans[4];
-                    if (fgets(ans, sizeof(ans), stdin) == NULL || (ans[0] != 'y' && ans[0] != 'Y'))
+                    if (g_barr_trust == false)
                     {
-                        BARR_warnlog("run_cmd skipped by user: %s", cmd);
-                        return 1;
+                        BARR_printf("Barr wants to run: \033[38;5;202m%s\033[0m. Allow? (y/N): ",
+                                    cmd);
+                        fflush(stdout);
+
+                        char ans[4];
+                        if (fgets(ans, sizeof(ans), stdin) == NULL ||
+                            (ans[0] != 'y' && ans[0] != 'Y'))
+                        {
+                            BARR_warnlog("run_cmd skipped by user: %s", cmd);
+                            return 1;
+                        }
                     }
-#endif
 
                     char cmd_copy[1024];
                     strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
@@ -1064,7 +1066,7 @@ bool OLM_init(void)
     olm_reset_vars();
     if (g_barr_verbose)
     {
-        BARR_log("Olmos parser system initialized");
+        BARR_log("Config parser system initialized");
     }
     olm_load_constants();
     return true;
@@ -1074,7 +1076,8 @@ bool OLM_close(void)
 {
     if (g_barr_verbose)
     {
-        BARR_log("Olmos system shutdown, sweeping %zu variables into the void...", g_olm_var_count);
+        BARR_log("Config system shutdown, sweeping %zu variables into the void...",
+                 g_olm_var_count);
     }
     olm_reset_vars();
     return true;

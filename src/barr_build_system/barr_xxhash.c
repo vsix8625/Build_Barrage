@@ -39,14 +39,13 @@ static bool barr_resolve_include_from_list(const BARR_SourceList *headers,
     char fullpath[BARR_PATH_MAX];
     char cwd_copy[BARR_PATH_MAX];
 
-    strncpy(cwd_copy, current_file, sizeof(cwd_copy) - 1);
-    cwd_copy[sizeof(cwd_copy) - 1] = '\0';
-    char *dir                      = dirname(cwd_copy);
+    snprintf(cwd_copy, sizeof(cwd_copy), "%s", current_file);
+    char *dir = dirname(cwd_copy);
 
     snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, include_file);
     if (barr_access(fullpath, F_OK) == 0)
     {
-        strlcpy(out_path, fullpath, BARR_PATH_MAX);
+        snprintf(out_path, BARR_PATH_MAX, "%s", fullpath);
         return true;
     }
 
@@ -54,8 +53,7 @@ static bool barr_resolve_include_from_list(const BARR_SourceList *headers,
     {
         if (BARR_str_endswith(headers->entries[i], include_file))
         {
-            strncpy(out_path, headers->entries[i], BARR_PATH_MAX - 1);
-            out_path[BARR_PATH_MAX - 1] = '\0';
+            snprintf(out_path, BARR_PATH_MAX, "%s", headers->entries[i]);
             return true;
         }
     }

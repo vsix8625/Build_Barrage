@@ -75,11 +75,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    if (BARR_is_newer(BARRFILE, BARRFILE_TIMESTAMP_PATH))
-    {
-        BARR_warnlog("Barrfile changed since last build! Rebuild advised");
-    }
-
     if (!BARR_isdir("build"))
     {
         if (barr_mkdir("build"))
@@ -235,8 +230,8 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         return 1;
     }
 
-    OLM_Node *olmos_ast = OLM_parse_file(BARRFILE);
-    if (!olmos_ast)
+    OLM_Node *barrfile_config = OLM_parse_file(BARRFILE);
+    if (!barrfile_config)
     {
         BARR_errlog("Fatal: failed to parse %s", BARRFILE);
         barr_fo_wait_unlock();
@@ -244,14 +239,13 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     }
 
     BARR_Arena olm_eval_arena;
-    size_t     total_nodes         = BARR_count_nodes(olmos_ast);
-    size_t     olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes)) * sizeof(OLM_Node *);
-    BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "olmos_eval_arena", 32);
+    size_t     total_nodes         = BARR_count_nodes(barrfile_config);
+    size_t     olm_eval_arena_size = (BARR_MATH_DOUBLE(total_nodes) * sizeof(OLM_Node *)) + 64;
+    BARR_arena_init(&olm_eval_arena, olm_eval_arena_size, "eval_arena", 32);
 
-    barr_i32 eval_return = OLM_eval_config_node(olmos_ast, &olm_eval_arena);
+    barr_i32 eval_return = OLM_eval_config_node(barrfile_config, &olm_eval_arena);
     if (eval_return != 0)
     {
-        BARR_errlog("OLM_eval_node fatal error: %d", eval_return);
         BARR_destroy_arena(&olm_eval_arena);
         barr_fo_wait_unlock();
         return 1;
@@ -672,9 +666,9 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
     BARR_List pkg_list;
     BARR_list_init(&pkg_list, 4);
 
-    for (size_t i = 0; i < olmos_ast->child_count; i++)
+    for (size_t i = 0; i < barrfile_config->child_count; i++)
     {
-        OLM_Node *node = olmos_ast->children[i];
+        OLM_Node *node = barrfile_config->children[i];
 
         if (node->type == OLM_NODE_FN_CALL && BARR_strmatch(node->name, "find_package"))
         {
@@ -1051,7 +1045,6 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
 
         if (progress_ctx.ccmds_json_entries_list)
         {
-            // TODO: move this in a thread job
             FILE *f = fopen(compile_ctx.ccmds_path, "w");
             if (f)
             {
@@ -1168,7 +1161,15 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         const char *linker = OLM_get_var(OLM_VAR_LINKER);
         if (!linker || !linker[0])
         {
-            linker = "lld";
+            char *found = BARR_which("lld");
+            if (found)
+            {
+                linker = "lld";
+            }
+            else
+            {
+                linker = NULL;
+            }
         }
 
         const char *module_includes = OLM_get_var(OLM_VAR_MODULE_INCLUDES);

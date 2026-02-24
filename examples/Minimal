@@ -1,11 +1,14 @@
+ #Build Barrage v0.17.1
+
+# NOTE: You can run 'barr status --vars', for a list of all builtin and user variables 
+
 # -------------------------------------------------------------
-# Recommended build file
-# Copy this to Build Barrage root and rename to Barrfile to use it 
+# build & run detect_features tool for barr_config.h
 # -------------------------------------------------------------
 
-cc="${BARR_COMPILER_CLANG}";
+cc="${BARR_COMPILER_GCC}";
 print("Compiler: ${cc}");
-COMPILER = "${cc}"; 
+COMPILER = "${cc}"; # full paths advised Eg: /usr/bin/clang
 MAIN_ENTRY="build_barrage.c";
 
 detect_features_dir = "tools/linux/detect_features";
@@ -31,30 +34,24 @@ add_module("fo","tools/fo","no");
 GEN_COMPILE_COMMANDS = "yes";
 
 TARGET = "barr";
-VERSION = "1.0.1";
+VERSION = "1.0.0";
 TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-LINKER = "mold"; 
+# LINKER = "mold"; # uncomment this to fuse mold
 
 BUILD_TYPE = "release";
 OUT_DIR = "build/${BUILD_TYPE}";
 
-std = "-std=c23";
-#CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
+std = "-std=c2x";
+CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
+extra_opts = "-fomit-frame-pointer -funroll-loops -fno-common";
+CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx ${extra_opts}";
 
-opts          = "-Wall -O3 -pthread -march=native -mbmi -mlzcnt"; 
-extra_opts    = "-fomit-frame-pointer -fno-common";
-bug_detection = "-Wself-assign -Wunreachable-code";
-safety        = "-Wloop-analysis -Wthread-safety-pointer -Wvla";
-quality       = "-Wdocumentation -Wunicode-whitespace -Wredundant-decls";
+EXCLUDE_PATTERNS = "tools"; 
 
-CFLAGS_RELEASE = "${std} ${opts} ${extra_opts} ${bug_detection} ${safety} ${quality}";
-
-EXCLUDE_PATTERNS = "tools examples scripts"; 
-
-DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
+DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD"; # BARR_SAFE for public
 
 pkgs = "xxhash";
 find_package("${pkgs}");
@@ -74,3 +71,4 @@ file_write("build_dir=${build_dir}", "${barr_hq_file}","true");
 # ----------------------------------------------------------------------
 
 CLEAN_TARGETS = "${fo_clean}"; # extra targets for 'barr clean' command 
+

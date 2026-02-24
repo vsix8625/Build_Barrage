@@ -204,8 +204,6 @@ barr_i32 BARR_setperm(const char *path, const char *perm)
         }
     }
 
-    // TODO: other permission modes
-
     return 0;
 }
 
@@ -290,7 +288,6 @@ bool BARR_is_installed(const char *app)
     while (dir)
     {
         char fullpath[BARR_BUF_SIZE_1024];
-        // TODO: win32 version?
         snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, app);
         if (barr_access(fullpath, X_OK) == 0)
         {
@@ -808,7 +805,6 @@ bool BARR_update_build_info_timestamp(const char *file_path)
 
     if (fp == NULL)
     {
-        BARR_warnlog("Cannot open build_info: %s", file_path);
         return false;
     }
 

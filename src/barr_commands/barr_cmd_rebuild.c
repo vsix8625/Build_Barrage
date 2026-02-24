@@ -1,6 +1,7 @@
 #include "barr_cmd_rebuild.h"
 #include "barr_cmd_build.h"
 #include "barr_cmd_clean.h"
+#include "barr_gc.h"
 #include "barr_io.h"
 #include <string.h>
 
@@ -14,7 +15,8 @@ barr_i32 BARR_command_rebuild(barr_i32 argc, char **argv)
         BARR_warnlog("BARR_command_clean() abnormal exit");
     }
 
-    char *filtered_argv[argc];
+    char **filtered_argv = BARR_gc_alloc(sizeof(char *) * argc);
+
     barr_i32 filtered_count = 0;
 
     filtered_argv[filtered_count++] = argv[0];
@@ -24,8 +26,8 @@ barr_i32 BARR_command_rebuild(barr_i32 argc, char **argv)
         char *cmd = argv[i];
 
         // Allow only safe flags
-        if (BARR_strmatch(cmd, "--turbo") || BARR_strmatch(cmd, "--dry-run") || strncmp(cmd, "-j", 2) == 0 ||
-            BARR_strmatch(cmd, "--threads"))
+        if (BARR_strmatch(cmd, "--turbo") || BARR_strmatch(cmd, "--dry-run") ||
+            strncmp(cmd, "-j", 2) == 0 || BARR_strmatch(cmd, "--threads"))
         {
             filtered_argv[filtered_count++] = cmd;
 

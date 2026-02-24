@@ -1,6 +1,7 @@
+# NOTE: Rename this to Barrfile and move it to project root to use it.
+
 # -------------------------------------------------------------
-# Recommended build file
-# Copy this to Build Barrage root and rename to Barrfile to use it 
+# build & run detect_features tool for barr_config.h
 # -------------------------------------------------------------
 
 cc="${BARR_COMPILER_CLANG}";
@@ -36,23 +37,17 @@ TARGET_TYPE = "executable";
 
 print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 
-LINKER = "mold"; 
+#LINKER = "mold"; 
 
 BUILD_TYPE = "release";
 OUT_DIR = "build/${BUILD_TYPE}";
 
 std = "-std=c23";
-#CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
+CFLAGS = "${std} -Wall -Werror -Wextra -g -pthread -DBARR_DEBUG";
+extra_opts = "-fomit-frame-pointer -funroll-loops -fno-common";
+CFLAGS_RELEASE = "${std} -Wall -O3 -pthread -march=native -mavx ${extra_opts}";
 
-opts          = "-Wall -O3 -pthread -march=native -mbmi -mlzcnt"; 
-extra_opts    = "-fomit-frame-pointer -fno-common";
-bug_detection = "-Wself-assign -Wunreachable-code";
-safety        = "-Wloop-analysis -Wthread-safety-pointer -Wvla";
-quality       = "-Wdocumentation -Wunicode-whitespace -Wredundant-decls";
-
-CFLAGS_RELEASE = "${std} ${opts} ${extra_opts} ${bug_detection} ${safety} ${quality}";
-
-EXCLUDE_PATTERNS = "tools examples scripts"; 
+EXCLUDE_PATTERNS = "tools"; 
 
 DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
 

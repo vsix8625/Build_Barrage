@@ -14,21 +14,20 @@ print("Building ${TARGET}-v${VERSION} | Type: ${TARGET_TYPE}");
 # 2. TOOLCHAIN                                                       
 # ------------------------------------------------------------------
 COMPILER      = "${BARR_COMPILER}";     # The compiler used to build barr
-LINKER        = "mold";                  # Linker (ld, gold, lld, …)
+#LINKER        = "mold";               
 
 # ------------------------------------------------------------------
 # 3. BUILD TYPE & OUTPUT                                             
 # ------------------------------------------------------------------
-BUILD_TYPE    = "release";                          # "debug" (default) | "release"
-OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";  # Directory for objects & final binary
+BUILD_TYPE    = "release";                         
+OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";  
 
 # ------------------------------------------------------------------
 # 4. COMPILATION FLAGS                                               
 # ------------------------------------------------------------------
-# You can define your own variables like the line below.
-std            = "-std=c23";             # C standard (c11, c17, c23, …)
-CFLAGS         = "${std} -Wall -Werror -Wextra -g -pthread";   # Debug flags
-CFLAGS_RELEASE = "${std} -Wall -O3 -flto";                # Release flags (used when BUILD_TYPE=release)
-DEFINES        = "-DNDEBUG -D_GNU_SOURCE";              # Additional -D flags
-LFLAGS         = "-flto -Wl,--gc-sections,-s"; 
+std            = "-std=c2x";             
+CFLAGS         = "${std} -Wall -Werror -Wextra -g -pthread";
+CFLAGS_RELEASE = "${std} -Wall -O3";            
+DEFINES        = "-DNDEBUG -D_GNU_SOURCE";       
+LFLAGS         = "-Wl,--gc-sections,-s"; 
 

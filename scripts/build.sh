@@ -1,35 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ "$EUID" -eq 0 ]; then
+  echo "[build.sh]: Error: Do not run the bootstrap as root."
+  exit 1
+fi
+
 START_TIME=$(date +%s)
 
 BUILD_DIR="bootstrap"
 mkdir -p "$BUILD_DIR"
 
-COMPILER=""
-for cmd in clang gcc cc; do
-    if command -v "$cmd" >/dev/null 2>&1; then
-        COMPILER="$cmd"
-        break
-    fi
-done
+CC=""
+LD=""
+LDFLAGS=()
 
-if [ -z "$COMPILER" ]; then
+if command -v clang >/dev/null 2>&1
+then
+    if command -v mold >/dev/null 2>&1
+    then
+        CC="clang"
+		LDFLAGS=("-fuse-ld=mold")
+        echo "[build.sh]: Using clang + mold (recommended)..."
+		cp examples/Recommended Barrfile
+    elif command -v ld.lld >/dev/null 2>&1
+    then
+        CC="clang"
+		LDFLAGS=("-fuse-ld=lld")
+        echo "[build.sh]: Using clang + lld..."
+		cp examples/Clang Barrfile
+    else
+        CC="clang"
+        echo "[build.sh]: Using clang + system ld..."
+		cp examples/Clang Barrfile
+    fi
+elif command -v gcc >/dev/null 2>&1
+then
+    CC="gcc"
+    echo "[build.sh]: Using gcc..."
+	cp examples/Bootstrap Barrfile
+elif command -v cc >/dev/null 2>&1
+then
+    CC="cc"
+    echo "[build.sh]: Using cc..."
+	cp examples/Bootstrap Barrfile
+else
     echo "[build.sh]: Error: No C compiler found."
     exit 1
 fi
 
-L_STRAT=""
-if command -v mold >/dev/null 2>&1; then
-    L_STRAT="-fuse-ld=mold"
-elif command -v ld.lld >/dev/null 2>&1; then
-    L_STRAT="-fuse-ld=lld"
-fi
-
 ARGS=(
-    -std=c23
+    -std=c2x
     -O2
-    -fPIE
     -I. 
     -Isrc 
     -Isrc/barr_build_system 
@@ -38,37 +60,49 @@ ARGS=(
     -Isrc/olmos
     -D_GNU_SOURCE 
     -DNDEBUG 
-    -mavx
+    -DBARR_BOOTSTRAP
     -o "$BUILD_DIR/barr"
-    -lxxhash 
-    -lpthread
 )
 
-SOURCES=$(find src -name "*.c")
+#SOURCES=$(find src -name "*.c")
+mapfile -t SOURCES < <(find src -name "*.c")
 
-echo "[build.sh]: Using $COMPILER..."
-
-$COMPILER "${ARGS[@]}" $SOURCES $L_STRAT &
+$CC "${ARGS[@]}" "${LDFLAGS[@]}" "${SOURCES[@]}" -lxxhash -lpthread  &
 BARR_PID=$!
 
 width=40
 printf "Building: ["
+if command -v ps >/dev/null 2>&1; then
 while ps -p $BARR_PID > /dev/null; do
-    printf "━"
+    printf "-"
     sleep 0.2
 done
+fi
 
-printf "\r\033[KBuilding: [━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━] 100%%\n"
+if wait $BARR_PID; then
+    printf "\r\033[KBuilding: [----------------------------------------] 100%%\n"
+else
+    printf "\r\033[K[build.sh]: Error: Compilation failed.\n"
+    exit 1
+fi
 
-wait $BARR_PID
 
 if [ -f "./$BUILD_DIR/barr" ]; then
     echo "[build.sh]: Rebuilding with barr..."
     echo 
-    rm -rf .barr
-    ./$BUILD_DIR/barr -I
-    ./$BUILD_DIR/barr -rb
+
+	 BARR_BIN="$(pwd)/$BUILD_DIR/barr"
+
+	(
+		cd tools/fo || exit 1
+		$BARR_BIN -I -s
+	)
+
+    $BARR_BIN -I -s
+    $BARR_BIN -rb
     
+    echo 
+    echo 
     echo "[build.sh]: Done, cleaning up..."
     rm -rf "$BUILD_DIR"
 else

@@ -18,10 +18,9 @@ struct timespec barr_dbg_ts = {.tv_sec = 0, .tv_nsec = 100 * 100};
 
 void BARR_dumb_backtrace(void)
 {
-#ifndef BARR_DEBUG
-    return;
-#endif
-    void    *buf[BARR_BUF_SIZE_32];
+#ifdef BARR_DEBUG
+    void *buf[BARR_BUF_SIZE_32];
+
     barr_i32 nptrs = backtrace(buf, 32);
 
     BARR_warnlog("---- Backtrace (%d frames) ----", nptrs);
@@ -38,6 +37,7 @@ void BARR_dumb_backtrace(void)
     }
 
     free(symbols);
+#endif
 }
 
 void BARR_dbglog(const char *format, ...)

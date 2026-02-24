@@ -68,7 +68,11 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
             barr_fo_on();
 
             char barr_hq_file[BARR_PATH_MAX];
-            snprintf(barr_hq_file, sizeof(barr_hq_file), "%s/%s", BARR_GET_HOME(), BARR_LOCAL_SHARE_BARR_HQ);
+            snprintf(barr_hq_file,
+                     sizeof(barr_hq_file),
+                     "%s/%s",
+                     BARR_GET_HOME(),
+                     BARR_LOCAL_SHARE_BARR_HQ);
 
             const char *root = BARR_get_value(barr_hq_file, "root");
 
@@ -78,17 +82,17 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
                 return 1;
             }
 
-            // TODO: move this to .local/share
             char fo_barr_binfo[BARR_PATH_MAX];
-            snprintf(fo_barr_binfo, sizeof(fo_barr_binfo), "%s/tools/fo/.barr/data/build_info", root);
+            snprintf(
+                fo_barr_binfo, sizeof(fo_barr_binfo), "%s/tools/fo/.barr/data/build_info", root);
 
             char *fo_build_dir = BARR_get_build_info_key(fo_barr_binfo, "build_dir");
-            char *fo_name = BARR_get_build_info_key(fo_barr_binfo, "name");
-            char exe_path[BARR_PATH_MAX];
+            char *fo_name      = BARR_get_build_info_key(fo_barr_binfo, "name");
+            char  exe_path[BARR_PATH_MAX];
             snprintf(exe_path, sizeof(exe_path), "%s/bin/%s", fo_build_dir, fo_name);
 
             char *args[] = {exe_path, NULL};
-            pid_t pid = BARR_run_process_BG(args[0], args);
+            pid_t pid    = BARR_run_process_BG(args[0], args);
             BARR_log("Forward Observer deployed: %d", pid);
             return (pid > 0) ? 0 : pid;
         }
@@ -109,7 +113,8 @@ barr_i32 BARR_command_fo(barr_i32 argc, char **argv)
         if (BARR_strmatch(opt, "watch") || BARR_strmatch(opt, "-w"))
         {
             char cmd[BARR_PATH_MAX + 128];
-            snprintf(cmd, sizeof(cmd), "watch -n 1 'tail -n 50 %s | bat --style=plain -l text'", BARR_FO_LOG_FILE);
+            snprintf(
+                cmd, sizeof(cmd), "watch -n 1 'tail -n 50 %s | cat -l text'", BARR_FO_LOG_FILE);
 
             char *args[] = {"sh", "-c", cmd, NULL};
             return BARR_run_process(args[0], args, false);
@@ -133,7 +138,7 @@ char *BARR_get_value(const char *fpath, const char *key)
     }
 
     size_t key_len = strlen(key);
-    char line[BARR_PATH_MAX];
+    char   line[BARR_PATH_MAX];
 
     while (fgets(line, sizeof(line), fp) != NULL)
     {

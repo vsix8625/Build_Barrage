@@ -1,12 +1,10 @@
-# Olmos (for `Barrfile`)
+# Barrfile configuration (Syntax & Variables)
 
-Olmos is the scripting config layer, used by Build Barrage (`barr`) to configure project builds.  
-It allows you to define compile flags, build type, output name,  
-and other build variables in a human-readable syntax.  
+The `Barrfile` is the configuration engine for Build Barrage. It uses a declarative, C-style syntax to define how your project is built. 
 
 ## Syntax
 - Assignment of variables: 
-```olmos
+```ini
    variable_name = "value";
 ```
 - Strings must be quoted (`"` or `'`)
@@ -14,11 +12,11 @@ and other build variables in a human-readable syntax.
 - Comments start with (`#`)
 
 ## Function calls: 
-- Olmos supports function calls to perform dynamic configuration or query information.
+- `Barrfile` supports function calls to perform dynamic configuration or query information.
  Currently, the following functions are supported:
 `print()`
 - Logs messages during the build evaluation.
-```olmos
+```ini
   print("Hello World");
 ```
 
@@ -26,7 +24,7 @@ and other build variables in a human-readable syntax.
 - Requests external packages for the build.
 - The argument can be a single package or a space-separated list of package names.
 - Packages are resolved via `barr`'s package scan system or a `pkg-config` fallback. 
-```olmos
+```ini
   find_package("zlib");
   find_package("xxhash fmt");
 ```
@@ -38,15 +36,16 @@ and other build variables in a human-readable syntax.
 `run_cmd()`
 - Executes a shell command during the build evaluation.
 - Accepts a single string argument containing the full command to run. 
+- Note: `barr` will ask for approval before running the commands unless the `--trust` flag is used.  
 - The command and tokenized and executed via `BARR_run_process()`, blocking the build until compilation. 
 - Example_1: 
-```olmos
+```ini
   run_cmd("echo Building project...");
   run_cmd("mkdir -p build/temp");
 ```
 
 - Example_2:
-```olmos
+```ini
    # Build a sub-project located in dir1
    run_cmd("barr build --dir dir1");
    
@@ -64,29 +63,29 @@ and other build variables in a human-readable syntax.
 | Variable | Description |
 |----------|-------------|
 |`TARGET` | Name of the target, used to output binary and library name |
-|`TARGET_TYPE` | `"executable"` or `"library"` |
+|`TARGET_TYPE` | `"executable"`, `"shared"`, or `"static"` |
 |`VERSION` | Target version string |
 |`CFLAGS` | Compiler flags for debug builds |
 |`CFLAGS_RELEASE` | Compiler flags for release builds |
 |`DEFINES` | Preprocessor defines (`-D` flags) |
 |`INCLUDES` | Additional include directories (`-I` flags) |
 |`AUTO_INCLUDE_DISCOVERY` | remains `on` by default (`append` or `off`) |
-|`GEN_COMPILE_COMMANDS` | `yes` or `no` by default |
+|`GEN_COMPILE_COMMANDS` | Set to `yes` or `on` to generate `compile_commands.json` |
 |`EXCLUDE_PATTERNS` | Extra scanner exclude patterns |
 |`CLEAN_TARGETS` | Directories or files to be cleaned with `barr clean` command |
 |`SOURCES` | Source files to compile |
 |`GLOB_SOURCES` | Source directories to grab source files |
 |`BUILD_TYPE` | `"debug"` or `"release"` |
 |`COMPILER` | Compiler to use (`"gcc"` or `"clang"`)|
-|`LINKER` | Linker to use (`"lld"` or `"gold"`)|
+|`LINKER` | Linker to -fuse (`"mold"`, `"lld"`, or `"gold"`)|
 |`OUT_DIR` | Base output directory for build artifacts |
-|`BINARY_OUT_PATH` | Overrides final binary output |
+|`BINARY_OUT_PATH` | Overrides final binary output, instead of default (`bin/target`) |
 |`LFLAGS` | User defined `-l` libraries |
 |`LIB_PATHS` | Additional (`-L`) paths | 
 
 ## Example Barrfile
 
-```olmos
+```ini
   print("Barrfile started");
 
   TARGET = "Build_Barrage";

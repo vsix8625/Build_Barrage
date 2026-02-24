@@ -2,40 +2,57 @@
 
 A build tool for C that interfaces directly with the system compiler.  
 
-You write a `Barrfile`, barr evaluates it, and invokes the compiler accordingly.
+You write a `Barrfile`, `barr` evaluates it, and invokes the compiler accordingly.
 
-**Version:** 0.25.0  
-**Platform:** Linux
-**LICENSE** Apache 2.0 
+# Why `barr`? 
 
-# State: Stable Milestone
+I built `barr` as a personal challenge to understand the build process and wanted a way to jump straight into coding without much manual setup and boilerplate.  
+- Purpose-Built: It was designed to solve my workflow needs for C projects.  
 
-Notice: This project is a personal milestone and a functional snapshot of my daily workflow.  
-- Support: I do not offer active support or feature requests.  
-- Current status: Stable and functional.  
-- Maintenance: Development is currently paused.  
-- The Goal: This project served as a playground to implement and understand core systems concepts
-- Feel free to fork it and adapt it to your needs.  
+- Learning Milestone: This repo represents a specific point in my journey, I am keeping the logic preserved as a testament to what I learned during its development.  
+
+- Tested: I've used this daily for several months and still do, it isn't perfect but it is reliable for my use cases.  
+
+# Project Status
+
+- Active development is paused, and I do not provide ongoing support.  
+
+- This project is considered feature-complete for my workflow.  
+
+- Feel free to fork and adapt it to your own workflow.  
 
 ---
 
+**Version:** 1.0.1   
+**LICENSE:** Apache 2.0  
+
 ## Requirements
+- Tested on Arch, Mint, Ubuntu, Fedora
 
-- GCC or Clang
-- `libxxhash` (system package)
-- `mold` or `lld` linker (optional but highly recommended)
+**Platform:** Linux  
+**Dependencies:**
+- Before running bootstrap script, ensure the following are installed:
+    - General: `git`, `libxxhash` (Development Headers)
 
+    - Arch: `sudo pacman -S base-devel xxhash`
+
+    - Ubuntu/Mint: `sudo apt install build-essential libxxhash-dev`
+
+    - Fedora/RHEL: `sudo dnf install @development-tools xxhash-devel`
 ---
 
 ## Installation
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/vsix8625/Build_Barrage.git
 cd Build_Barrage
 ./scripts/build.sh
 ```
 
-The bootstrap process uses your system compiler to build a minimal version of `barr`, which then takes over to build the final, optimized production binary.
+## How it works
+
+The `build.sh` script is a bootstrap tool. It uses the system compiler to build a minimal version of `barr`.  
+Once the bootstrap is complete, `barr` will automatically rebuild itself to produce a final, optimized binary.  
 
 Once built, install it:
 
@@ -65,8 +82,7 @@ barr run                 # run the resulting binary
 Commands can be chained with `...` or `---`, both separators are equivalent:
 
 ```bash
-barr build ... run
-barr rebuild --- run
+barr new --barrfile --- new --main --- new --pair util --- build --- run
 ```
 
 ---
@@ -82,7 +98,7 @@ The `Barrfile` is barr's build configuration — a declarative script with varia
 
 A freshly generated `Barrfile` looks like this:
 
-```bash
+```ini
 print("Barrfile execution started");
 
 TARGET        = "myapp";
@@ -95,7 +111,7 @@ COMPILER      = "/usr/bin/clang";
 LINKER        = "lld";
 
 BUILD_TYPE    = "debug";     
-OUT_DIR       = "build/${TARGET}/${BUILD_TYPE}";  
+OUT_DIR       = "build/${BUILD_TYPE}/${TARGET}";  
 
 std           = "-std=c23";
 CFLAGS        = "${std} -Wall -Werror -Wextra -g";
@@ -109,7 +125,8 @@ DEFINES       = "-DDEBUG";
 # EXCLUDE_PATTERNS = "build test"; 
 ```
 
-```bash
+```ini
+# src/main.c is the default main entry
 MAIN_ENTRY = "barr.c";   # file containing the entry point for your executable.
 ```
 
@@ -117,9 +134,10 @@ MAIN_ENTRY = "barr.c";   # file containing the entry point for your executable.
 
 `barr` scans the project root recursively for:
 - C/C++ Sources: `.c`, `.cpp`,`.cc`, `.cxx`, `.C`. You can override this with `GLOB_SOURCES` or `SOURCES`.
+
 - Headers: `.h`, `.hpp`,`.hh`, `.hxx`. You can override this with `AUTO_INCLUDE_DISCOVERY="off"`.
 
-```bash
+```ini
 GLOB_SOURCES = "src engine/core";  # scan specific directories
 SOURCES = "src/main.c src/util.c"; # explicit file list
 AUTO_INCLUDE_DISCOVERY = "on"      # controls header scanning (`on` [default], `append`, `off`).
@@ -128,22 +146,23 @@ INCLUDES = "-I. -Iinc -Isrc";      # defining this will set AUTO_INCLUDE_DISCOVE
 
 **System packages** via pkg-config:
 
-```bash
+```ini
 pkgs = "xxhash zlib";
 find_package("${pkgs}");
 ```
 
 **Modules** let you build a dependency before the main target:
 
-```bash
-add_module("engine", "engine", "required");   # name, path/to/dir, relevance
+```ini
+add_module("engine", "engine", "required");   
 engine_includes = "-Iengine/include";
 MODULES_INCLUDES = "${engine_includes}";
 ```
 
 **Running arbitrary commands** with `run_cmd()` — barr will ask for your approval before executing:
-
-```bash
+- You can skip confirmation prompt by passing `--trust` to the command. 
+- Example: `barr build --trust`.    
+```ini
 run_cmd("./tools/gen_headers.sh");
 ```
 
@@ -164,10 +183,11 @@ barr new --pair <name> --dir <dir> # create <name>.c and <name>.h together
 The `--pair` command also accepts `--ext` and `--public`:
 
 ```bash
-barr new --pair renderer --dir src
-# → src/renderer.c, src/renderer.h
+barr new --pair renderer --dir graphics
+# → graphics/renderer.c, graphics/renderer.h
 
-barr new --pair graphics --dir src --ext .cpp --public true
+barr new --pair graphics --ext .cpp --public true
+# if --dir is not specified it writes to src by default
 # → src/graphics.cpp, inc/graphics.hpp
 ```
 
@@ -196,7 +216,7 @@ Typical workflow — run these in two separate terminal panes:
 barr fo deploy
 # [barr_log]: Forward Observer deployed: 19114
 
-# Pane 2: watch the live log
+# Pane 2: watch the live log (requires shell 'watch')
 barr fo watch
 # [19:53:36]: idle — no changes detected
 # ...
@@ -215,6 +235,42 @@ barr fo dismiss   # dismiss (stop) the watcher
 
 ---
 
+## Tools
+
+`barr tool` (alias: `-tl`) launches external development tools against the last build binary.  
+No need to locate the path manually, `barr` resolves it from the build info automatically.  
+
+```bash
+barr tool --gdb        # Launch GDB with the last built binary loaded
+barr tool --perf       # Run perf record on the binary, then use perf report to inspect
+barr tool --valgrind   # Run Valgrind memcheck on the binary
+barr tool --strace     # Run strace -c and write syscall summary to a .txt file in the project root
+```
+
+`--gdb` opens GDB with the binary loaded and ready to `run`. Useful for debug builds where symbols are present `-g` in `CFLAGS`.  
+
+`--perf` runs `perf record` against the binary. After it completes, inspect the results with: 
+```bash
+perf report
+# or
+perf report --stdio > perf_report.txt # your file name
+```
+
+`--valgrind` runs `--tool=memcheck` against the binary. Useful for catching heap errors and confirming clean exits.  
+
+`--strace` runs `strace -c` and writes the syscall summary to `<target>_strace_syscall.txt` in the project root rather than printing to terminal.  
+
+---
+
+## Debug
+
+```bash
+barr debug --cache      # Show hashes for all tracked source files
+barr debug --fsinfo     # Directory summary: file count, sizes, executables  
+```
+
+---
+
 ## Installing Your Project
 
 `barr install` works for any project. It reads your build info and installs to the appropriate system directories under a prefix (default `/usr/local`):
@@ -229,7 +285,7 @@ sudo barr install             # installs to /usr/local
 sudo barr uninstall           # removes installed files
 ```
 
-barr tracks what it installed so `uninstall` knows exactly what to clean up.
+`barr` tracks what it installed so `uninstall` knows exactly what to clean up.
 
 ---
 
@@ -243,7 +299,7 @@ barr config open        # open the local Barrfile in $EDITOR (requires initializ
 
 ## Commands Reference
 
-```
+```bash
 build        -b     Build project (incremental)
 rebuild      -rb    Clean and build
 run          -r     Run latest binary
@@ -265,12 +321,36 @@ barr help <command>   # detailed options for any command
 
 ## Limitations & Known Issues
 
-- **Linux only.** No macOS or Windows support.  
+- **Linux only:** No macOS or Windows support.  
 - **`fo` is experimental.** Treat it as a convenience tool, not a stable feature.
-- Changing `BUILD_TYPE` in the Barrfile does not automatically trigger a rebuild. Barr logs a warning advising a rebuild, but you need to manually run `barr rebuild`.
-- When running a target with `barr run` (`-r`), flags intended for the executable may sometimes be interpreted by barr itself (e.g., `--verbose`). Works in most cases and does not affect normal usage.
-- `barr status` uses modification time for quick checks. In some cases (e.g., edit + undo + save), a file may appear “modified” even if content hasn’t changed. The actual build (`barr build`) uses content hashing and will correctly skip unchanged files.
-- `--turbo` batch build is experimental. Gains are situational: many small files with no globals/static data may benefit, but in real projects it often provides little advantage.
+- Changing `BUILD_TYPE` in the Barrfile does not flag the cache change for recompilation. A manual rebuild is advised.    
+- When running a target with `barr run` (`-r`), flags intended for the executable may sometimes be interpreted by barr itself (e.g., `--verbose`). Works in most cases and does not affect normal usage.  
+- `barr status` uses modification time for quick checks. In some cases (e.g., edit + undo + save), a file may appear “modified” even if content hasn’t changed. The actual build (`barr build`) uses content hashing and will correctly skip unchanged files.  
+- `--turbo` batch build is experimental. Gains are situational: many small files with no globals/static data may benefit, but in real projects it often provides little advantage.  
+- `Barrfile` script layer:
+    - One `TARGET` per `Barrfile`.  
+    - No multi-line strings.  
+    - No conditional statements.  
+    - Numbers should be enclosed in quotes: 
+         - In the following example: 
+```ini
+major  = "0";  
+minor  = "0";  
+patch  = "12";  
+
+VERSION  = "${major}.${minor}.${patch}";    
+
+file_write("#define FOO_VERSION_MAJOR ${major}","${config_file}","true");  
+file_write("#define FOO_VERSION_MINOR ${minor}","${config_file}","true");  
+file_write("#define FOO_VERSION_PATCH ${patch}","${config_file}","true");  
+               
+file_write('#define FOO_VERSION_STRING "${major}.${minor}.${patch}"',"${config_file}","true");  
+``` 
+
+- Failure to do so may result in truncated digits.  
+- When writing `#define` statements or C-strings to a file, use single quotes for the `file_write` function to wrap the double quotes.  
+    - Example: `file_write('#define TYPE "${VAR}"', "file.h", "true");` # true for append 
+- For C++ main.cpp has to be set with `MAIN_ENTRY=main.cpp` otherwise `barr` expects main.c.  
 
 
 For a deeper dive into Barr’s compilation stages, modules, and internal workflow, see [docs/technical.md](docs/technical.md).
