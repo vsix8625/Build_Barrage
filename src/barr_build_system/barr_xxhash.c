@@ -18,11 +18,18 @@
 static bool BARR_str_endswith(const char *str, const char *suffix)
 {
     if (!str || !suffix)
+    {
         return false;
+    }
+
     size_t lenstr    = strlen(str);
     size_t lensuffix = strlen(suffix);
+
     if (lensuffix > lenstr)
+    {
         return false;
+    }
+
     return strcmp(str + lenstr - lensuffix, suffix) == 0;
 }
 
@@ -105,6 +112,7 @@ static void barr_filestack_free(BARR_Filestack *flstack)
     {
         BARR_dbglog("%s(): freeing %zu filestack entries", __func__, flstack->count);
     }
+
     for (size_t i = 0; i < flstack->count; i++)
     {
         if (flstack->files[i])
@@ -262,16 +270,27 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers,
         {
             char *p = line;
             while (isspace((barr_u8) *p))
+            {
                 p++;
+            }
 
             if (strncmp(p, "#include", 8) != 0)
+            {
                 continue;
+            }
+
             p += 8;
+
             while (isspace((barr_u8) *p))
+            {
                 p++;
+            }
 
             if (*p != '\"')
+            {
                 continue;
+            }
+
             p++;
 
             char include_file[BARR_BUF_SIZE_512] = {0};
@@ -283,7 +302,9 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers,
             include_file[i] = '\0';
 
             if (i == 0)
+            {
                 continue;
+            }
 
             char resolved[BARR_PATH_MAX] = {0};
             if (!barr_resolve_include_from_list(headers, current_file, include_file, resolved))

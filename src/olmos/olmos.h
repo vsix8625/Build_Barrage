@@ -18,12 +18,14 @@ typedef enum
 
 typedef struct OLM_Node
 {
-    OLM_NodeType      type;
-    char             *name;
-    char            **args;
-    size_t            arg_count;
     struct OLM_Node **children;
-    size_t            child_count;
+    char            **args;
+    char             *name;
+
+    size_t arg_count;
+    size_t child_count;
+
+    OLM_NodeType type;
 } OLM_Node;
 
 typedef struct OLM_Var

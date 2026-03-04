@@ -9,9 +9,9 @@ You write a `Barrfile`, `barr` evaluates it, and invokes the compiler accordingl
 I built `barr` as a personal challenge to understand the build process and wanted a way to jump straight into coding without much manual setup and boilerplate.  
 - Purpose-Built: It was designed to solve my workflow needs for C projects.  
 
-- Learning Milestone: This repo represents a specific point in my journey, I am keeping the logic preserved as a testament to what I learned during its development.  
+- Learning Milestone: The codebase is preserved as a snapshot of my growth and understanding at the time of development.   
 
-- Tested: I've used this daily for several months and still do, it isn't perfect but it is reliable for my use cases.  
+- Tested: Used daily for months in other projects. Reliable for my needs.   
 
 # Project Status
 
@@ -19,7 +19,7 @@ I built `barr` as a personal challenge to understand the build process and wante
 
 - This project is considered feature-complete for my workflow.  
 
-- Feel free to fork and adapt it to your own workflow.  
+- Feel free to fork and adapt it to your needs.  
 
 ---
 
@@ -60,7 +60,11 @@ Once built, install it:
 # Option A: copy to any directory in your $PATH
 cp build/release/bin/barr ~/.local/bin/
 
-# Option B: system install
+# Option B: using barr install --prefix
+# If you have in $PATH: $HOME/opt/usr/bin 
+barr install --prefix $HOME/opt/usr # will install to ~/opt/usr/bin
+
+# Option C: system install
 sudo ./build/release/bin/barr install   # installs to /usr/local/bin
 ```
 
@@ -321,18 +325,23 @@ barr help <command>   # detailed options for any command
 
 ## Limitations & Known Issues
 
-- **Linux only:** No macOS or Windows support.  
-- **`fo` is experimental.** Treat it as a convenience tool, not a stable feature.
+- `Linux` only: No `macOS` or `Windows` support.  
+
 - Changing `BUILD_TYPE` in the Barrfile does not flag the cache change for recompilation. A manual rebuild is advised.    
+
 - When running a target with `barr run` (`-r`), flags intended for the executable may sometimes be interpreted by barr itself (e.g., `--verbose`). Works in most cases and does not affect normal usage.  
+
 - `barr status` uses modification time for quick checks. In some cases (e.g., edit + undo + save), a file may appear “modified” even if content hasn’t changed. The actual build (`barr build`) uses content hashing and will correctly skip unchanged files.  
-- `--turbo` batch build is experimental. Gains are situational: many small files with no globals/static data may benefit, but in real projects it often provides little advantage.  
+
+- `barr build --turbo` batch build is experimental. Gains are situational: many small files with no `global` or `static` data may benefit, but in real projects it often provides little advantage.  
+
 - `Barrfile` script layer:
     - One `TARGET` per `Barrfile`.  
     - No multi-line strings.  
     - No conditional statements.  
     - Numbers should be enclosed in quotes: 
-         - In the following example: 
+
+Example: 
 ```ini
 major  = "0";  
 minor  = "0";  
@@ -345,12 +354,18 @@ file_write("#define FOO_VERSION_MINOR ${minor}","${config_file}","true");
 file_write("#define FOO_VERSION_PATCH ${patch}","${config_file}","true");  
                
 file_write('#define FOO_VERSION_STRING "${major}.${minor}.${patch}"',"${config_file}","true");  
+
+# Failure to do so may result in truncated digits.  
+
 ``` 
 
-- Failure to do so may result in truncated digits.  
 - When writing `#define` statements or C-strings to a file, use single quotes for the `file_write` function to wrap the double quotes.  
-    - Example: `file_write('#define TYPE "${VAR}"', "file.h", "true");` # true for append 
+    - Example: `file_write('#define TYPE "${VAR}"', "file.h", "true");` # true for append file
+
 - For C++ main.cpp has to be set with `MAIN_ENTRY=main.cpp` otherwise `barr` expects main.c.  
 
+- `Barrfile` must contain at least one variable assignment (e.g `TARGET`). A file containing only comments or whitespace may trigger an arena allocation error.  
+
+- `fo` is experimental. Treat it as a convenience tool, not a stable feature.
 
 For a deeper dive into Barr’s compilation stages, modules, and internal workflow, see [docs/technical.md](docs/technical.md).
