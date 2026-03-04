@@ -47,8 +47,8 @@ std = "-std=c23";
 opts          = "-Wall -O3 -pthread -march=native -mbmi -mlzcnt"; 
 extra_opts    = "-fomit-frame-pointer -fno-common";
 bug_detection = "-Wself-assign -Wunreachable-code";
-safety        = "-Wloop-analysis -Wthread-safety-pointer -Wvla";
-quality       = "-Wdocumentation -Wunicode-whitespace -Wredundant-decls";
+safety        = "-Wloop-analysis -Wthread-safety-pointer -Wvla -Wcast-align";
+quality       = "-Wdocumentation -Wunicode-whitespace -Wredundant-decls -Wmissing-noreturn";
 
 CFLAGS_RELEASE = "${std} ${opts} ${extra_opts} ${bug_detection} ${safety} ${quality}";
 

@@ -739,7 +739,7 @@ barr_i32 OLM_eval_config_node(OLM_Node *root, BARR_Arena *arena)
 {
     time_t start = time(NULL);
 
-    const time_t max_seconds = 60;
+    const time_t max_seconds = 300;
 
     if (root == NULL || arena == NULL)
     {

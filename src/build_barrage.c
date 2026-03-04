@@ -201,7 +201,7 @@ barr_i32 main(barr_i32 argc, char **argv)
     BARR_arena_init(
         &g_barr_cmds_arena, sizeof(BARR_Command) * BARR_MAX_COMMANDS, "commands_arena", 8);
     g_barr_cmds_list  = (BARR_Command *) BARR_arena_alloc(&g_barr_cmds_arena,
-                                                         sizeof(BARR_Command) * BARR_MAX_COMMANDS);
+                                                          sizeof(BARR_Command) * BARR_MAX_COMMANDS);
     g_barr_cmds_count = 0;
 
     // init GC

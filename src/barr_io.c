@@ -45,11 +45,11 @@ void BARR_log(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        printf("\033[32;1m[barr_log]:\033[0m ");
+        printf("\033[32;1m[barr]:\033[0m ");
     }
     else
     {
-        printf("[barr_log]: ");
+        printf("[barr]: ");
     }
 
     va_list args;
@@ -70,11 +70,11 @@ void BARR_warnlog(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        fprintf(stderr, "\033[38;2;255;165;0m[barr_warning]:\033[0m ");
+        fprintf(stderr, "\033[38;2;255;165;0m[warning]:\033[0m ");
     }
     else
     {
-        fprintf(stderr, "[barr_warning]: ");
+        fprintf(stderr, "[warning]: ");
     }
 
     va_list args;
@@ -96,11 +96,11 @@ void BARR_errlog(const char *format, ...)
     barr_i32 is_tty = isatty(fileno(stdout));
     if (is_tty)
     {
-        fprintf(stderr, "\033[31;1m[barr_error]:\033[0m ");
+        fprintf(stderr, "\033[31;1m[error]:\033[0m ");
     }
     else
     {
-        fprintf(stderr, "[barr_error]: ");
+        fprintf(stderr, "[error]: ");
     }
 
     va_list args;
