@@ -84,6 +84,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
         }
     }
 
+    // NOTE: Not really needed
     BARR_init_simd();
 
     BARR_BuildProgressCTX progress_ctx = {.failed = false};
@@ -1062,6 +1063,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                 }
                 fprintf(f, "]\n");
                 fclose(f);
+                // NOTE: It should probably be $OUT_DIR/compile_commands.json, but...
                 BARR_mv(compile_ctx.ccmds_path, "build/compile_commands.json");
             }
         }
@@ -1190,7 +1192,7 @@ barr_i32 BARR_command_build(barr_i32 argc, char **argv)
                              target_version,
                              olmos_main_entry) != 0)
         {
-            BARR_errlog("Failed to build");
+            BARR_errlog("Failed to link");
             goto exit;
         }
 
