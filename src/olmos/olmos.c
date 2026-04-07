@@ -1031,7 +1031,7 @@ static void olm_load_constants(void)
     olm_barr_build_compiler();
 
     OLM_store_var_const("BARR_OS_NAME", BARR_OS_NAME);
-    OLM_store_var_const("BARR_OS_VESRION", BARR_get_config("version"));
+    OLM_store_var_const("BARR_OS_VERSION", BARR_get_config("version"));
     OLM_store_var_const("BARR_OS_MACHINE", BARR_get_config("machine"));
     OLM_store_var_const("BARR_CWD", BARR_getcwd());
 
