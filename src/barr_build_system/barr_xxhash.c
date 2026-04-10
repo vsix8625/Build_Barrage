@@ -294,7 +294,8 @@ bool BARR_hash_includes_xxh3(const BARR_SourceList *headers,
             p++;
 
             char include_file[BARR_BUF_SIZE_512] = {0};
-            int  i                               = 0;
+
+            int i = 0;
             while (*p && *p != '\"' && i < (int) (sizeof(include_file) - 1))
             {
                 include_file[i++] = *p++;

@@ -806,6 +806,7 @@ barr_i32 OLM_eval_config_node(OLM_Node *root, BARR_Arena *arena)
                 {
                     const char *cmd = node->args[0];
 
+#if !defined(BARR_TRUST)
                     if (g_barr_trust == false)
                     {
                         BARR_printf("Barr wants to run: \033[38;5;202m%s\033[0m. Allow? (y/N): ",
@@ -820,6 +821,9 @@ barr_i32 OLM_eval_config_node(OLM_Node *root, BARR_Arena *arena)
                             return 1;
                         }
                     }
+#else
+                    (void) g_barr_trust;
+#endif
 
                     char cmd_copy[1024];
                     strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
