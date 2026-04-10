@@ -54,7 +54,7 @@ CFLAGS_RELEASE = "${std} ${opts} ${extra_opts} ${bug_detection} ${safety} ${qual
 
 EXCLUDE_PATTERNS = "tools examples scripts"; 
 
-DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD";
+DEFINES = "-DNDEBUG -D_GNU_SOURCE -DBARR_RELEASE_BUILD -DBARR_TRUST";
 
 pkgs = "xxhash";
 find_package("${pkgs}");
